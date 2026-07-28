@@ -1,0 +1,1561 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Motor de Custos · Pedroni</title>
+<style>
+:root{
+  --bg:#12141a;--surf:#1a1d24;--surf2:#22262f;--surf3:#2a2f39;--line:#2e333d;
+  --txt:#eceef1;--txt2:#9aa0aa;--txt3:#666d78;
+  --rebar:#d97642;--rebar2:#e8915f;--rebar-dim:rgba(217,118,66,.12);
+  --steel:#5b9bd5;--good:#3fb873;--warn:#e0a52e;--bad:#d9534f;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{background:var(--bg);color:var(--txt);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;line-height:1.5}
+.mono{font-variant-numeric:tabular-nums}
+.hidden{display:none!important}
+
+/* ===== LOGIN ===== */
+#login-screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:28px 22px;background:linear-gradient(165deg,var(--surf) 0%,var(--bg) 60%);position:relative;overflow:hidden}
+#login-screen::before{content:"";position:absolute;top:-15%;right:-20%;width:340px;height:340px;
+  background:radial-gradient(circle,var(--rebar-dim) 0%,transparent 65%);pointer-events:none}
+.login-box{width:100%;max-width:360px;position:relative;z-index:2}
+.brand{text-align:center;margin-bottom:32px}
+.brand-mark{display:inline-flex;align-items:center;justify-content:center;width:62px;height:62px;
+  background:var(--rebar);border-radius:16px;font-size:1.9rem;margin-bottom:14px;
+  box-shadow:0 8px 24px rgba(217,118,66,.3)}
+.brand h1{font-size:1.4rem;font-weight:800;letter-spacing:-.01em}
+.brand .sub{font-size:.76rem;color:var(--txt3);margin-top:4px;letter-spacing:.02em}
+.login-card{background:var(--surf);border:1px solid var(--line);border-radius:14px;padding:22px}
+.login-card h2{font-size:.95rem;font-weight:700;margin-bottom:4px}
+.login-card .hint{font-size:.72rem;color:var(--txt3);margin-bottom:18px}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:.68rem;color:var(--txt2);margin-bottom:6px;font-weight:600}
+.field input{width:100%;background:var(--surf2);border:1px solid var(--line);color:var(--txt);
+  border-radius:9px;padding:12px 13px;font-size:.9rem;transition:border-color .15s}
+.field input:focus{border-color:var(--rebar);outline:none}
+.btn-primary{width:100%;background:var(--rebar);color:#fff;border:none;border-radius:9px;
+  padding:13px;font-size:.9rem;font-weight:700;cursor:pointer;transition:background .15s;margin-top:4px}
+.btn-primary:active{background:var(--rebar2)}
+.btn-primary:disabled{opacity:.6;cursor:default}
+.login-msg{font-size:.74rem;text-align:center;margin-top:14px;min-height:18px;line-height:1.4}
+.login-msg.err{color:var(--bad)}
+.login-msg.ok{color:var(--good)}
+.login-foot{text-align:center;font-size:.68rem;color:var(--txt3);margin-top:22px;line-height:1.5}
+.login-foot a{color:var(--rebar2);cursor:pointer;text-decoration:none}
+
+/* ===== APP SHELL ===== */
+#app-screen{min-height:100vh;display:flex;flex-direction:column}
+.app-header{position:sticky;top:0;z-index:40;background:rgba(18,20,26,.94);backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);padding:12px 16px;display:flex;align-items:center;gap:12px}
+.ah-mark{width:32px;height:32px;background:var(--rebar);border-radius:8px;display:flex;
+  align-items:center;justify-content:center;font-size:1rem;flex-shrink:0}
+.ah-title{flex:1;min-width:0}
+.ah-title .t{font-size:.9rem;font-weight:750;line-height:1.1}
+.ah-title .s{font-size:.62rem;color:var(--txt3);display:flex;align-items:center;gap:5px;margin-top:1px}
+.sync-dot{width:6px;height:6px;border-radius:50%;background:var(--good);flex-shrink:0}
+.sync-dot.syncing{background:var(--warn);animation:pulse 1s infinite}
+.sync-dot.off{background:var(--txt3)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.ah-user{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.ah-avatar{width:30px;height:30px;border-radius:50%;background:var(--surf3);border:1px solid var(--line);
+  display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;color:var(--rebar2);cursor:pointer}
+.user-menu{position:absolute;top:52px;right:12px;background:var(--surf2);border:1px solid var(--line);
+  border-radius:11px;padding:6px;min-width:180px;box-shadow:0 10px 30px rgba(0,0,0,.5);z-index:60}
+.user-menu .um-head{padding:10px 12px;border-bottom:1px solid var(--line);margin-bottom:5px}
+.user-menu .um-name{font-size:.78rem;font-weight:700}
+.user-menu .um-email{font-size:.64rem;color:var(--txt3);margin-top:2px;word-break:break-all}
+.user-menu button{width:100%;background:transparent;border:none;color:var(--txt2);text-align:left;
+  padding:9px 12px;font-size:.76rem;border-radius:7px;cursor:pointer;display:flex;align-items:center;gap:9px}
+.user-menu button:active{background:var(--surf3)}
+.user-menu button.danger{color:var(--bad)}
+
+main.app-main{flex:1;padding:18px 16px 90px;max-width:760px;margin:0 auto;width:100%}
+
+/* dashboard */
+.welcome{margin-bottom:22px}
+.welcome h2{font-size:1.3rem;font-weight:800;letter-spacing:-.01em}
+.welcome p{font-size:.82rem;color:var(--txt2);margin-top:3px}
+.dash-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.dash-card{background:var(--surf);border:1px solid var(--line);border-radius:13px;padding:16px;
+  cursor:pointer;transition:transform .12s,border-color .12s;position:relative;overflow:hidden}
+.dash-card:active{transform:scale(.98)}
+.dash-card .dc-ico{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;
+  justify-content:center;font-size:1.25rem;margin-bottom:11px}
+.dash-card .dc-name{font-size:.86rem;font-weight:700;line-height:1.2}
+.dash-card .dc-desc{font-size:.66rem;color:var(--txt3);margin-top:4px;line-height:1.35}
+.dash-card .dc-status{position:absolute;top:13px;right:13px;font-size:.54rem;padding:2px 7px;
+  border-radius:9px;font-weight:700;text-transform:uppercase;letter-spacing:.03em}
+.dc-status.ok{background:var(--good-dim,rgba(63,184,115,.14));color:var(--good)}
+.dc-status.wip{background:rgba(232,197,71,.14);color:var(--warn)}
+.dc-mp .dc-ico{background:var(--rebar-dim);color:var(--rebar2)}
+.dc-mo .dc-ico{background:rgba(91,155,213,.12);color:var(--steel)}
+.dc-maq .dc-ico{background:rgba(232,197,71,.12);color:var(--warn)}
+.dc-frete .dc-ico{background:rgba(63,184,115,.12);color:var(--good)}
+.dc-preco{grid-column:1/-1;background:linear-gradient(135deg,var(--rebar-dim),var(--surf));
+  border-color:rgba(217,118,66,.3)}
+.dc-preco .dc-ico{background:var(--rebar);color:#fff}
+
+.dash-section{font-size:.64rem;text-transform:uppercase;letter-spacing:.1em;color:var(--txt3);
+  font-weight:700;margin:26px 0 11px}
+
+/* módulo placeholder */
+.module-view{animation:fadein .25s}
+@keyframes fadein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.mod-header{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.mod-back{width:36px;height:36px;border-radius:9px;background:var(--surf);border:1px solid var(--line);
+  color:var(--txt);font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.mod-header .mh-ico{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;
+  justify-content:center;font-size:1.2rem;flex-shrink:0}
+.mod-header .mh-t{flex:1}
+.mod-header .mh-name{font-size:1.05rem;font-weight:750}
+.mod-header .mh-tag{font-size:.68rem;color:var(--txt3)}
+.placeholder{background:var(--surf);border:1px dashed var(--line);border-radius:14px;padding:34px 22px;text-align:center}
+.placeholder .ph-ico{font-size:2.4rem;margin-bottom:12px;opacity:.6}
+.placeholder .ph-t{font-size:.92rem;font-weight:700;margin-bottom:6px}
+.placeholder .ph-d{font-size:.76rem;color:var(--txt2);line-height:1.5;max-width:380px;margin:0 auto}
+.placeholder .ph-badge{display:inline-block;margin-top:14px;font-size:.62rem;color:var(--rebar2);
+  background:var(--rebar-dim);padding:4px 11px;border-radius:11px;font-weight:600}
+
+/* bottom nav */
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:40;background:rgba(18,20,26,.96);
+  backdrop-filter:blur(12px);border-top:1px solid var(--line);display:flex;padding:6px 4px 8px;
+  max-width:760px;margin:0 auto}
+.nav-item{flex:1;background:transparent;border:none;color:var(--txt3);padding:6px 2px;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:3px;border-radius:9px;transition:color .12s}
+.nav-item .ni-ico{font-size:1.15rem;line-height:1}
+.nav-item .ni-lbl{font-size:.56rem;font-weight:600}
+.nav-item.active{color:var(--rebar2)}
+.nav-item:active{background:var(--surf2)}
+
+/* loading */
+#boot{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;z-index:200;gap:16px}
+.boot-mark{width:56px;height:56px;background:var(--rebar);border-radius:14px;display:flex;
+  align-items:center;justify-content:center;font-size:1.7rem;animation:pulse 1.2s infinite}
+.boot-txt{font-size:.76rem;color:var(--txt3)}
+
+.toast{position:fixed;bottom:96px;left:50%;transform:translateX(-50%);background:var(--surf3);
+  border:1px solid var(--line);color:var(--txt);padding:11px 18px;border-radius:11px;font-size:.78rem;
+  z-index:100;box-shadow:0 8px 24px rgba(0,0,0,.4);animation:toastin .3s;max-width:90%}
+@keyframes toastin{from{opacity:0;transform:translate(-50%,10px)}to{opacity:1;transform:translate(-50%,0)}}
+
+/* ===== CSS MATÉRIA-PRIMA (do protótipo) ===== */
+
+:root{--bg:#14161b;--surf:#1c1f26;--surf2:#242832;--surf3:#2b303a;--line:#2f343e;
+--txt:#e8eaed;--txt2:#989ea8;--txt3:#69707b;--rebar:#d97642;--rebar2:#e8915f;
+--good:#3fb873;--warn:#e0a52e;--bad:#d9534f;--blue:#5b9bd5;--purple:#9c8cd5}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;line-height:1.4;padding-bottom:40px}
+.mono{font-variant-numeric:tabular-nums}
+header{position:sticky;top:0;z-index:40;background:rgba(20,22,27,.94);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);padding:13px 16px}
+.h-title{font-size:1rem;font-weight:700}
+.h-title .badge{background:var(--rebar);color:#fff;font-size:.58rem;padding:2px 7px;border-radius:4px;margin-left:8px;font-weight:600}
+.h-sub{font-size:.68rem;color:var(--txt3);margin-top:3px}
+.tabs{display:flex;gap:4px;padding:10px 16px 0;background:var(--bg);position:sticky;top:60px;z-index:35}
+.tab{flex:1;text-align:center;padding:9px 6px;font-size:.75rem;font-weight:600;color:var(--txt2);background:transparent;border:none;border-bottom:2px solid transparent;cursor:pointer}
+.tab.on{color:var(--txt);border-bottom-color:var(--rebar);background:var(--surf)}
+main{padding:16px;max-width:680px;margin:0 auto}
+.view{display:none}.view.on{display:block}
+.intro{background:var(--surf2);border-left:3px solid var(--rebar);border-radius:6px;padding:11px 13px;font-size:.73rem;color:var(--txt2);line-height:1.55;margin-bottom:12px}
+.intro b{color:var(--txt)}
+.sect{font-size:.64rem;text-transform:uppercase;letter-spacing:.09em;color:var(--rebar2);font-weight:700;margin:20px 0 9px;display:flex;align-items:center;gap:8px}
+.sect::after{content:"";flex:1;height:1px;background:var(--line)}
+
+/* MATERIAL card */
+.mat{background:var(--surf);border:1px solid var(--line);border-radius:9px;margin-bottom:8px;overflow:hidden}
+.mat-head{display:flex;align-items:center;gap:9px;padding:11px 13px;cursor:pointer}
+.mat-exp{font-size:.65rem;color:var(--txt3);transition:transform .2s}
+.mat.open .mat-exp{transform:rotate(90deg)}
+.mat-nome{flex:1;font-size:.82rem;font-weight:600}
+.mat-um{font-size:.58rem;color:var(--txt3);background:var(--surf2);padding:2px 6px;border-radius:3px}
+.mat-custo{font-size:.85rem;font-weight:700;color:var(--rebar2);white-space:nowrap}
+.mat-body{display:none;padding:0 13px 13px;border-top:1px solid var(--line)}
+.mat.open .mat-body{display:block}
+.mf-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:11px}
+.mf{}
+.mf.full{grid-column:1/-1}
+.mf label{font-size:.58rem;color:var(--txt3);display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:.03em}
+.mf input,.mf select{width:100%;background:var(--surf2);border:1px solid var(--line);color:var(--txt);border-radius:5px;padding:7px 8px;font-size:.78rem;text-align:right}
+.mf select{text-align:left}
+.mf input:focus{border-color:var(--rebar);outline:none}
+.mf.calc input{background:var(--surf3);color:var(--rebar2);border-style:dashed;font-weight:700}
+.mf.calc label{color:var(--warn)}
+.nf-box{grid-column:1/-1;background:rgba(91,155,213,.07);border:1px solid rgba(91,155,213,.3);border-radius:6px;padding:9px;margin-top:4px}
+.nf-box .t{font-size:.62rem;color:var(--blue);font-weight:600;margin-bottom:7px}
+.nf-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.formula{grid-column:1/-1;font-size:.6rem;color:var(--txt3);background:var(--surf2);border-radius:5px;padding:8px 10px;margin-top:8px;line-height:1.5;font-family:ui-monospace,monospace}
+.formula b{color:var(--rebar2)}
+
+/* TRAÇO card */
+.traco{background:var(--surf);border:1px solid var(--line);border-radius:9px;margin-bottom:9px;overflow:hidden}
+.traco-head{padding:12px 13px;cursor:pointer}
+.tr-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.tr-nome{font-size:.8rem;font-weight:700;flex:1;min-width:0}
+.tr-exp{font-size:.62rem;color:var(--txt3);transition:transform .2s;display:inline-block;margin-right:5px}
+.traco.open .tr-exp{transform:rotate(90deg)}
+.tr-custo{font-size:.92rem;font-weight:800;color:var(--rebar2);white-space:nowrap}
+.tr-sub{font-size:.6rem;color:var(--txt3);margin-top:3px}
+.tr-body{display:none;border-top:1px solid var(--line);padding:12px 13px;background:var(--surf2)}
+.traco.open .tr-body{display:block}
+.tr-mat{display:grid;grid-template-columns:1fr 76px 74px;gap:9px;align-items:center;padding:6px 0;font-size:.73rem}
+.tr-mat-nome{color:var(--txt2)}
+.tr-mat-in{width:100%;background:var(--surf);border:1px solid var(--line);color:var(--txt);border-radius:5px;padding:6px;font-size:.75rem;text-align:center;font-weight:600}
+.tr-mat-in:focus{border-color:var(--rebar);outline:none}
+.tr-mat-custo{text-align:right;font-size:.72rem;font-weight:600;color:var(--txt2);white-space:nowrap}
+.tr-hdr{display:grid;grid-template-columns:1fr 76px 74px;gap:9px;font-size:.54rem;color:var(--txt3);text-transform:uppercase;letter-spacing:.04em;padding-bottom:5px;border-bottom:1px solid var(--line);margin-bottom:4px}
+.tr-hdr span:nth-child(2),.tr-hdr span:nth-child(3){text-align:center}
+.tr-hdr span:nth-child(3){text-align:right}
+.tr-total{display:flex;justify-content:space-between;padding-top:9px;margin-top:6px;border-top:1px dashed var(--line);font-size:.75rem}
+.tr-total .v{font-weight:800;color:var(--rebar2)}
+.tr-peso{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);margin-bottom:8px;font-size:.72rem}
+.tr-peso input{width:88px;background:var(--surf);border:1px solid var(--line);color:var(--txt);border-radius:5px;padding:6px;font-size:.76rem;text-align:center;font-weight:600}
+.tr-prods{margin-top:10px;padding-top:9px;border-top:1px solid var(--line)}
+.tr-prods .t{font-size:.58rem;color:var(--txt3);text-transform:uppercase;margin-bottom:6px}
+.tr-prod-item{display:flex;justify-content:space-between;font-size:.68rem;padding:4px 0;color:var(--txt2)}
+.tr-prod-item .c{font-weight:700;color:var(--rebar2);white-space:nowrap}
+.tr-prod-more{font-size:.62rem;color:var(--txt3);padding-top:5px;cursor:pointer;text-align:center}
+.hidden{display:none}
+/* aço/emb */
+.ae-filtro{display:flex;gap:6px;margin-bottom:12px}
+.ae-filtro button{flex:1;background:var(--surf);border:1px solid var(--line);color:var(--txt2);padding:8px;border-radius:6px;font-size:.72rem;font-weight:600;cursor:pointer}
+.ae-filtro button.on{background:var(--rebar);border-color:var(--rebar);color:#fff}
+.aep{background:var(--surf);border:1px solid var(--line);border-radius:9px;margin-bottom:8px;overflow:hidden}
+.aep-head{display:flex;align-items:center;gap:9px;padding:11px 13px;cursor:pointer}
+.aep-exp{font-size:.62rem;color:var(--txt3);transition:transform .2s}
+.aep.open .aep-exp{transform:rotate(90deg)}
+.aep-nome{flex:1;font-size:.78rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.aep-c{font-size:.82rem;font-weight:700;color:var(--rebar2);white-space:nowrap}
+.aep-body{display:none;padding:11px 13px;border-top:1px solid var(--line);background:var(--surf2)}
+.aep.open .aep-body{display:block}
+.aco-row{display:grid;grid-template-columns:1fr 74px 76px;gap:9px;align-items:center;padding:5px 0;font-size:.72rem}
+.aco-lbl{color:var(--txt2)}
+.aco-in{width:100%;background:var(--surf);border:1px solid var(--line);color:var(--txt);border-radius:5px;padding:6px;font-size:.74rem;text-align:center;font-weight:600}
+.aco-in:focus{border-color:var(--rebar);outline:none}
+.aco-c{text-align:right;font-size:.71rem;font-weight:600;color:var(--txt2)}
+.aco-hdr{display:grid;grid-template-columns:1fr 74px 76px;gap:9px;font-size:.53rem;color:var(--txt3);text-transform:uppercase;padding-bottom:5px;border-bottom:1px solid var(--line);margin-bottom:3px}
+.aco-hdr span:nth-child(2){text-align:center}.aco-hdr span:nth-child(3){text-align:right}
+.aep-tot{display:flex;justify-content:space-between;padding-top:9px;margin-top:6px;border-top:1px dashed var(--line);font-size:.74rem}
+.aep-tot .v{font-weight:800;color:var(--rebar2)}
+.emb-box{margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.emb-t{font-size:.58rem;color:var(--purple);text-transform:uppercase;font-weight:600;margin-bottom:7px}
+.pp-row{display:flex;justify-content:space-between;align-items:center;font-size:.72rem;padding:5px 0}
+.pp-row input{width:70px;background:var(--surf);border:1px solid var(--line);color:var(--txt);border-radius:5px;padding:6px;font-size:.74rem;text-align:center;font-weight:600}
+.sem-item{font-size:.68rem;color:var(--txt3);padding:6px 0}
+/* HISTORICO */
+.h-sel{display:flex;gap:6px;margin-bottom:12px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.h-sel::-webkit-scrollbar{display:none}
+.h-sel button{flex:0 0 auto;background:var(--surf);border:1px solid var(--line);color:var(--txt2);padding:7px 13px;border-radius:20px;font-size:.7rem;font-weight:600;cursor:pointer;white-space:nowrap}
+.h-sel button.on{background:var(--rebar);border-color:var(--rebar);color:#fff}
+.h-mat{width:100%;background:var(--surf);border:1px solid var(--line);color:var(--txt);border-radius:7px;padding:10px;font-size:.82rem;margin-bottom:12px;font-weight:600}
+.chart-card{background:var(--surf);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:11px}
+.chart-t{font-size:.78rem;font-weight:700;margin-bottom:2px}
+.chart-s{font-size:.63rem;color:var(--txt3);margin-bottom:12px}
+.chart-atual{display:flex;align-items:baseline;gap:8px;margin-bottom:12px}
+.ca-v{font-size:1.35rem;font-weight:800;color:var(--rebar2);letter-spacing:-.02em}
+.ca-u{font-size:.62rem;color:var(--txt3)}
+.ca-d{font-size:.7rem;font-weight:700;margin-left:auto}
+.ca-d.up{color:var(--bad)}.ca-d.dn{color:var(--good)}.ca-d.eq{color:var(--txt3)}
+.chart{position:relative;height:150px;margin:6px 0 22px 34px}
+.ch-grid{position:absolute;left:0;right:0;border-top:1px dashed var(--line);opacity:.5}
+.ch-ylab{position:absolute;left:-34px;font-size:.53rem;color:var(--txt3);transform:translateY(-50%);width:30px;text-align:right}
+.ch-line{position:absolute;inset:0}
+.ch-dot{position:absolute;width:9px;height:9px;border-radius:50%;background:var(--rebar);border:2px solid var(--bg);transform:translate(-50%,50%);cursor:pointer;z-index:2}
+.ch-dot:hover{width:13px;height:13px}
+.ch-xlab{position:absolute;bottom:-19px;font-size:.52rem;color:var(--txt3);transform:translateX(-50%);white-space:nowrap}
+.ch-empty{text-align:center;color:var(--txt3);font-size:.72rem;padding:40px 0}
+/* lista de compras */
+.compras{margin-top:6px}
+.compra{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.compra:last-child{border-bottom:none}
+.cp-data{font-size:.62rem;color:var(--txt3);white-space:nowrap;text-align:center;line-height:1.25}
+.cp-data b{display:block;font-size:.78rem;color:var(--txt);font-weight:700}
+.cp-info{min-width:0}
+.cp-preco{font-size:.85rem;font-weight:700}
+.cp-meta{font-size:.6rem;color:var(--txt3);margin-top:2px}
+.cp-var{font-size:.68rem;font-weight:700;white-space:nowrap}
+.cp-del{background:transparent;border:none;color:var(--txt3);font-size:.8rem;cursor:pointer;padding:4px 6px}
+.cp-del:hover{color:var(--bad)}
+.cp-atual{background:rgba(217,118,66,.08);border-left:2px solid var(--rebar);padding-left:9px;margin-left:-11px}
+.btn-add{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;background:var(--surf2);border:1px dashed var(--rebar);color:var(--rebar2);font-size:.76rem;font-weight:600;padding:11px;border-radius:8px;cursor:pointer;margin-top:10px}
+.btn-add:active{background:var(--surf3)}
+/* form nova compra */
+.form-nc{background:var(--surf2);border:1px solid var(--rebar);border-radius:9px;padding:13px;margin-top:10px;display:none}
+.form-nc.on{display:block}
+.fnc-t{font-size:.72rem;font-weight:700;color:var(--rebar2);margin-bottom:11px}
+.fnc-g{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.fnc-f{}
+.fnc-f.full{grid-column:1/-1}
+.fnc-f label{font-size:.57rem;color:var(--txt3);display:block;margin-bottom:3px;text-transform:uppercase}
+.fnc-f input{width:100%;background:var(--surf);border:1px solid var(--line);color:var(--txt);border-radius:5px;padding:8px;font-size:.78rem}
+.fnc-f input[type=number]{text-align:right}
+.fnc-btns{display:flex;gap:8px;margin-top:11px}
+.fnc-btns button{flex:1;padding:9px;border-radius:6px;font-size:.74rem;font-weight:600;cursor:pointer;border:none}
+.btn-ok{background:var(--rebar);color:#fff}
+.btn-cx{background:var(--surf3);color:var(--txt2)}
+/* impacto */
+.imp-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:.73rem}
+.imp-row:last-child{border-bottom:none}
+.imp-n{color:var(--txt2);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.imp-v{font-weight:700;white-space:nowrap;margin-left:10px}
+.imp-d{font-size:.64rem;font-weight:700;white-space:nowrap;margin-left:8px;min-width:48px;text-align:right}
+.note{font-size:.65rem;color:var(--txt3);margin-top:16px;line-height:1.55}
+
+/* tooltip de ajuda */
+.help{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:var(--surf3);color:var(--txt3);font-size:.62rem;font-weight:700;cursor:pointer;margin-left:5px;vertical-align:middle;flex-shrink:0;border:1px solid var(--line)}
+.help:active{background:var(--rebar);color:#fff}
+.help-pop{display:none;position:fixed;left:16px;right:16px;bottom:16px;z-index:100;background:var(--surf2);border:1px solid var(--rebar);border-radius:10px;padding:15px;box-shadow:0 8px 30px rgba(0,0,0,.5);max-width:648px;margin:0 auto}
+.help-pop.on{display:block}
+.help-pop h4{font-size:.82rem;color:var(--rebar2);margin-bottom:8px;display:flex;align-items:center;justify-content:space-between}
+.help-pop .x{background:var(--surf3);border:none;color:var(--txt2);width:24px;height:24px;border-radius:6px;font-size:.9rem;cursor:pointer}
+.help-pop p{font-size:.73rem;color:var(--txt);line-height:1.6;margin-bottom:8px}
+.help-pop p:last-child{margin-bottom:0}
+.help-pop b{color:var(--rebar2)}
+.help-pop .ex{background:var(--surf3);border-radius:6px;padding:9px 11px;font-size:.68rem;color:var(--txt2);line-height:1.5;margin-top:8px}
+.help-backdrop{display:none;position:fixed;inset:0;z-index:99;background:rgba(0,0,0,.5)}
+.help-backdrop.on{display:block}
+
+</style>
+</head>
+<body>
+
+<!-- BOOT -->
+<div id="boot">
+  <div class="boot-mark">🏗️</div>
+  <div class="boot-txt">Carregando…</div>
+</div>
+
+<!-- LOGIN -->
+<div id="login-screen" class="hidden">
+  <div class="login-box">
+    <div class="brand">
+      <div class="brand-mark">🏗️</div>
+      <h1>Motor de Custos</h1>
+      <div class="sub">Artefatos de Cimento Pedroni</div>
+    </div>
+    <div class="login-card">
+      <h2 id="login-title">Entrar</h2>
+      <div class="hint" id="login-hint">Acesse com seu email e senha</div>
+      <div class="field">
+        <label>Email</label>
+        <input type="email" id="login-email" autocomplete="email" placeholder="seu@email.com">
+      </div>
+      <div class="field">
+        <label>Senha</label>
+        <input type="password" id="login-pass" autocomplete="current-password" placeholder="••••••••">
+      </div>
+      <button class="btn-primary" id="login-btn">Entrar</button>
+      <div class="login-msg" id="login-msg"></div>
+    </div>
+    <div class="login-foot" id="login-foot">
+      Primeiro acesso? <a id="toggle-signup">Criar conta</a>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-screen" class="hidden">
+  <div class="app-header">
+    <div class="ah-mark">🏗️</div>
+    <div class="ah-title">
+      <div class="t">Motor de Custos</div>
+      <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado</span></div>
+    </div>
+    <div class="ah-user">
+      <div class="ah-avatar" id="user-avatar" title="Conta">MP</div>
+    </div>
+  </div>
+
+  <main class="app-main" id="app-main"></main>
+
+  <nav class="bottom-nav">
+    <button class="nav-item active" data-nav="home"><span class="ni-ico">🏠</span><span class="ni-lbl">Início</span></button>
+    <button class="nav-item" data-nav="mp"><span class="ni-ico">🧱</span><span class="ni-lbl">Material</span></button>
+    <button class="nav-item" data-nav="mo"><span class="ni-ico">👷</span><span class="ni-lbl">M. obra</span></button>
+    <button class="nav-item" data-nav="maq"><span class="ni-ico">⚙️</span><span class="ni-lbl">Máquina</span></button>
+    <button class="nav-item" data-nav="frete"><span class="ni-ico">🚚</span><span class="ni-lbl">Frete</span></button>
+  </nav>
+</div>
+
+<script type="module">
+// ===================================================================
+// CONTROLE DE ACESSO
+// LOGIN_ATIVO = false → app abre direto, sem tela de login (modo atual)
+// LOGIN_ATIVO = true  → exige email/senha (basta trocar aqui pra religar)
+// Todo o código de login continua pronto abaixo — só está desativado.
+// ===================================================================
+const LOGIN_ATIVO = false;
+
+// ===================================================================
+// CONFIGURAÇÃO DO FIREBASE
+// Usa o MESMO projeto do app FROTA (gestao-de-frota-pedroni).
+// Os dados de custos ficam num ramo separado do banco: /custos
+// >>> Cole aqui as credenciais do seu projeto Firebase <<<
+// (Console Firebase > Configurações do projeto > Seus apps > Config)
+// ===================================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyBqX8iLAtPTPHMIIHEBg3sGsDPVdHKq24U",
+  authDomain: "gestao-de-frota-pedroni.firebaseapp.com",
+  databaseURL: "https://gestao-de-frota-pedroni-default-rtdb.firebaseio.com",
+  projectId: "gestao-de-frota-pedroni",
+  storageBucket: "gestao-de-frota-pedroni.firebasestorage.app",
+  messagingSenderId: "248388581510",
+  appId: "1:248388581510:web:5ccbb96ae9b75c8af8f907"
+};
+
+// Detecta se as credenciais foram preenchidas
+const CONFIG_OK = !firebaseConfig.apiKey.includes("COLE_AQUI");
+
+// Carrega o Firebase dinamicamente. Se o CDN não carregar (offline, ou
+// ambiente sem rede), o app cai no MODO DEMO em vez de travar.
+let auth=null, db=null, fb=null;
+let FIREBASE_OK = false;
+
+async function loadFirebase(){
+  if(!CONFIG_OK) return false;
+  try{
+    const [appMod, authMod, dbMod] = await Promise.all([
+      import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js"),
+      import("https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js"),
+      import("https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js"),
+    ]);
+    const fbApp = appMod.initializeApp(firebaseConfig);
+    auth = authMod.getAuth(fbApp);
+    db = dbMod.getDatabase(fbApp);
+    fb = {
+      signInWithEmailAndPassword: authMod.signInWithEmailAndPassword,
+      createUserWithEmailAndPassword: authMod.createUserWithEmailAndPassword,
+      signOut: authMod.signOut,
+      onAuthStateChanged: authMod.onAuthStateChanged,
+      ref: dbMod.ref, onValue: dbMod.onValue, set: dbMod.set,
+      serverTimestamp: dbMod.serverTimestamp,
+    };
+    return true;
+  }catch(err){
+    console.warn("Firebase não carregou, entrando em modo demo:", err.message);
+    return false;
+  }
+}
+
+// ===================================================================
+// ESTADO
+// ===================================================================
+let currentUser = null;
+let currentNav = "home";
+
+const $ = id => document.getElementById(id);
+
+// ===================================================================
+// MODO DEMO (sem Firebase) — permite ver o app funcionando localmente
+// ===================================================================
+let DEMO = true;  // definido no boot conforme o Firebase carrega
+let demoUser = null;
+
+// ===================================================================
+// AUTENTICAÇÃO
+// ===================================================================
+async function initAuth(){
+  FIREBASE_OK = await loadFirebase();
+  DEMO = !FIREBASE_OK;
+
+  // Login desativado: abre direto no app com um usuário local padrão.
+  if(!LOGIN_ATIVO){
+    $("boot").classList.add("hidden");
+    currentUser = { email:"pedroni@local", uid:"local", displayName:"Pedroni" };
+    showApp();
+    return;
+  }
+
+  if(DEMO){
+    // sem Firebase: pula direto pra tela de login em modo demo
+    $("boot").classList.add("hidden");
+    showLogin();
+    setDemoNotice();
+    return;
+  }
+  fb.onAuthStateChanged(auth, user => {
+    $("boot").classList.add("hidden");
+    if(user){
+      currentUser = user;
+      showApp();
+    } else {
+      currentUser = null;
+      showLogin();
+    }
+  });
+}
+
+function setDemoNotice(){
+  $("login-hint").innerHTML = 'Modo demonstração — Firebase não configurado. <br>Entre com qualquer email/senha para explorar.';
+}
+
+let signupMode = false;
+$("toggle-signup").addEventListener("click", ()=>{
+  signupMode = !signupMode;
+  $("login-title").textContent = signupMode ? "Criar conta" : "Entrar";
+  $("login-btn").textContent = signupMode ? "Criar conta" : "Entrar";
+  $("login-foot").innerHTML = signupMode
+    ? 'Já tem conta? <a id="toggle-signup">Entrar</a>'
+    : 'Primeiro acesso? <a id="toggle-signup">Criar conta</a>';
+  // re-bind (innerHTML recriou o elemento)
+  $("toggle-signup").addEventListener("click", arguments.callee);
+  $("login-msg").textContent = "";
+});
+
+$("login-btn").addEventListener("click", doLogin);
+$("login-pass").addEventListener("keydown", e=>{ if(e.key==="Enter") doLogin(); });
+
+async function doLogin(){
+  const email = $("login-email").value.trim();
+  const pass = $("login-pass").value;
+  const msg = $("login-msg");
+  msg.className = "login-msg";
+  if(!email || !pass){ msg.textContent="Preencha email e senha."; msg.className="login-msg err"; return; }
+
+  if(DEMO){
+    demoUser = { email, uid:"demo", displayName:email.split("@")[0] };
+    currentUser = demoUser;
+    showApp();
+    return;
+  }
+
+  $("login-btn").disabled = true;
+  $("login-btn").textContent = signupMode ? "Criando…" : "Entrando…";
+  try{
+    if(signupMode){
+      await fb.createUserWithEmailAndPassword(auth, email, pass);
+      msg.textContent = "Conta criada! Entrando…"; msg.className="login-msg ok";
+    } else {
+      await fb.signInWithEmailAndPassword(auth, email, pass);
+    }
+  }catch(err){
+    msg.className = "login-msg err";
+    msg.textContent = authError(err.code);
+    $("login-btn").disabled = false;
+    $("login-btn").textContent = signupMode ? "Criar conta" : "Entrar";
+  }
+}
+
+function authError(code){
+  const m = {
+    "auth/invalid-email":"Email inválido.",
+    "auth/user-not-found":"Usuário não encontrado. Crie uma conta.",
+    "auth/wrong-password":"Senha incorreta.",
+    "auth/invalid-credential":"Email ou senha incorretos.",
+    "auth/email-already-in-use":"Este email já tem conta. Faça login.",
+    "auth/weak-password":"Senha muito curta (mínimo 6 caracteres).",
+    "auth/too-many-requests":"Muitas tentativas. Aguarde um momento.",
+    "auth/network-request-failed":"Sem conexão. Verifique a internet."
+  };
+  return m[code] || "Erro ao entrar. Tente novamente.";
+}
+
+// ===================================================================
+// TELAS
+// ===================================================================
+function showLogin(){
+  $("login-screen").classList.remove("hidden");
+  $("app-screen").classList.add("hidden");
+}
+function showApp(){
+  $("login-screen").classList.add("hidden");
+  $("app-screen").classList.remove("hidden");
+  const name = currentUser.displayName || currentUser.email.split("@")[0];
+  const initials = name.slice(0,2).toUpperCase();
+  $("user-avatar").textContent = initials;
+  updateSync(DEMO ? "off" : "ok");
+  renderNav();
+}
+
+// ===================================================================
+// MENU DO USUÁRIO
+// ===================================================================
+let userMenuOpen = false;
+$("user-avatar").addEventListener("click", toggleUserMenu);
+function toggleUserMenu(){
+  if(userMenuOpen){ closeUserMenu(); return; }
+  const name = currentUser.displayName || currentUser.email.split("@")[0];
+  const menu = document.createElement("div");
+  menu.className = "user-menu"; menu.id="user-menu";
+  menu.innerHTML = `
+    <div class="um-head">
+      <div class="um-name">${name}</div>
+      <div class="um-email">${LOGIN_ATIVO ? currentUser.email : "acesso sem login"}</div>
+    </div>
+    ${LOGIN_ATIVO ? '<button id="menu-signout" class="danger">↩ Sair</button>' : '<button id="menu-info">ℹ Sobre o app</button>'}`;
+  $("app-screen").appendChild(menu);
+  if(LOGIN_ATIVO){
+    $("menu-signout").addEventListener("click", doLogout);
+  } else {
+    $("menu-info").addEventListener("click", ()=>{ closeUserMenu(); currentNav="home"; renderNav(); window.scrollTo(0,0); });
+  }
+  userMenuOpen = true;
+  setTimeout(()=>document.addEventListener("click", outsideMenu), 10);
+}
+function outsideMenu(e){
+  if(!e.target.closest("#user-menu") && !e.target.closest("#user-avatar")) closeUserMenu();
+}
+function closeUserMenu(){
+  const m = $("user-menu"); if(m) m.remove();
+  userMenuOpen = false;
+  document.removeEventListener("click", outsideMenu);
+}
+async function doLogout(){
+  closeUserMenu();
+  if(DEMO){ demoUser=null; currentUser=null; showLogin(); return; }
+  await fb.signOut(auth);
+}
+
+// ===================================================================
+// SINCRONIZAÇÃO (indicador)
+// ===================================================================
+function updateSync(state){
+  const dot = $("sync-dot"), txt = $("sync-txt");
+  dot.className = "sync-dot" + (state==="syncing"?" syncing":state==="off"?" off":"");
+  txt.textContent = state==="syncing" ? "Salvando…" : state==="off" ? "Modo local" : "Sincronizado";
+}
+
+// ===================================================================
+// NAVEGAÇÃO
+// ===================================================================
+document.querySelectorAll(".nav-item").forEach(btn=>{
+  btn.addEventListener("click", ()=>{
+    currentNav = btn.dataset.nav;
+    document.querySelectorAll(".nav-item").forEach(b=>b.classList.toggle("active", b===btn));
+    renderNav();
+    window.scrollTo(0,0);
+  });
+});
+
+const MODULES = {
+  mp:   { ico:"🧱", cls:"dc-mp",    name:"Matéria-prima",   tag:"Custo do concreto por produto",  status:"ok",  desc:"Traços, aço, embalagem e histórico de preços." },
+  mo:   { ico:"👷", cls:"dc-mo",    name:"Mão de obra",     tag:"Custo/hora por setor",           status:"ok",  desc:"Encargos, 7 setores, EPI por consumo." },
+  maq:  { ico:"⚙️", cls:"dc-maq",   name:"Custo de máquina",tag:"Energia, depreciação, gastos",   status:"wip", desc:"Energia calibrada; faltam potências e produção." },
+  frete:{ ico:"🚚", cls:"dc-frete", name:"Frete e admin",   tag:"Custos fixos rateados",          status:"wip", desc:"Faturamento real; falta combustível da frota." },
+};
+
+function renderNav(){
+  if(currentNav === "home") renderHome();
+  else renderModule(currentNav);
+  syncNavButtons();
+}
+function syncNavButtons(){
+  document.querySelectorAll(".nav-item").forEach(b=>
+    b.classList.toggle("active", b.dataset.nav===currentNav));
+}
+
+function renderHome(){
+  const name = (currentUser.displayName || currentUser.email.split("@")[0]);
+  const firstName = name.split(/[.\s]/)[0];
+  const cap = firstName.charAt(0).toUpperCase()+firstName.slice(1);
+  const m = MODULES;
+  $("app-main").innerHTML = `
+    <div class="welcome">
+      <h2>Olá, ${cap}</h2>
+      <p>Seu motor de custos, tudo num lugar só.</p>
+    </div>
+    <div class="dash-grid">
+      ${moduleCard("mp",m.mp)}
+      ${moduleCard("mo",m.mo)}
+      ${moduleCard("maq",m.maq)}
+      ${moduleCard("frete",m.frete)}
+      <div class="dash-card dc-preco" data-go="preco">
+        <div class="dc-ico">🏷️</div>
+        <div class="dc-name">Preço final</div>
+        <div class="dc-desc">Junta os 4 módulos e mostra o preço de cada produto — com e sem nota.</div>
+      </div>
+    </div>
+    <div class="dash-section">Sobre este app</div>
+    <div class="placeholder" style="padding:20px">
+      <div class="ph-d" style="text-align:left">
+        Esta é a <b style="color:var(--txt)">fundação do app</b> — login e navegação prontos, conectados ao banco de dados.
+        Os módulos ainda mostram os cálculos nos protótipos separados; nas próximas etapas eles entram aqui,
+        com tudo salvando de verdade e a produção conectando os quatro.
+      </div>
+    </div>`;
+  // liga os cards
+  document.querySelectorAll("[data-go]").forEach(c=>{
+    c.addEventListener("click", ()=>{
+      const dest = c.dataset.go;
+      if(dest==="preco"){ toast("Preço final chega na última etapa 🏷️"); return; }
+      currentNav = dest; renderNav(); window.scrollTo(0,0);
+    });
+  });
+}
+
+function moduleCard(key, m){
+  return `<div class="dash-card ${m.cls}" data-go="${key}">
+    <div class="dc-status ${m.status}">${m.status==="ok"?"pronto":"em breve"}</div>
+    <div class="dc-ico">${m.ico}</div>
+    <div class="dc-name">${m.name}</div>
+    <div class="dc-desc">${m.desc}</div>
+  </div>`;
+}
+
+function renderModule(key){
+  const m = MODULES[key];
+  if(!m){ renderHome(); return; }
+  if(key === "mp"){
+    $("app-main").innerHTML = '<div id="mp-container" class="module-view"></div>';
+    initMateriaPrima($("mp-container"));
+    return;
+  }
+  $("app-main").innerHTML = `
+    <div class="module-view">
+      <div class="mod-header">
+        <button class="mod-back" data-back>‹</button>
+        <div class="mh-ico ${m.cls.replace('dc-','dc-')}" style="background:var(--rebar-dim);color:var(--rebar2)">${m.ico}</div>
+        <div class="mh-t">
+          <div class="mh-name">${m.name}</div>
+          <div class="mh-tag">${m.tag}</div>
+        </div>
+      </div>
+      <div class="placeholder">
+        <div class="ph-ico">${m.ico}</div>
+        <div class="ph-t">Módulo pronto para entrar aqui</div>
+        <div class="ph-d">
+          Os cálculos deste módulo já estão validados no protótipo.
+          Na próxima etapa ele é integrado ao app, com os dados salvando na nuvem
+          e sincronizando entre seus dispositivos.
+        </div>
+        <div class="ph-badge">${m.status==="ok" ? "Cálculos validados ✓" : "Aguardando alguns dados"}</div>
+      </div>
+    </div>`;
+  document.querySelector("[data-back]").addEventListener("click", ()=>{
+    currentNav="home"; renderNav(); window.scrollTo(0,0);
+  });
+}
+
+// ===================================================================
+// TOAST
+// ===================================================================
+let toastTimer=null;
+function toast(msg){
+  const old=$("toast"); if(old) old.remove();
+  const t=document.createElement("div");
+  t.className="toast"; t.id="toast"; t.textContent=msg;
+  document.body.appendChild(t);
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.remove(), 2600);
+}
+
+
+// ===================================================================
+// CAMADA DE PERSISTÊNCIA (Firebase Realtime Database)
+// Salva automático quando os dados mudam; carrega ao abrir.
+// Cai em localStorage se o Firebase não estiver disponível (demo).
+// ===================================================================
+const Persist = {
+  db: null, fb: null, base: null, demo: true, _timer: null, _onSync: null,
+
+  init(db, fb, basePath, onSync){
+    this.db = db; this.fb = fb; this.base = basePath; this.demo = !db;
+    this._onSync = onSync || (()=>{});
+  },
+
+  // carrega os dados salvos; retorna null se não houver
+  async load(key){
+    const path = this.base + '/' + key;
+    if(this.demo){
+      try{ const v = localStorage.getItem('pedroni:'+path); return v?JSON.parse(v):null; }
+      catch(e){ return null; }
+    }
+    try{
+      const snap = await new Promise((res,rej)=>{
+        this.fb.onValue(this.fb.ref(this.db, path), s=>res(s), rej, {onlyOnce:true});
+      });
+      return snap.exists() ? snap.val() : null;
+    }catch(e){ console.warn('load falhou:', e.message); return null; }
+  },
+
+  // salva (com debounce pra não gravar a cada tecla)
+  save(key, data){
+    const path = this.base + '/' + key;
+    this._onSync('syncing');
+    clearTimeout(this._timer);
+    this._timer = setTimeout(async ()=>{
+      if(this.demo){
+        try{ localStorage.setItem('pedroni:'+path, JSON.stringify(data)); this._onSync('ok'); }
+        catch(e){ this._onSync('off'); }
+        return;
+      }
+      try{
+        await this.fb.set(this.fb.ref(this.db, path), data);
+        this._onSync('ok');
+      }catch(e){ console.warn('save falhou:', e.message); this._onSync('off'); }
+    }, 600);
+  }
+};
+
+const MP_HTML = '<div class="tabs">\n  <button class="tab on" data-v="materiais">Materiais</button>\n  <button class="tab" data-v="tracos">Traços</button>\n  <button class="tab" data-v="acoemb">Aço/Emb.</button>\n  <button class="tab" data-v="hist">📈 Histórico</button>\n</div>\n<main class="mp-main">\n  <section class="view on" id="v-materiais">\n    <div class="intro">\n      Aqui você atualiza o <b>preço de compra</b> de cada material. O app converte pra unidade de uso (kg, ml, m²) e desconta o <b>crédito de imposto</b> — exatamente como sua planilha faz. Toque num material para editar.\n    </div>\n    <div class="sect">Agregados e cimento</div>\n    <div id="agregados"></div>\n    <div class="sect">Aço</div>\n    <div id="aco"></div>\n    <div class="sect">Embalagem</div>\n    <div id="embalagem"></div>\n  </section>\n\n  <section class="view" id="v-tracos">\n    <div class="intro">\n      Seus 100 produtos usam apenas <b>13 traços</b> <span class="help" onclick="abrirAjuda(\'traco\')">?</span>. Edite o traço e o custo muda em todos os produtos que o usam. O custo por peça é proporcional ao peso da peça.\n    </div>\n    <div id="tracos"></div>\n  </section>\n\n  <section class="view" id="v-acoemb">\n    <div class="intro">\n      <b>Aço</b>: quantos metros de cada tela o produto usa (fossas, tubos, caixas). <b>Embalagem</b>: quantas peças cabem no palete — o custo do palete se divide por elas (blocos e pavers). Toque num produto para editar.\n    </div>\n    <div class="ae-filtro">\n      <button class="on" data-f="aco">Com aço (64)</button>\n      <button data-f="emb">Com embalagem (11)</button>\n    </div>\n    <div id="acoemb"></div>\n  </section>\n\n  <section class="view" id="v-hist">\n    <div class="intro">\n      Registre <b>cada compra</b> com data, preço e fornecedor <span class="help" onclick="abrirAjuda(\'histpreco\')">?</span>. O preço vigente é sempre o da <b>última compra</b> (custo de reposição). Os gráficos mostram a evolução em três níveis: material → traço → produto.\n    </div>\n    <div class="h-sel">\n      <button class="on" data-h="material">Material</button>\n      <button data-h="traco">Traço</button>\n      <button data-h="produto">Produto</button>\n    </div>\n    <select class="h-mat" id="h-item"></select>\n    <div id="h-conteudo"></div>\n  </section>\n\n  <div class="note">\n    <b>Cálculo:</b> Custo unitário = (preço de compra − crédito de imposto) ÷ divisor. Custo do traço = soma de (kg × custo unitário) de cada material. Custo por peça = custo do traço ÷ peso do traço × peso da peça.\n  </div>\n</main>';
+
+
+// ===================================================================
+// MÓDULO MATÉRIA-PRIMA (integrado do protótipo, com Firebase)
+// ===================================================================
+let D = null;              // dados, carregados do Firebase/localStorage
+let mpReady = false;       // trava salvamento durante a montagem inicial
+
+const D_DEFAULT = {"agregados": {"areiaInd": {"nome": "Areia Industrial", "um": "Kg", "unidCompra": "M3", "divisor": 1520, "precoCompra": 138.32, "qtdeNF": 0, "qtdeReal": 0, "credito": 0, "precoNF": 0}, "granilha": {"nome": "Granilha", "um": "Kg", "unidCompra": "M3", "divisor": 1290, "precoCompra": 113.52, "qtdeNF": 0, "qtdeReal": 0, "credito": 0, "precoNF": 0}, "pedrisco": {"nome": "Pedrisco", "um": "Kg", "unidCompra": "M3", "divisor": 1300, "precoCompra": 114.4, "qtdeNF": 0, "qtdeReal": 0, "credito": 0, "precoNF": 0}, "brita": {"nome": "Brita 1", "um": "Kg", "unidCompra": "M3", "divisor": 1340, "precoCompra": 117.92, "qtdeNF": 0, "qtdeReal": 0, "credito": 0, "precoNF": 0}, "areiaNat": {"nome": "Areia Natural", "um": "Kg", "unidCompra": "M3", "divisor": 1620, "precoCompra": 147, "qtdeNF": 18, "qtdeReal": 32, "credito": 0.2625, "precoNF": 90}, "cimento": {"nome": "Cimento", "um": "Kg", "unidCompra": "Ton", "divisor": 1000, "precoCompra": 826.45, "qtdeNF": 0, "qtdeReal": 0, "credito": 0.2125, "precoNF": 0}, "aditivo": {"nome": "Aditivo", "um": "ML", "unidCompra": "Tamb", "divisor": 1000000, "precoCompra": 3530, "qtdeNF": 0, "qtdeReal": 0, "credito": 0.2125, "precoNF": 0}, "aditivo2": {"nome": "Aditivo 2 (lajes)", "um": "ML", "unidCompra": "Tamb", "divisor": 1000, "precoCompra": 0, "precoNF": 0, "qtdeNF": 0, "qtdeReal": 0, "credito": 0.2125, "novo": true}}, "aco": [{"nome": "L-246", "um": "M2", "unidCompra": "Painel", "divisor": 14.7, "precoCompra": 293.22, "qtdeNF": 0, "qtdeReal": 0, "credito": 0.2125, "precoNF": 0}, {"nome": "MF-113", "um": "Ml", "unidCompra": "Rolo", "divisor": 120, "precoCompra": 1068.85, "qtdeNF": 0, "qtdeReal": 0, "credito": 0.2125, "precoNF": 0}, {"nome": "MF-196", "um": "Ml", "unidCompra": "Rolo", "divisor": 120, "precoCompra": 1685.48, "qtdeNF": 0, "qtdeReal": 0, "credito": 0.2125, "precoNF": 0}, {"nome": "MF-283", "um": "Ml", "unidCompra": "Rolo", "divisor": 60, "precoCompra": 1225.13, "qtdeNF": 0, "qtdeReal": 0, "credito": 0.2125, "precoNF": 0}, {"nome": "PB-138", "um": "Ml", "unidCompra": "Rolo", "divisor": 120, "precoCompra": 1483.4, "qtdeNF": 0, "qtdeReal": 0, "credito": 0.2125, "precoNF": 0}, {"nome": "PB-196", "um": "Ml", "unidCompra": "Rolo", "divisor": 120, "precoCompra": 1947.77, "qtdeNF": 0, "qtdeReal": 0, "credito": 0.2125, "precoNF": 0}, {"nome": "PB-283", "um": "Ml", "unidCompra": "Rolo", "divisor": 60, "precoCompra": 1606, "qtdeNF": 0, "qtdeReal": 0, "credito": 0.2125, "precoNF": 0}, {"nome": "Q-138", "um": "M2", "unidCompra": "Painel", "divisor": 14.7, "precoCompra": 221.93, "qtdeNF": 0, "qtdeReal": 0, "credito": 0.2125, "precoNF": 0}, {"nome": "Q-238", "um": "M2", "unidCompra": "Painel", "divisor": 14.7, "precoCompra": 379.5, "qtdeNF": 0, "qtdeReal": 0, "credito": 0.2125, "precoNF": 0}], "embalagem": [{"nome": "Filme Strech", "um": "KG", "unidCompra": "KG", "divisor": 1, "precoCompra": 11.49, "qtdeNF": 0, "qtdeReal": 0, "credito": 0.2125, "precoNF": 0}, {"nome": "Fita PET", "um": "M", "unidCompra": "ROL", "divisor": 1250, "precoCompra": 199.95, "qtdeNF": 0, "qtdeReal": 0, "credito": 0.2125, "precoNF": 0}, {"nome": "Selo", "um": "PC", "unidCompra": "CX", "divisor": 1000, "precoCompra": 230, "qtdeNF": 0, "qtdeReal": 0, "credito": 0.2125, "precoNF": 0}, {"nome": "Palete", "um": "PC", "unidCompra": "PC", "divisor": 1, "precoCompra": 10, "qtdeNF": 0, "qtdeReal": 0, "credito": 0, "precoNF": 0}], "tracos": [{"id": 0, "pesoTraco": 895.3, "materiais": {"areiaInd": 100, "granilha": 0, "pedrisco": 100, "brita": 300, "areiaNat": 300, "cimento": 95, "aditivo": 0.3, "aditivo2": 0}, "produtos": ["ANEL DE CONCRETO C/ FUNDO Ø1,70 x1,60", "ANEL DE CONCRETO C/ FUNDO Ø2,00 x1,60", "ANEL DE CONCRETO C/ FUNDO Ø2,30 x1,10", "ANEL DE CONCRETO C/ FUNDO Ø2,30 x1,60", "ANEL DE CONCRETO C/ FUNDO Ø2,75 x1,10", "ANEL DE CONCRETO C/ FUNDO Ø3,30 x0,60", "ANEL DE CONCRETO C/ FUNDO Ø3,30 x1,10", "ANEL DE CONCRETO C/ FUNDO Ø3,85 x0,60", "ANEL DE CONCRETO C/ FUNDO Ø3,85 x0,85", "ANEL DE CONCRETO C/ FUNDO Ø3,85 x1,15", "ANEL DE CONCRETO VAZADO Ø2,30 x0,60", "ANEL DE CONCRETO VAZADO Ø2,30 x1,10", "ANEL DE CONCRETO VAZADO Ø2,75 x0,60", "ANEL DE CONCRETO VAZADO Ø2,75 x1,10", "ANEL DE CONCRETO VAZADO Ø3,30 x0,60", "ANEL DE CONCRETO VAZADO Ø3,30 x1,10", "ANEL DE CONCRETO VAZADO Ø3,85 x0,60", "ANEL DE CONCRETO VAZADO Ø3,85 x0,85", "ANEL DE CONCRETO VAZADO Ø3,85 x1,15", "ANEL DE CONCRETO VAZADO SUMIDOURO Ø1,70 x1,60", "ANEL DE CONCRETO VAZADO SUMIDOURO Ø2,00 x1,60", "ANEL DE CONCRETO VAZADO SUMIDOURO Ø2,30 x0,60", "ANEL DE CONCRETO VAZADO SUMIDOURO Ø2,30 x1,10", "ANEL DE CONCRETO VAZADO SUMIDOURO Ø2,75 x0,60", "ANEL DE CONCRETO VAZADO SUMIDOURO Ø2,75 x1,10", "ANEL DE CONCRETO VAZADO SUMIDOURO Ø3,30 x0,60", "ANEL DE CONCRETO VAZADO SUMIDOURO Ø3,30 x1,10", "ANEL DE CONCRETO VAZADO SUMIDOURO Ø3,85 x0,60", "ANEL DE CONCRETO VAZADO SUMIDOURO Ø3,85 x0,85", "ANEL DE CONCRETO VAZADO SUMIDOURO Ø3,85 x1,15", "CAIXA DE CONCRETO 0,40x0,40x0,40", "CAIXA DE CONCRETO 0,60x0,60x0,60", "CAIXA DE CONCRETO C/ FUNDO 0,40x0,40x0,40", "CAIXA DE CONCRETO C/ FUNDO 0,60x0,60x0,60", "CAIXA DE CONCRETO Ø0,85 x0,75", "CAIXA DE CONCRETO Ø1,10 x1,00", "CAIXA DE CONCRETO Ø1,10 x1,20", "PILARETE DE CONCRETO PRÉ FABRICADO 12x12x30"], "nome": "ANÉIS / FOSSAS (+37)"}, {"id": 1, "pesoTraco": 1076.3, "materiais": {"areiaInd": 324, "granilha": 324, "pedrisco": 0, "brita": 0, "areiaNat": 353, "cimento": 75, "aditivo": 0.3, "aditivo2": 0}, "produtos": ["BLOCO 09", "MEIO FIO"], "nome": "BLOCO 09… (+1)"}, {"id": 2, "pesoTraco": 1071.8999999999999, "materiais": {"areiaInd": 324, "granilha": 324, "pedrisco": 0, "brita": 0, "areiaNat": 353, "cimento": 70.6, "aditivo": 0.3, "aditivo2": 0}, "produtos": ["BLOCOS 14", "BLOCOS 19"], "nome": "BLOCOS 14… (+1)"}, {"id": 3, "pesoTraco": 950.3, "materiais": {"areiaInd": 150, "granilha": 0, "pedrisco": 200, "brita": 200, "areiaNat": 300, "cimento": 100, "aditivo": 0.3, "aditivo2": 0}, "produtos": ["CAIXA DE CONCRETO 1x1x0,80", "CAIXA DE CONCRETO 1x1x1", "CAIXA DE CONCRETO 1x1x1,2", "CAIXA DE CONCRETO C/ FUNDO 1x1x0,80", "CAIXA DE CONCRETO C/ FUNDO 1x1x1", "CAIXA DE CONCRETO C/ FUNDO 1x1x1,2", "TUBOS DN 1000 MF  ARMADO PA1", "TUBOS DN 1000 PB ARMADO PA1", "TUBOS DN 1000 PB ARMADO PA2", "TUBOS DN 1200 PB ARMADO PA1", "TUBOS DN 1200 PB ARMADO PA2", "TUBOS DN 1500 PB ARMADO PA1", "TUBOS DN 1500 PB ARMADO PA2", "TUBOS DN 800 MF  ARMADO", "TUBOS DN 800 MF  SIMPLES", "TUBOS DN 800 PB ARMADO PA1", "TUBOS DN 800 PB ARMADO PA2"], "nome": "CAIXA DE CONCRETO 1x1x… (+16)"}, {"id": 4, "pesoTraco": 1083.6, "materiais": {"areiaInd": 324, "granilha": 324, "pedrisco": 0, "brita": 0, "areiaNat": 353, "cimento": 82.3, "aditivo": 0.3, "aditivo2": 0}, "produtos": ["CANALETA 14", "CANALETA 19"], "nome": "CANALETA 14… (+1)"}, {"id": 5, "pesoTraco": 1118, "materiais": {"areiaInd": 290, "granilha": 290, "pedrisco": 0, "brita": 0, "areiaNat": 420, "cimento": 117.7, "aditivo": 0.3, "aditivo2": 0}, "produtos": ["PAVER 6 CM HOLANDÊS", "PAVER 6 CM UNISTEIN"], "nome": "PAVER 6 CM HOLANDÊS… (+1)"}, {"id": 6, "pesoTraco": 1118, "materiais": {"areiaInd": 400, "granilha": 300, "pedrisco": 0, "brita": 0, "areiaNat": 300, "cimento": 117.7, "aditivo": 0.3, "aditivo2": 0}, "produtos": ["PAVER 8 CM HOLANDÊS"], "nome": "PAVER 8 CM HOLANDÊS"}, {"id": 7, "pesoTraco": 1127.3, "materiais": {"areiaInd": 295, "granilha": 295, "pedrisco": 0, "brita": 0, "areiaNat": 412, "cimento": 125, "aditivo": 0.3, "aditivo2": 0}, "produtos": ["PAVER 8 CM UNISTEIN"], "nome": "PAVER 8 CM UNISTEIN"}, {"id": 8, "pesoTraco": 960.3, "materiais": {"areiaInd": 230, "granilha": 270, "pedrisco": 0, "brita": 0, "areiaNat": 350, "cimento": 110, "aditivo": 0.3, "aditivo2": 0}, "produtos": ["PISO GRAMA"], "nome": "PISO GRAMA"}, {"id": 9, "pesoTraco": 945.3, "materiais": {"areiaInd": 250, "granilha": 0, "pedrisco": 250, "brita": 0, "areiaNat": 350, "cimento": 95, "aditivo": 0.3, "aditivo2": 0}, "produtos": ["TUBOS DN 200 PS1", "TUBOS DN 300 MF SIMPLES"], "nome": "TUBOS DN 200 PS1… (+1)"}, {"id": 10, "pesoTraco": 955.3, "materiais": {"areiaInd": 350, "granilha": 0, "pedrisco": 315, "brita": 0, "areiaNat": 200, "cimento": 90, "aditivo": 0.3, "aditivo2": 0}, "produtos": ["TUBOS DN 400 MF  SIMPLES", "TUBOS DN 400 MF ARMADO", "TUBOS DN 500 MF  ARMADO", "TUBOS DN 500 MF  SIMPLES", "TUBOS DN 600 MF  ARMADO", "TUBOS DN 600 MF  SIMPLES"], "nome": "TUBOS DN 400 MF  SIMPL… (+5)"}, {"id": 11, "pesoTraco": 940.3, "materiais": {"areiaInd": 250, "granilha": 0, "pedrisco": 250, "brita": 0, "areiaNat": 350, "cimento": 90, "aditivo": 0.3, "aditivo2": 0}, "produtos": ["TUBOS DN 400 PB  ARMADO", "TUBOS DN 600 PB  ARMADO PA1", "TUBOS DN 600 PB  ARMADO PA2"], "nome": "TUBOS DN 400 PB  ARMAD… (+2)"}, {"id": 12, "pesoTraco": 895.3, "materiais": {"areiaInd": 100, "granilha": 0, "pedrisco": 100, "brita": 300, "areiaNat": 300, "cimento": 95, "aditivo": 0.3, "aditivo2": 0}, "produtos": ["LAJE PRÉ FABRICADA p/ LEITO FILTRANTE Ø1,70", "LAJE PRÉ FABRICADA p/ LEITO FILTRANTE Ø2,00", "LAJE PRÉ FABRICADA p/ LEITO FILTRANTE Ø2,30", "LAJE PRÉ FABRICADA p/ LEITO FILTRANTE Ø2,75", "LAJE PRÉ FABRICADA p/ LEITO FILTRANTE Ø3,30", "LAJE PRÉ FABRICADA p/ LEITO FILTRANTE Ø3,85", "LAJE PRÉ FABRICADA p/ TAMPA 0,40x0,40", "LAJE PRÉ FABRICADA p/ TAMPA 0,60x0,60", "LAJE PRÉ FABRICADA p/ TAMPA 1,0x1,0", "LAJE PRÉ FABRICADA p/ TAMPA Ø0,54", "LAJE PRÉ FABRICADA p/ TAMPA Ø0,60", "LAJE PRÉ FABRICADA p/ TAMPA Ø0,85", "LAJE PRÉ FABRICADA p/ TAMPA Ø1,70", "LAJE PRÉ FABRICADA p/ TAMPA Ø2,00", "LAJE PRÉ FABRICADA p/ TAMPA Ø2,30", "LAJE PRÉ FABRICADA p/ TAMPA Ø2,75", "LAJE PRÉ FABRICADA p/ TAMPA Ø3,30", "LAJE PRÉ FABRICADA p/ TAMPA Ø3,85"], "nome": "LAJES (tampa + leito filtrante)"}], "produtos": [{"nome": "ANEL DE CONCRETO C/ FUNDO Ø1,70 x1,60", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 1796.9, "traco": 0, "aco": {}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 0, "custoEmbAtual": 0}, {"nome": "ANEL DE CONCRETO C/ FUNDO Ø2,00 x1,60", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 2261.5, "traco": 0, "aco": {}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 0, "custoEmbAtual": 0}, {"nome": "ANEL DE CONCRETO C/ FUNDO Ø2,30 x1,10", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 1984.8, "traco": 0, "aco": {"MF-113": 6.73}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 47.206, "custoEmbAtual": 0}, {"nome": "ANEL DE CONCRETO C/ FUNDO Ø2,30 x1,60", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 2055, "traco": 0, "aco": {"MF-113": 6.73}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 47.206, "custoEmbAtual": 0}, {"nome": "ANEL DE CONCRETO C/ FUNDO Ø2,75 x1,10", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 2711.9999999999995, "traco": 0, "aco": {"MF-196": 8.3, "Q-138": 4.9}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 150.063, "custoEmbAtual": 0}, {"nome": "ANEL DE CONCRETO C/ FUNDO Ø3,30 x0,60", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 2856, "traco": 0, "aco": {"MF-283": 4.93, "Q-238": 7.065}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 222.908, "custoEmbAtual": 0}, {"nome": "ANEL DE CONCRETO C/ FUNDO Ø3,30 x1,10", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 3792, "traco": 0, "aco": {"MF-283": 9.87, "Q-238": 7.065}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 302.342, "custoEmbAtual": 0}, {"nome": "ANEL DE CONCRETO C/ FUNDO Ø3,85 x0,60", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 3624, "traco": 0, "aco": {"MF-283": 5.72, "Q-238": 9.62}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 287.555, "custoEmbAtual": 0}, {"nome": "ANEL DE CONCRETO C/ FUNDO Ø3,85 x0,85", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 4156.8, "traco": 0, "aco": {"MF-283": 11.44, "Q-238": 9.62}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 379.531, "custoEmbAtual": 0}, {"nome": "ANEL DE CONCRETO C/ FUNDO Ø3,85 x1,15", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 4735.2, "traco": 0, "aco": {"Q-238": 21.69}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 440.965, "custoEmbAtual": 0}, {"nome": "ANEL DE CONCRETO VAZADO Ø2,30 x0,60", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 768, "traco": 0, "aco": {"MF-113": 3.365}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 23.603, "custoEmbAtual": 0}, {"nome": "ANEL DE CONCRETO VAZADO Ø2,30 x1,10", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 1367.9999999999998, "traco": 0, "aco": {"MF-113": 6.73}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 47.206, "custoEmbAtual": 0}, {"nome": "ANEL DE CONCRETO VAZADO Ø2,75 x0,60", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 955.2, "traco": 0, "aco": {"MF-196": 4.15}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 45.903, "custoEmbAtual": 0}, {"nome": "ANEL DE CONCRETO VAZADO Ø2,75 x1,10", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 1728, "traco": 0, "aco": {"MF-196": 8.3}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 91.806, "custoEmbAtual": 0}, {"nome": "ANEL DE CONCRETO VAZADO Ø3,30 x0,60", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 1159.2, "traco": 0, "aco": {"MF-283": 4.93}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 79.274, "custoEmbAtual": 0}, {"nome": "ANEL DE CONCRETO VAZADO Ø3,30 x1,10", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 2088, "traco": 0, "aco": {"MF-283": 9.87}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 158.708, "custoEmbAtual": 0}, {"nome": "ANEL DE CONCRETO VAZADO Ø3,85 x0,60", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 1315.2, "traco": 0, "aco": {"MF-283": 5.72}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 91.977, "custoEmbAtual": 0}, {"nome": "ANEL DE CONCRETO VAZADO Ø3,85 x0,85", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 1848, "traco": 0, "aco": {"MF-283": 11.44}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 183.953, "custoEmbAtual": 0}, {"nome": "ANEL DE CONCRETO VAZADO Ø3,85 x1,15", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 2426.3999999999996, "traco": 0, "aco": {"Q-238": 12.07}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 245.387, "custoEmbAtual": 0}, {"nome": "ANEL DE CONCRETO VAZADO SUMIDOURO Ø1,70 x1,60", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 1796.9, "traco": 0, "aco": {}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 0, "custoEmbAtual": 0}, {"nome": "ANEL DE CONCRETO VAZADO SUMIDOURO Ø2,00 x1,60", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 2261.5, "traco": 0, "aco": {}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 0, "custoEmbAtual": 0}, {"nome": "ANEL DE CONCRETO VAZADO SUMIDOURO Ø2,30 x0,60", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 768, "traco": 0, "aco": {"MF-113": 3.365}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 23.603, "custoEmbAtual": 0}, {"nome": "ANEL DE CONCRETO VAZADO SUMIDOURO Ø2,30 x1,10", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 1367.9999999999998, "traco": 0, "aco": {"MF-113": 6.73}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 47.206, "custoEmbAtual": 0}, {"nome": "ANEL DE CONCRETO VAZADO SUMIDOURO Ø2,75 x0,60", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 955.2, "traco": 0, "aco": {"MF-196": 4.15}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 45.903, "custoEmbAtual": 0}, {"nome": "ANEL DE CONCRETO VAZADO SUMIDOURO Ø2,75 x1,10", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 1728, "traco": 0, "aco": {"MF-196": 8.3}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 91.806, "custoEmbAtual": 0}, {"nome": "ANEL DE CONCRETO VAZADO SUMIDOURO Ø3,30 x0,60", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 1159.2, "traco": 0, "aco": {"MF-283": 4.93}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 79.274, "custoEmbAtual": 0}, {"nome": "ANEL DE CONCRETO VAZADO SUMIDOURO Ø3,30 x1,10", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 2088, "traco": 0, "aco": {"MF-283": 9.87}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 158.708, "custoEmbAtual": 0}, {"nome": "ANEL DE CONCRETO VAZADO SUMIDOURO Ø3,85 x0,60", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 1315.2, "traco": 0, "aco": {"MF-283": 5.72}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 91.977, "custoEmbAtual": 0}, {"nome": "ANEL DE CONCRETO VAZADO SUMIDOURO Ø3,85 x0,85", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 1848, "traco": 0, "aco": {"MF-283": 11.44}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 183.953, "custoEmbAtual": 0}, {"nome": "ANEL DE CONCRETO VAZADO SUMIDOURO Ø3,85 x1,15", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 2426.3999999999996, "traco": 0, "aco": {"Q-238": 12.07}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 245.387, "custoEmbAtual": 0}, {"nome": "BLOCO 09", "familia": "Maquina Blocos 01", "pesoPeca": 9.1, "traco": 1, "aco": {}, "moAcoTubo": 0, "pecasPalete": 163, "custoAcoAtual": 0, "custoEmbAtual": 0.0705, "qtdeSelo": 2.0, "qtdeFita": 9.0, "qtdeFilme": 0}, {"nome": "BLOCOS 14", "familia": "Maquina Blocos 02", "pesoPeca": 12, "traco": 2, "aco": {}, "moAcoTubo": 0, "pecasPalete": 125, "custoAcoAtual": 0, "custoEmbAtual": 0.092, "qtdeSelo": 2.0, "qtdeFita": 9.0, "qtdeFilme": 0}, {"nome": "BLOCOS 19", "familia": "Maquina Blocos 02", "pesoPeca": 15.5, "traco": 2, "aco": {}, "moAcoTubo": 0, "pecasPalete": 90, "custoAcoAtual": 0, "custoEmbAtual": 0.1277, "qtdeSelo": 2.0, "qtdeFita": 9.0, "qtdeFilme": 0}, {"nome": "CAIXA DE CONCRETO 0,40x0,40x0,40", "familia": "Caixas", "pesoPeca": 60, "traco": 0, "aco": {}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 0, "custoEmbAtual": 0}, {"nome": "CAIXA DE CONCRETO 0,60x0,60x0,60", "familia": "Caixas", "pesoPeca": 145, "traco": 0, "aco": {}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 0, "custoEmbAtual": 0}, {"nome": "CAIXA DE CONCRETO 1x1x0,80", "familia": "Caixas", "pesoPeca": 620, "traco": 3, "aco": {"Q-138": 2.88}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 34.241, "custoEmbAtual": 0}, {"nome": "CAIXA DE CONCRETO 1x1x1", "familia": "Caixas", "pesoPeca": 790, "traco": 3, "aco": {"Q-138": 3.6}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 42.801, "custoEmbAtual": 0}, {"nome": "CAIXA DE CONCRETO 1x1x1,2", "familia": "Caixas", "pesoPeca": 940, "traco": 3, "aco": {"Q-138": 4.32}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 51.361, "custoEmbAtual": 0}, {"nome": "CAIXA DE CONCRETO C/ FUNDO 0,40x0,40x0,40", "familia": "Caixas", "pesoPeca": 75, "traco": 0, "aco": {}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 0, "custoEmbAtual": 0}, {"nome": "CAIXA DE CONCRETO C/ FUNDO 0,60x0,60x0,60", "familia": "Caixas", "pesoPeca": 175, "traco": 0, "aco": {}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 0, "custoEmbAtual": 0}, {"nome": "CAIXA DE CONCRETO C/ FUNDO 1x1x0,80", "familia": "Caixas", "pesoPeca": 810, "traco": 3, "aco": {"Q-138": 2.88}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 34.241, "custoEmbAtual": 0}, {"nome": "CAIXA DE CONCRETO C/ FUNDO 1x1x1", "familia": "Caixas", "pesoPeca": 950, "traco": 3, "aco": {"Q-138": 3.6}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 42.801, "custoEmbAtual": 0}, {"nome": "CAIXA DE CONCRETO C/ FUNDO 1x1x1,2", "familia": "Caixas", "pesoPeca": 1100, "traco": 3, "aco": {"Q-138": 4.32}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 51.361, "custoEmbAtual": 0}, {"nome": "CAIXA DE CONCRETO Ø0,85 x0,75", "familia": "Caixas", "pesoPeca": 390, "traco": 0, "aco": {}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 0, "custoEmbAtual": 0}, {"nome": "CAIXA DE CONCRETO Ø1,10 x1,00", "familia": "Caixas", "pesoPeca": 587.72, "traco": 0, "aco": {}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 0, "custoEmbAtual": 0}, {"nome": "CAIXA DE CONCRETO Ø1,10 x1,20", "familia": "Caixas", "pesoPeca": 666.768, "traco": 0, "aco": {}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 0, "custoEmbAtual": 0}, {"nome": "CANALETA 14", "familia": "Maquina Blocos 01", "pesoPeca": 13.3, "traco": 4, "aco": {}, "moAcoTubo": 0, "pecasPalete": 100, "custoAcoAtual": 0, "custoEmbAtual": 0.1075, "qtdeSelo": 1.0, "qtdeFita": 4.5, "qtdeFilme": 0}, {"nome": "CANALETA 19", "familia": "Maquina Blocos 01", "pesoPeca": 15, "traco": 4, "aco": {}, "moAcoTubo": 0, "pecasPalete": 75, "custoAcoAtual": 0, "custoEmbAtual": 0.1433, "qtdeSelo": 1.0, "qtdeFita": 4.5, "qtdeFilme": 0}, {"nome": "LAJE PRÉ FABRICADA p/ LEITO FILTRANTE Ø1,70", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 221.76, "traco": 12, "aco": {"Q-138": 1.54}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 18.309, "custoEmbAtual": 0}, {"nome": "LAJE PRÉ FABRICADA p/ LEITO FILTRANTE Ø2,00", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 326.88, "traco": 12, "aco": {"Q-138": 2.27}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 26.988, "custoEmbAtual": 0}, {"nome": "LAJE PRÉ FABRICADA p/ LEITO FILTRANTE Ø2,30", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 753.6, "traco": 12, "aco": {"Q-138": 3.14}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 37.332, "custoEmbAtual": 0}, {"nome": "LAJE PRÉ FABRICADA p/ LEITO FILTRANTE Ø2,75", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 1176, "traco": 12, "aco": {"Q-138": 4.9}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 58.257, "custoEmbAtual": 0}, {"nome": "LAJE PRÉ FABRICADA p/ LEITO FILTRANTE Ø3,30", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 1695.6000000000001, "traco": 12, "aco": {"Q-238": 7.065}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 143.634, "custoEmbAtual": 0}, {"nome": "LAJE PRÉ FABRICADA p/ LEITO FILTRANTE Ø3,85", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 2308.7999999999997, "traco": 12, "aco": {"Q-238": 9.62}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 195.578, "custoEmbAtual": 0}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA 0,40x0,40", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 19.2, "traco": 12, "aco": {}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 0, "custoEmbAtual": 0}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA 0,60x0,60", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 43.2, "traco": 12, "aco": {"Q-138": 0.3}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 3.567, "custoEmbAtual": 0}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA 1,0x1,0", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 180, "traco": 12, "aco": {"Q-138": 1}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 11.889, "custoEmbAtual": 0}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA Ø0,54", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 27.5, "traco": 12, "aco": {}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 0, "custoEmbAtual": 0}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA Ø0,60", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 34, "traco": 12, "aco": {"Q-138": 0.282}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 3.353, "custoEmbAtual": 0}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA Ø0,85", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 108.72, "traco": 12, "aco": {"Q-138": 0.5}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 5.945, "custoEmbAtual": 0}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA Ø1,70", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 270.34, "traco": 12, "aco": {"Q-138": 1.41}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 16.764, "custoEmbAtual": 0}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA Ø2,00", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 424.98, "traco": 12, "aco": {"Q-138": 2.22}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 26.394, "custoEmbAtual": 0}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA Ø2,30", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 878.8800000000001, "traco": 12, "aco": {"Q-138": 3.16}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 37.57, "custoEmbAtual": 0}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA Ø2,75", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 1334.4, "traco": 12, "aco": {"Q-138": 5.05}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 60.04, "custoEmbAtual": 0}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA Ø3,30", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 1881.6000000000001, "traco": 12, "aco": {"Q-238": 7.33}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 149.022, "custoEmbAtual": 0}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA Ø3,85", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 2524.8, "traco": 12, "aco": {"Q-238": 9.51}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 193.342, "custoEmbAtual": 0}, {"nome": "MEIO FIO", "familia": "Maquina Blocos 01", "pesoPeca": 80, "traco": 1, "aco": {}, "moAcoTubo": 0, "pecasPalete": 27, "custoAcoAtual": 0, "custoEmbAtual": 0.4258, "qtdeSelo": 2.0, "qtdeFita": 9.0, "qtdeFilme": 0}, {"nome": "PAVER 6 CM HOLANDÊS", "familia": "Maquina Blocos 02", "pesoPeca": 2.53, "traco": 5, "aco": {}, "moAcoTubo": 0, "pecasPalete": 900, "custoAcoAtual": 0, "custoEmbAtual": 0.0115, "qtdeSelo": 0, "qtdeFita": 0, "qtdeFilme": 0.0409}, {"nome": "PAVER 6 CM UNISTEIN", "familia": "Maquina Blocos 02", "pesoPeca": 3.333, "traco": 5, "aco": {}, "moAcoTubo": 0, "pecasPalete": 585, "custoAcoAtual": 0, "custoEmbAtual": 0.0179, "qtdeSelo": 0, "qtdeFita": 0, "qtdeFilme": 0.0498}, {"nome": "PAVER 8 CM HOLANDÊS", "familia": "Maquina Blocos 02", "pesoPeca": 3.312, "traco": 6, "aco": {}, "moAcoTubo": 0, "pecasPalete": 600, "custoAcoAtual": 0, "custoEmbAtual": 0.0173, "qtdeSelo": 0, "qtdeFita": 0, "qtdeFilme": 0.0409}, {"nome": "PAVER 8 CM UNISTEIN", "familia": "Maquina Blocos 02", "pesoPeca": 4.45, "traco": 7, "aco": {}, "moAcoTubo": 0, "pecasPalete": 507, "custoAcoAtual": 0, "custoEmbAtual": 0.0203, "qtdeSelo": 0, "qtdeFita": 0, "qtdeFilme": 0.0346}, {"nome": "PILARETE DE CONCRETO PRÉ FABRICADO 12x12x30", "familia": "Fossas/Tampas/Leitos", "pesoPeca": 10.4, "traco": 0, "aco": {}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 0, "custoEmbAtual": 0}, {"nome": "PISO GRAMA", "familia": "Maquina Blocos 01", "pesoPeca": 17.5, "traco": 8, "aco": {}, "moAcoTubo": 0, "pecasPalete": 72, "custoAcoAtual": 0, "custoEmbAtual": 0.1389, "qtdeSelo": 0, "qtdeFita": 0, "qtdeFilme": 0}, {"nome": "TUBOS DN 1000 MF  ARMADO PA1", "familia": "Tubos Vibrados", "pesoPeca": 650, "traco": 3, "aco": {"MF-196": 3.6}, "moAcoTubo": 6, "embRateado": {}, "custoAcoAtual": 45.819, "custoEmbAtual": 0}, {"nome": "TUBOS DN 1000 PB ARMADO PA1", "familia": "Tubos Vibrados", "pesoPeca": 1000, "traco": 3, "aco": {"PB-196": 3.6}, "moAcoTubo": 10, "embRateado": {}, "custoAcoAtual": 56.016, "custoEmbAtual": 0}, {"nome": "TUBOS DN 1000 PB ARMADO PA2", "familia": "Tubos Vibrados", "pesoPeca": 1000, "traco": 3, "aco": {"PB-283": 3.6}, "moAcoTubo": 10, "embRateado": {}, "custoAcoAtual": 85.884, "custoEmbAtual": 0}, {"nome": "TUBOS DN 1200 PB ARMADO PA1", "familia": "Tubos Vibrados", "pesoPeca": 1450, "traco": 3, "aco": {"PB-283": 4.4}, "moAcoTubo": 20, "embRateado": {}, "custoAcoAtual": 112.747, "custoEmbAtual": 0}, {"nome": "TUBOS DN 1200 PB ARMADO PA2", "familia": "Tubos Vibrados", "pesoPeca": 1450, "traco": 3, "aco": {"MF-196": 4, "PB-196": 4.4}, "moAcoTubo": 30, "embRateado": {}, "custoAcoAtual": 130.486, "custoEmbAtual": 0}, {"nome": "TUBOS DN 1500 PB ARMADO PA1", "familia": "Tubos Vibrados", "pesoPeca": 1700, "traco": 3, "aco": {"PB-283": 5.4}, "moAcoTubo": 30, "embRateado": {}, "custoAcoAtual": 143.825, "custoEmbAtual": 0}, {"nome": "TUBOS DN 1500 PB ARMADO PA2", "familia": "Tubos Vibrados", "pesoPeca": 1700, "traco": 3, "aco": {"MF-283": 5.3, "PB-283": 5.3}, "moAcoTubo": 45, "embRateado": {}, "custoAcoAtual": 241.94, "custoEmbAtual": 0}, {"nome": "TUBOS DN 200 PS1", "familia": "Prensa Tubos", "pesoPeca": 55, "traco": 9, "aco": {}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 0, "custoEmbAtual": 0}, {"nome": "TUBOS DN 300 MF SIMPLES", "familia": "Prensa Tubos", "pesoPeca": 80, "traco": 9, "aco": {}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 0, "custoEmbAtual": 0}, {"nome": "TUBOS DN 400 MF  SIMPLES", "familia": "Prensa Tubos", "pesoPeca": 135, "traco": 10, "aco": {}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 0, "custoEmbAtual": 0}, {"nome": "TUBOS DN 400 MF ARMADO", "familia": "Prensa Tubos", "pesoPeca": 135, "traco": 10, "aco": {"MF-113": 1.48}, "moAcoTubo": 6, "embRateado": {}, "custoAcoAtual": 16.381, "custoEmbAtual": 0}, {"nome": "TUBOS DN 400 PB  ARMADO", "familia": "Prensa Tubos", "pesoPeca": 150, "traco": 11, "aco": {"PB-138": 1.5}, "moAcoTubo": 8, "embRateado": {}, "custoAcoAtual": 22.602, "custoEmbAtual": 0}, {"nome": "TUBOS DN 500 MF  ARMADO", "familia": "Prensa Tubos", "pesoPeca": 205, "traco": 10, "aco": {"MF-113": 1.83}, "moAcoTubo": 6, "embRateado": {}, "custoAcoAtual": 18.836, "custoEmbAtual": 0}, {"nome": "TUBOS DN 500 MF  SIMPLES", "familia": "Prensa Tubos", "pesoPeca": 205, "traco": 10, "aco": {}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 0, "custoEmbAtual": 0}, {"nome": "TUBOS DN 600 MF  ARMADO", "familia": "Prensa Tubos", "pesoPeca": 260, "traco": 10, "aco": {"MF-113": 2.17}, "moAcoTubo": 6, "embRateado": {}, "custoAcoAtual": 21.221, "custoEmbAtual": 0}, {"nome": "TUBOS DN 600 MF  SIMPLES", "familia": "Prensa Tubos", "pesoPeca": 260, "traco": 10, "aco": {}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 0, "custoEmbAtual": 0}, {"nome": "TUBOS DN 600 PB  ARMADO PA1", "familia": "Prensa Tubos", "pesoPeca": 300, "traco": 11, "aco": {"PB-138": 2.17}, "moAcoTubo": 8, "embRateado": {}, "custoAcoAtual": 29.125, "custoEmbAtual": 0}, {"nome": "TUBOS DN 600 PB  ARMADO PA2", "familia": "Prensa Tubos", "pesoPeca": 300, "traco": 11, "aco": {"PB-196": 2.17}, "moAcoTubo": 8, "embRateado": {}, "custoAcoAtual": 35.737, "custoEmbAtual": 0}, {"nome": "TUBOS DN 800 MF  ARMADO", "familia": "Tubos Vibrados", "pesoPeca": 455, "traco": 3, "aco": {"MF-196": 2.84}, "moAcoTubo": 6, "embRateado": {}, "custoAcoAtual": 37.413, "custoEmbAtual": 0}, {"nome": "TUBOS DN 800 MF  SIMPLES", "familia": "Tubos Vibrados", "pesoPeca": 455, "traco": 3, "aco": {}, "moAcoTubo": 0, "embRateado": {}, "custoAcoAtual": 0, "custoEmbAtual": 0}, {"nome": "TUBOS DN 800 PB ARMADO PA1", "familia": "Tubos Vibrados", "pesoPeca": 600, "traco": 3, "aco": {"PB-138": 2.84}, "moAcoTubo": 10, "embRateado": {}, "custoAcoAtual": 37.647, "custoEmbAtual": 0}, {"nome": "TUBOS DN 800 PB ARMADO PA2", "familia": "Tubos Vibrados", "pesoPeca": 600, "traco": 3, "aco": {"PB-196": 2.84}, "moAcoTubo": 10, "embRateado": {}, "custoAcoAtual": 46.302, "custoEmbAtual": 0}], "precosAco": {"MF-113": 7.014328, "MF-196": 11.060963, "MF-283": 16.079831, "PB-138": 9.734813, "PB-196": 12.782241, "PB-283": 21.07875, "Q-138": 11.889107, "Q-238": 20.330357, "L-246": 15.708214}, "precosEmb": {"Filme Strech": 9.048375, "Fita PET": 0.125968, "Selo": 0.181125, "Palete": 10}, "compras": {"areiaInd": [{"data": "2026-06-23", "preco": 138.32, "qtde": 0, "forn": "", "precoNF": 0, "qtdeNF": 0, "qtdeReal": 0}], "granilha": [{"data": "2026-06-23", "preco": 113.52, "qtde": 0, "forn": "", "precoNF": 0, "qtdeNF": 0, "qtdeReal": 0}], "pedrisco": [{"data": "2026-06-23", "preco": 114.4, "qtde": 0, "forn": "", "precoNF": 0, "qtdeNF": 0, "qtdeReal": 0}], "brita": [{"data": "2026-06-23", "preco": 117.92, "qtde": 0, "forn": "", "precoNF": 0, "qtdeNF": 0, "qtdeReal": 0}], "areiaNat": [{"data": "2026-06-23", "preco": 147, "qtde": 0, "forn": "", "precoNF": 90, "qtdeNF": 18, "qtdeReal": 32}], "cimento": [{"data": "2026-06-23", "preco": 826.45, "qtde": 0, "forn": "", "precoNF": 0, "qtdeNF": 0, "qtdeReal": 0}], "aditivo": [{"data": "2026-06-23", "preco": 3530, "qtde": 0, "forn": "", "precoNF": 0, "qtdeNF": 0, "qtdeReal": 0}], "aditivo2": [], "aco_0": [{"data": "2026-04-29", "preco": 293.22, "qtde": 0, "forn": "", "precoNF": 0, "qtdeNF": 0, "qtdeReal": 0}], "aco_1": [{"data": "2026-04-29", "preco": 1068.85, "qtde": 0, "forn": "", "precoNF": 0, "qtdeNF": 0, "qtdeReal": 0}], "aco_2": [{"data": "2026-04-29", "preco": 1685.48, "qtde": 0, "forn": "", "precoNF": 0, "qtdeNF": 0, "qtdeReal": 0}], "aco_3": [{"data": "2026-04-29", "preco": 1225.13, "qtde": 0, "forn": "", "precoNF": 0, "qtdeNF": 0, "qtdeReal": 0}], "aco_4": [{"data": "2026-04-29", "preco": 1483.4, "qtde": 0, "forn": "", "precoNF": 0, "qtdeNF": 0, "qtdeReal": 0}], "aco_5": [{"data": "2026-04-29", "preco": 1947.77, "qtde": 0, "forn": "", "precoNF": 0, "qtdeNF": 0, "qtdeReal": 0}], "aco_6": [{"data": "2026-04-29", "preco": 1606, "qtde": 0, "forn": "", "precoNF": 0, "qtdeNF": 0, "qtdeReal": 0}], "aco_7": [{"data": "2026-04-29", "preco": 221.93, "qtde": 0, "forn": "", "precoNF": 0, "qtdeNF": 0, "qtdeReal": 0}], "aco_8": [{"data": "2026-04-29", "preco": 379.5, "qtde": 0, "forn": "", "precoNF": 0, "qtdeNF": 0, "qtdeReal": 0}], "emb_0": [{"data": "2026-06-08", "preco": 11.49, "qtde": 0, "forn": "", "precoNF": 0, "qtdeNF": 0, "qtdeReal": 0}], "emb_1": [{"data": "2026-06-08", "preco": 199.95, "qtde": 0, "forn": "", "precoNF": 0, "qtdeNF": 0, "qtdeReal": 0}], "emb_2": [{"data": "2026-06-08", "preco": 230, "qtde": 0, "forn": "", "precoNF": 0, "qtdeNF": 0, "qtdeReal": 0}], "emb_3": [{"data": "2026-06-08", "preco": 10, "qtde": 0, "forn": "", "precoNF": 0, "qtdeNF": 0, "qtdeReal": 0}]}, "hoje": "2026-07-13"};
+
+function salvarMP(){
+  if(!D || !mpReady) return;
+  Persist.save('materia_prima', D);
+}
+
+async function initMateriaPrima(container){
+  mpReady = false;
+  // carrega dados salvos, ou usa o padrão na primeira vez
+  const saved = await Persist.load('materia_prima');
+  D = saved || JSON.parse(JSON.stringify(D_DEFAULT));
+  // injeta o HTML do módulo
+  container.innerHTML = MP_HTML;
+  // roda toda a lógica do protótipo (define funções, liga eventos, renderiza)
+  runMateriaPrima();
+  mpReady = true;
+}
+
+function runMateriaPrima(){
+
+const AJUDAS={
+  precocompra:{t:'Preço de compra',c:`<p>Quanto você paga pelo material na unidade de compra (saco, tonelada, metro). O app converte pra unidade de uso (kg, ml) usando o divisor.</p>`},
+  credito:{t:'Crédito de imposto',c:`<p>No Lucro Real, você recupera parte do imposto pago na compra de insumos com nota. Esse crédito <b>reduz o custo</b> do material.</p>
+    <p>• Cimento e aditivo: 21,25%<br>• Areia natural: 26,25%<br>• Agregados (permuta): 0%</p>
+    <div class="ex">Cimento a R$ 826 com 21,25% de crédito custa, na prática, R$ 650 — porque você recupera o imposto.</div>`},
+  divisor:{t:'Divisor',c:`<p>Converte a unidade de <b>compra</b> pra unidade de <b>uso</b>.</p>
+    <div class="ex">Cimento comprado por saco de 50 kg, mas usado por kg → divisor 50. Um saco de R$ 32,50 vira R$ 0,65/kg.</div>`},
+  custounit:{t:'Custo unitário (automático)',c:`<p>O custo final do material na unidade de uso, já com o crédito descontado. É calculado sozinho:</p>
+    <p><b>(preço de compra − crédito) ÷ divisor</b></p>
+    <p>É esse valor que entra no cálculo dos traços.</p>`},
+  notaparcial:{t:'Nota fiscal parcial',c:`<p>Alguns fornecedores emitem nota de só parte do valor. O crédito de imposto incide apenas sobre a parcela que tem nota.</p>
+    <div class="ex">Areia natural: você paga R$ 147/m³ mas a nota é de R$ 90. O crédito vale só sobre os R$ 90 — o app calcula isso automaticamente.</div>`},
+  traco:{t:'Traço',c:`<p>A "receita" do concreto — quanto de cada material entra numa batida. Seus 95 produtos usam apenas <b>13 traços</b>.</p>
+    <p>Edite o traço uma vez e o custo muda em <b>todos os produtos</b> que o usam. O custo por peça é proporcional ao peso da peça.</p>
+    <div class="ex">O traço das fossas serve 56 produtos de uma vez.</div>`},
+  pesobatida:{t:'Peso da batida',c:`<p>O peso total de uma batida de concreto (soma de todos os materiais). Usado pra calcular o custo por peça:</p>
+    <p><b>custo por peça = custo da batida ÷ peso da batida × peso da peça</b></p>`},
+  pecaspalete:{t:'Peças por palete',c:`<p>Quantas peças cabem num palete. O custo do palete (e dos selos, fitas) se divide por elas.</p>
+    <div class="ex">Palete de R$ 10 com 163 blocos = R$ 0,06 de palete por bloco.</div>`},
+  moarmacao:{t:'MO de armação',c:`<p>O custo de mão de obra pra montar a armadura de aço dos tubos — um valor fixo por peça, além do aço em si.</p>`},
+  aco:{t:'Aço por produto',c:`<p>Quantos metros de cada tela de aço o produto consome. Multiplicado pelo preço da tela, dá o custo de aço da peça.</p>
+    <p>Fossas, tubos e caixas usam aço; blocos e pavers não.</p>`},
+  histpreco:{t:'Histórico de preços',c:`<p>Registre <b>cada compra</b> com data e preço. O preço vigente é sempre o da <b>última compra</b> (custo de reposição).</p>
+    <p>Como o aço dura 3-4 meses, o registro é por compra, não mensal. Os gráficos mostram a evolução em 3 níveis: material → traço → produto.</p>`},
+};
+let helpAberto=null;
+function abrirAjuda(key){
+  const a=AJUDAS[key]; if(!a) return;
+  document.getElementById('help-title').textContent=a.t;
+  document.getElementById('help-content').innerHTML=a.c;
+  document.getElementById('help-pop').classList.add('on');
+  document.getElementById('help-backdrop').classList.add('on');
+}
+function fecharAjuda(){
+  document.getElementById('help-pop').classList.remove('on');
+  document.getElementById('help-backdrop').classList.remove('on');
+}
+function helpIcon(key){ return '<span class="help" onclick="abrirAjuda(\''+key+'\')">?</span>'; }
+document.addEventListener('DOMContentLoaded',()=>{
+  const x=document.getElementById('help-x'); if(x) x.onclick=fecharAjuda;
+  const bd=document.getElementById('help-backdrop'); if(bd) bd.onclick=fecharAjuda;
+});
+const KEYS=['areiaInd','granilha','pedrisco','brita','areiaNat','cimento','aditivo','aditivo2'];
+const LBL={areiaInd:'Areia Industrial',granilha:'Granilha',pedrisco:'Pedrisco',brita:'Brita 1',areiaNat:'Areia Natural',cimento:'Cimento',aditivo:'Aditivo',aditivo2:'Aditivo 2 (lajes)'};
+const matOpen={}, tracoOpen={}, prodExp={};
+
+const fmt=n=>n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmt0=n=>Math.round(n).toLocaleString('pt-BR');
+const fmt4=n=>n.toLocaleString('pt-BR',{minimumFractionDigits:4,maximumFractionDigits:4});
+const fmt3=n=>n.toLocaleString('pt-BR',{minimumFractionDigits:3,maximumFractionDigits:3});
+
+// ---- custo unitário de um material ----
+function custoUnit(m){
+  const F=m.precoCompra||0;     // preço realmente pago (por unid. compra)
+  const G=m.precoNF||0;         // preço que consta na nota fiscal
+  const H=m.qtdeNF||0;          // qtde na nota
+  const I=m.qtdeReal||0;        // qtde real recebida
+  const J=m.credito||0;         // % crédito
+  const div=m.divisor||1;
+  let liquido;
+  // Nota parcial: crédito proporcional ao valor que tem nota
+  // replica planilha: F - ((((H*G)/(I*F))*J)*G)
+  if(H>0 && I>0 && G>0 && F>0){
+    const fracComNota = (H*G)/(I*F);
+    liquido = F - (fracComNota*J*G);
+  } else {
+    liquido = F - (F*J);
+  }
+  return div>0 ? liquido/div : 0;
+}
+
+// ---- render materiais ----
+function renderMat(lista, containerId, prefix){
+  const wrap=document.getElementById(containerId); wrap.innerHTML='';
+  lista.forEach((m,i)=>{
+    const id=prefix+i;
+    const cu=custoUnit(m);
+    const div=document.createElement('div');
+    div.className='mat'+(matOpen[id]?' open':'');
+    // HEAD
+    const head=document.createElement('div');head.className='mat-head';
+    head.innerHTML=`<span class="mat-exp">▶</span><span class="mat-nome">${m.nome}</span><span class="mat-um">R$/${m.um}</span><span class="mat-custo mono">${fmt4(cu)}</span>`;
+    head.onclick=()=>{matOpen[id]=!matOpen[id];renderAll();};
+    div.appendChild(head);
+    // BODY
+    const body=document.createElement('div');body.className='mat-body';
+    const g=document.createElement('div');g.className='mf-grid';
+    // preço compra
+    const f1=document.createElement('div');f1.className='mf';
+    f1.innerHTML=`<label>Preço compra (por ${m.unidCompra}) ${helpIcon('precocompra')}</label>`;
+    const i1=document.createElement('input');i1.type='number';i1.step='0.01';i1.value=m.precoCompra;
+    i1.oninput=()=>{m.precoCompra=parseFloat(i1.value)||0;refreshMat(div,m);};
+    f1.appendChild(i1);g.appendChild(f1);
+    // crédito
+    const f2=document.createElement('div');f2.className='mf';
+    f2.innerHTML=`<label>% Crédito imposto ${helpIcon('credito')}</label>`;
+    const i2=document.createElement('input');i2.type='number';i2.step='0.25';i2.value=(m.credito*100).toFixed(2);
+    i2.oninput=()=>{m.credito=(parseFloat(i2.value)||0)/100;refreshMat(div,m);};
+    f2.appendChild(i2);g.appendChild(f2);
+    // divisor
+    const f3=document.createElement('div');f3.className='mf';
+    f3.innerHTML=`<label>Divisor (${m.unidCompra}→${m.um}) ${helpIcon('divisor')}</label>`;
+    const i3=document.createElement('input');i3.type='number';i3.value=m.divisor;
+    i3.oninput=()=>{m.divisor=parseFloat(i3.value)||1;refreshMat(div,m);};
+    f3.appendChild(i3);g.appendChild(f3);
+    // custo unit calculado
+    const f4=document.createElement('div');f4.className='mf calc';
+    f4.innerHTML=`<label>Custo unitário (auto) ${helpIcon('custounit')}</label><input class="cu-out" value="${fmt4(cu)}" readonly>`;
+    g.appendChild(f4);
+    // NF vs Real (fornecedor com nota parcial)
+    if(m.qtdeNF!==undefined && (m.qtdeNF>0||m.qtdeReal>0)){
+      const nf=document.createElement('div');nf.className='nf-box';
+      nf.innerHTML=`<div class="t">📄 Nota fiscal parcial — crédito proporcional ${helpIcon('notaparcial')}</div>`;
+      const ng=document.createElement('div');ng.className='nf-grid';
+      // preço na NF
+      const n0=document.createElement('div');n0.className='mf';
+      n0.innerHTML=`<label>Preço na NF (por ${m.unidCompra})</label>`;
+      const ni0=document.createElement('input');ni0.type='number';ni0.step='0.01';ni0.value=m.precoNF||0;
+      ni0.oninput=()=>{m.precoNF=parseFloat(ni0.value)||0;refreshMat(div,m);};
+      n0.appendChild(ni0);ng.appendChild(n0);
+      // espaço vazio pra alinhar
+      const nsp=document.createElement('div');ng.appendChild(nsp);
+      const n1=document.createElement('div');n1.className='mf';
+      n1.innerHTML=`<label>Qtde na NF</label>`;
+      const ni1=document.createElement('input');ni1.type='number';ni1.value=m.qtdeNF||0;
+      ni1.oninput=()=>{m.qtdeNF=parseFloat(ni1.value)||0;refreshMat(div,m);};
+      n1.appendChild(ni1);ng.appendChild(n1);
+      const n2=document.createElement('div');n2.className='mf';
+      n2.innerHTML=`<label>Qtde real recebida</label>`;
+      const ni2=document.createElement('input');ni2.type='number';ni2.value=m.qtdeReal||0;
+      ni2.oninput=()=>{m.qtdeReal=parseFloat(ni2.value)||0;refreshMat(div,m);};
+      n2.appendChild(ni2);ng.appendChild(n2);
+      nf.appendChild(ng);
+      g.appendChild(nf);
+    }
+    // fórmula explicativa
+    const fx=document.createElement('div');fx.className='formula cu-formula';
+    fx.innerHTML=formulaTxt(m);
+    g.appendChild(fx);
+    body.appendChild(g);
+    div.appendChild(body);
+    wrap.appendChild(div);
+  });
+}
+function formulaTxt(m){
+  const cu=custoUnit(m);
+  const cred=(m.credito*100).toFixed(2);
+  if(m.qtdeNF>0&&m.qtdeReal>0&&m.precoNF>0){
+    const frac=((m.qtdeNF*m.precoNF)/(m.qtdeReal*m.precoCompra)*100).toFixed(0);
+    return `Só ${frac}% do valor tem nota → crédito de ${cred}% sobre essa parte.<br>(${fmt(m.precoCompra)} − crédito) ÷ ${m.divisor} = <b>R$ ${fmt4(cu)}/${m.um}</b>`;
+  }
+  return `(${fmt(m.precoCompra)} − ${cred}%) ÷ ${m.divisor} = <b>R$ ${fmt4(cu)}/${m.um}</b>`;
+}
+function refreshMat(div,m){ salvarMP();
+  const cu=custoUnit(m);
+  div.querySelector('.mat-custo').textContent=fmt4(cu);
+  const out=div.querySelector('.cu-out'); if(out) out.value=fmt4(cu);
+  const fx=div.querySelector('.cu-formula'); if(fx) fx.innerHTML=formulaTxt(m);
+  refreshTracos();
+}
+
+// ---- traços ----
+function custoTraco(t){
+  let total=0;
+  KEYS.forEach(k=>{ total += (t.materiais[k]||0) * custoUnit(D.agregados[k]); });
+  return total;
+}
+function custoPeca(t,pesoPeca){
+  const ct=custoTraco(t);
+  return t.pesoTraco>0 ? (ct/t.pesoTraco)*pesoPeca : 0;
+}
+function renderTracos(){
+  const wrap=document.getElementById('tracos'); wrap.innerHTML='';
+  D.tracos.forEach(t=>{
+    const ct=custoTraco(t);
+    const prods=D.produtos.filter(p=>p.traco===t.id);
+    const div=document.createElement('div');div.className='traco'+(tracoOpen[t.id]?' open':'');
+    div.dataset.tid=t.id;
+    // head
+    const head=document.createElement('div');head.className='traco-head';
+    head.innerHTML=`<div class="tr-top">
+        <div class="tr-nome"><span class="tr-exp">▶</span>${t.nome}</div>
+        <div class="tr-custo mono ct-out">R$ ${fmt(ct)}</div>
+      </div>
+      <div class="tr-sub">${prods.length} produto${prods.length>1?'s':''} · batida de <span class="pt-out">${fmt0(t.pesoTraco)}</span> kg</div>`;
+    head.onclick=()=>{tracoOpen[t.id]=!tracoOpen[t.id];renderTracos();};
+    div.appendChild(head);
+    // body
+    const body=document.createElement('div');body.className='tr-body';
+    // peso do traço
+    const pw=document.createElement('div');pw.className='tr-peso';
+    pw.innerHTML=`<span style="color:var(--txt2)">Peso da batida (kg) ${helpIcon('pesobatida')}</span>`;
+    const pi=document.createElement('input');pi.type='number';pi.value=t.pesoTraco;
+    pi.oninput=()=>{t.pesoTraco=parseFloat(pi.value)||0;refreshTraco(div,t);};
+    pw.appendChild(pi);body.appendChild(pw);
+    // header colunas
+    const h=document.createElement('div');h.className='tr-hdr';
+    h.innerHTML='<span>Material</span><span>Qtde</span><span>Custo</span>';
+    body.appendChild(h);
+    // materiais
+    KEYS.forEach(k=>{
+      const m=D.agregados[k];
+      const row=document.createElement('div');row.className='tr-mat';
+      const nome=document.createElement('span');nome.className='tr-mat-nome';
+      nome.innerHTML=`${LBL[k]} <span style="font-size:.55rem;color:var(--txt3)">${m.um}</span>`;
+      const inp=document.createElement('input');inp.className='tr-mat-in';inp.type='number';inp.step='1';
+      inp.value=t.materiais[k]||0;
+      inp.oninput=()=>{t.materiais[k]=parseFloat(inp.value)||0;refreshTraco(div,t);};
+      const custo=document.createElement('span');custo.className='tr-mat-custo';
+      custo.dataset.mat=k;
+      custo.textContent='R$ '+fmt((t.materiais[k]||0)*custoUnit(m));
+      row.appendChild(nome);row.appendChild(inp);row.appendChild(custo);
+      body.appendChild(row);
+    });
+    // total
+    const tot=document.createElement('div');tot.className='tr-total';
+    tot.innerHTML=`<span style="color:var(--txt2)">Custo da batida</span><span class="v mono ct-total">R$ ${fmt(ct)}</span>`;
+    body.appendChild(tot);
+    // produtos que usam
+    const pl=document.createElement('div');pl.className='tr-prods';
+    pl.innerHTML='<div class="t">Produtos que usam este traço</div>';
+    const showAll=prodExp[t.id];
+    const lista=showAll?prods:prods.slice(0,5);
+    lista.forEach(p=>{
+      const it=document.createElement('div');it.className='tr-prod-item';
+      it.innerHTML=`<span>${p.nome}</span><span class="c mono" data-peso="${p.pesoPeca}">R$ ${fmt3(custoPeca(t,p.pesoPeca))}</span>`;
+      pl.appendChild(it);
+    });
+    if(prods.length>5){
+      const more=document.createElement('div');more.className='tr-prod-more';
+      more.textContent=showAll?'▲ mostrar menos':`▼ ver todos os ${prods.length}`;
+      more.onclick=(e)=>{e.stopPropagation();prodExp[t.id]=!showAll;renderTracos();};
+      pl.appendChild(more);
+    }
+    body.appendChild(pl);
+    div.appendChild(body);
+    wrap.appendChild(div);
+  });
+}
+function refreshTraco(div,t){ salvarMP();
+  const ct=custoTraco(t);
+  div.querySelector('.ct-out').textContent='R$ '+fmt(ct);
+  const ctt=div.querySelector('.ct-total'); if(ctt) ctt.textContent='R$ '+fmt(ct);
+  const pt=div.querySelector('.pt-out'); if(pt) pt.textContent=fmt0(t.pesoTraco);
+  // custos por material
+  div.querySelectorAll('.tr-mat-custo').forEach(el=>{
+    const k=el.dataset.mat;
+    el.textContent='R$ '+fmt((t.materiais[k]||0)*custoUnit(D.agregados[k]));
+  });
+  // custo por produto
+  div.querySelectorAll('.tr-prod-item .c').forEach(el=>{
+    const peso=parseFloat(el.dataset.peso)||0;
+    el.textContent='R$ '+fmt3(custoPeca(t,peso));
+  });
+}
+function refreshTracos(){
+  D.tracos.forEach(t=>{
+    const div=document.querySelector(`.traco[data-tid="${t.id}"]`);
+    if(div) refreshTraco(div,t);
+  });
+}
+
+// ---- AÇO E EMBALAGEM ----
+const ACO_TIPOS=['MF-113','MF-196','MF-283','PB-138','PB-196','PB-283','Q-138','Q-238','L-246'];
+const EMB_TIPOS=['Filme Strech','Fita PET','Selo','Palete'];
+let aeFiltro='aco';
+const aepOpen={};
+
+function custoAco(p){
+  let t=0;
+  ACO_TIPOS.forEach(k=>{ t += (p.aco?.[k]||0) * (D.precosAco[k]||0); });
+  return t + (p.moAcoTubo||0);
+}
+function custoEmb(p){
+  const pp = p.pecasPalete||0;
+  if(pp<=0) return 0;
+  // custo do palete + selos + fitas + filme, tudo dividido pelas peças do palete
+  const custoPalete = D.precosEmb['Palete']||0;
+  const custoSelos  = (p.qtdeSelo||0)  * (D.precosEmb['Selo']||0);
+  const custoFitas  = (p.qtdeFita||0)  * (D.precosEmb['Fita PET']||0);
+  const custoFilme  = (p.qtdeFilme||0) * (D.precosEmb['Filme Strech']||0);
+  return (custoPalete + custoSelos + custoFitas + custoFilme) / pp;
+}
+function renderAcoEmb(){
+  const wrap=document.getElementById('acoemb'); wrap.innerHTML='';
+  const lista = aeFiltro==='aco'
+    ? D.produtos.filter(p=>p.aco && Object.keys(p.aco).length)
+    : D.produtos.filter(p=>p.pecasPalete>0);
+  lista.forEach((p,i)=>{
+    const id=aeFiltro+i;
+    const custo = aeFiltro==='aco' ? custoAco(p) : custoEmb(p);
+    const div=document.createElement('div');div.className='aep'+(aepOpen[id]?' open':'');
+    const head=document.createElement('div');head.className='aep-head';
+    head.innerHTML=`<span class="aep-exp">▶</span><span class="aep-nome">${p.nome}</span><span class="aep-c mono">R$ ${fmt3(custo)}</span>`;
+    head.onclick=()=>{aepOpen[id]=!aepOpen[id];renderAcoEmb();};
+    div.appendChild(head);
+    const body=document.createElement('div');body.className='aep-body';
+    if(aeFiltro==='aco'){
+      const h=document.createElement('div');h.className='aco-hdr';
+      h.innerHTML='<span>Tela / aço</span><span>Metros</span><span>Custo</span>';
+      body.appendChild(h);
+      ACO_TIPOS.forEach(k=>{
+        const q=p.aco?.[k]||0;
+        if(q===0 && !aepOpen[id]) return;
+        const row=document.createElement('div');row.className='aco-row';
+        const lbl=document.createElement('span');lbl.className='aco-lbl';
+        lbl.innerHTML=`${k} <span style="font-size:.54rem;color:var(--txt3)">R$ ${fmt(D.precosAco[k])}/m</span>`;
+        const inp=document.createElement('input');inp.className='aco-in';inp.type='number';inp.step='0.01';inp.value=q;
+        const cst=document.createElement('span');cst.className='aco-c';cst.textContent='R$ '+fmt(q*(D.precosAco[k]||0));
+        inp.oninput=()=>{
+          if(!p.aco)p.aco={};
+          p.aco[k]=parseFloat(inp.value)||0;
+          cst.textContent='R$ '+fmt(p.aco[k]*(D.precosAco[k]||0));
+          refreshAep(div,p);
+        };
+        row.appendChild(lbl);row.appendChild(inp);row.appendChild(cst);
+        body.appendChild(row);
+      });
+      // MO aço tubo
+      if(p.moAcoTubo!==undefined){
+        const row=document.createElement('div');row.className='aco-row';
+        row.style.borderTop='1px solid var(--line)';row.style.marginTop='4px';row.style.paddingTop='7px';
+        const lbl=document.createElement('span');lbl.className='aco-lbl';
+        lbl.innerHTML='MO armação (tubos) '+helpIcon('moarmacao')+' <span style="font-size:.54rem;color:var(--txt3)">R$ fixo</span>';
+        const inp=document.createElement('input');inp.className='aco-in';inp.type='number';inp.value=p.moAcoTubo||0;
+        const cst=document.createElement('span');cst.className='aco-c';cst.textContent='R$ '+fmt(p.moAcoTubo||0);
+        inp.oninput=()=>{p.moAcoTubo=parseFloat(inp.value)||0;cst.textContent='R$ '+fmt(p.moAcoTubo);refreshAep(div,p);};
+        row.appendChild(lbl);row.appendChild(inp);row.appendChild(cst);
+        body.appendChild(row);
+      }
+    } else {
+      // EMBALAGEM: tudo em quantidade POR PALETE
+      const eb=document.createElement('div');
+      eb.innerHTML='<div class="emb-t">📦 O que vai em cada palete</div>';
+      const pp = p.pecasPalete||0;
+      // peças por palete
+      const mkRow=(label,sub,val,step,onchange)=>{
+        const row=document.createElement('div');row.className='pp-row';
+        row.innerHTML=`<span style="color:var(--txt2)">${label} <span style="font-size:.55rem;color:var(--txt3)">${sub}</span></span>`;
+        const inp=document.createElement('input');inp.type='number';inp.step=step;inp.value=val;
+        inp.oninput=()=>{onchange(parseFloat(inp.value)||0);refreshAep(div,p);};
+        row.appendChild(inp);
+        return row;
+      };
+      eb.appendChild(mkRow('Peças por palete '+helpIcon('pecaspalete'),`palete R$ ${fmt(D.precosEmb['Palete'])}`,pp,'1',v=>{p.pecasPalete=v;}));
+      eb.appendChild(mkRow('Selos',`R$ ${fmt(D.precosEmb['Selo'])} cada`,p.qtdeSelo||0,'1',v=>{p.qtdeSelo=v;}));
+      eb.appendChild(mkRow('Fitas PET',`R$ ${fmt(D.precosEmb['Fita PET'])} cada`,p.qtdeFita||0,'0.5',v=>{p.qtdeFita=v;}));
+      eb.appendChild(mkRow('Filme stretch',`rolo R$ ${fmt(D.precosEmb['Filme Strech'])}`,p.qtdeFilme||0,'0.001',v=>{p.qtdeFilme=v;}));
+      // detalhe do rateio
+      const det=document.createElement('div');det.className='emb-det';
+      det.style.cssText='font-size:.6rem;color:var(--txt3);margin-top:9px;padding-top:8px;border-top:1px dashed var(--line);line-height:1.5';
+      det.innerHTML=embDetalhe(p);
+      eb.appendChild(det);
+      body.appendChild(eb);
+    }
+    // total
+    const tot=document.createElement('div');tot.className='aep-tot';
+    tot.innerHTML=`<span style="color:var(--txt2)">Custo por peça</span><span class="v mono aep-total">R$ ${fmt3(custo)}</span>`;
+    body.appendChild(tot);
+    div.appendChild(body);
+    wrap.appendChild(div);
+  });
+  if(!lista.length) wrap.innerHTML='<div class="sem-item">Nenhum produto nesta categoria.</div>';
+}
+function embDetalhe(p){
+  const pp=p.pecasPalete||0;
+  if(pp<=0) return 'Defina as peças por palete para calcular.';
+  const cp=D.precosEmb['Palete']||0;
+  const cs=(p.qtdeSelo||0)*(D.precosEmb['Selo']||0);
+  const cf=(p.qtdeFita||0)*(D.precosEmb['Fita PET']||0);
+  const cfi=(p.qtdeFilme||0)*(D.precosEmb['Filme Strech']||0);
+  const tot=cp+cs+cf+cfi;
+  return `Palete R$ ${fmt(cp)} + selos R$ ${fmt(cs)} + fitas R$ ${fmt(cf)} + filme R$ ${fmt(cfi)} = <b style="color:var(--rebar2)">R$ ${fmt(tot)}</b> ÷ ${fmt0(pp)} peças`;
+}
+function refreshAep(div,p){ salvarMP();
+  const c = aeFiltro==='aco' ? custoAco(p) : custoEmb(p);
+  div.querySelector('.aep-c').textContent='R$ '+fmt3(c);
+  const t=div.querySelector('.aep-total'); if(t) t.textContent='R$ '+fmt3(c);
+  const dt=div.querySelector('.emb-det'); if(dt) dt.innerHTML=embDetalhe(p);
+}
+document.querySelectorAll('.ae-filtro button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.ae-filtro button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); aeFiltro=b.dataset.f; renderAcoEmb();
+});
+
+// ================= HISTÓRICO =================
+let hNivel='material', hItem=null, formOpen=false;
+const MESES=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+
+// mapa: chave do material -> objeto do material
+function matPorChave(k){
+  if(k.startsWith('aco_')) return D.aco[+k.slice(4)];
+  if(k.startsWith('emb_')) return D.embalagem[+k.slice(4)];
+  return D.agregados[k];
+}
+function nomeMat(k){ const m=matPorChave(k); return m?m.nome:k; }
+function todasChaves(){
+  return [...KEYS, ...D.aco.map((_,i)=>'aco_'+i), ...D.embalagem.map((_,i)=>'emb_'+i)];
+}
+// compras ordenadas por data (mais recente primeiro)
+function comprasDe(k){
+  const c=D.compras[k]||[];
+  return [...c].sort((a,b)=>b.data.localeCompare(a.data));
+}
+// preço vigente = última compra
+function precoVigente(k){
+  const c=comprasDe(k);
+  return c.length? c[0].preco : 0;
+}
+// aplica o preço vigente ao material (pra que o custo use sempre a última compra)
+function sincronizarPrecos(){
+  todasChaves().forEach(k=>{
+    const c=comprasDe(k);
+    if(!c.length) return;
+    const m=matPorChave(k);
+    if(!m) return;
+    m.precoCompra=c[0].preco;
+    if(c[0].precoNF!==undefined && c[0].precoNF>0){
+      m.precoNF=c[0].precoNF; m.qtdeNF=c[0].qtdeNF; m.qtdeReal=c[0].qtdeReal;
+    }
+  });
+}
+// custo unitário numa data (usa a compra vigente naquela data)
+function custoUnitEm(k,dataISO){
+  const c=comprasDe(k).filter(x=>x.data<=dataISO);
+  if(!c.length) return 0;
+  const compra=c[0]; // mais recente até aquela data
+  const m=matPorChave(k);
+  if(!m) return 0;
+  const tmp={...m, precoCompra:compra.preco};
+  if(compra.precoNF>0){ tmp.precoNF=compra.precoNF; tmp.qtdeNF=compra.qtdeNF; tmp.qtdeReal=compra.qtdeReal; }
+  return custoUnit(tmp);
+}
+// custo do traço numa data
+function custoTracoEm(t,dataISO){
+  let tot=0;
+  KEYS.forEach(k=>{ tot += (t.materiais[k]||0) * custoUnitEm(k,dataISO); });
+  return tot;
+}
+// custo por peça de um produto numa data (MP + aço + emb)
+function custoProdutoEm(p,dataISO){
+  const t=D.tracos[p.traco];
+  let mp=0;
+  if(t && t.pesoTraco>0) mp=(custoTracoEm(t,dataISO)/t.pesoTraco)*p.pesoPeca;
+  // aço
+  let aco=0;
+  if(p.aco) Object.keys(p.aco).forEach((tipo,i)=>{
+    const idx=ACO_TIPOS.indexOf(tipo);
+    if(idx>=0) aco += (p.aco[tipo]||0) * custoUnitEm('aco_'+idx,dataISO);
+  });
+  aco += (p.moAcoTubo||0);
+  // embalagem
+  let emb=0;
+  if(p.pecasPalete>0){
+    const cPal=custoUnitEm('emb_3',dataISO)*(D.embalagem[3].divisor||1); // palete (preço direto)
+    const cSel=custoUnitEm('emb_2',dataISO)*(D.embalagem[2].divisor||1);
+    const cFit=custoUnitEm('emb_1',dataISO)*(D.embalagem[1].divisor||1);
+    const cFil=custoUnitEm('emb_0',dataISO)*(D.embalagem[0].divisor||1);
+    emb=(cPal + (p.qtdeSelo||0)*cSel + (p.qtdeFita||0)*cFit + (p.qtdeFilme||0)*cFil)/p.pecasPalete;
+  }
+  return mp+aco+emb;
+}
+// todas as datas de compra relevantes (para plotar)
+function datasRelevantes(chaves){
+  const s=new Set();
+  chaves.forEach(k=>(D.compras[k]||[]).forEach(c=>s.add(c.data)));
+  return [...s].sort();
+}
+function fmtData(iso){
+  const [y,m,dd]=iso.split('-');
+  return dd+'/'+m;
+}
+function fmtDataLonga(iso){
+  const [y,m,dd]=iso.split('-');
+  return dd+' '+MESES[+m-1]+' '+y.slice(2);
+}
+
+// ---- SELETOR ----
+function renderSeletor(){
+  const sel=document.getElementById('h-item');
+  sel.innerHTML='';
+  if(hNivel==='material'){
+    todasChaves().forEach(k=>{
+      if(!D.compras[k]||!D.compras[k].length) return;
+      const o=document.createElement('option');o.value=k;o.textContent=nomeMat(k);sel.appendChild(o);
+    });
+  } else if(hNivel==='traco'){
+    D.tracos.forEach(t=>{const o=document.createElement('option');o.value=t.id;o.textContent=t.nome;sel.appendChild(o);});
+  } else {
+    D.produtos.forEach((p,i)=>{const o=document.createElement('option');o.value=i;o.textContent=p.nome;sel.appendChild(o);});
+  }
+  if(!hItem || !sel.querySelector(`option[value="${CSS.escape(String(hItem))}"]`)) hItem=sel.value;
+  sel.value=hItem;
+  sel.onchange=()=>{hItem=sel.value;formOpen=false;renderHist();};
+}
+
+// ---- GRÁFICO (SVG puro) ----
+function grafico(pontos, unidade, casas){
+  if(pontos.length<1) return '<div class="ch-empty">Sem dados ainda.</div>';
+  const vals=pontos.map(p=>p.v);
+  let min=Math.min(...vals), max=Math.max(...vals);
+  if(min===max){ min=min*0.9; max=max*1.1||1; }
+  const range=max-min;
+  min-=range*0.12; max+=range*0.12;
+  const H=150;
+  // eixo Y (3 linhas)
+  let grid='';
+  for(let i=0;i<=2;i++){
+    const v=min+(max-min)*(i/2);
+    const y=H-(i/2)*H;
+    grid+=`<div class="ch-grid" style="top:${y}px"></div>
+           <div class="ch-ylab" style="top:${y}px">${fmt(v)}</div>`;
+  }
+  // pontos e linha (escada — preço vale até a próxima compra)
+  const n=pontos.length;
+  const px=(i)=> n>1 ? (i/(n-1))*100 : 50;
+  const py=(v)=> ((v-min)/(max-min))*100;
+  let path='';
+  pontos.forEach((p,i)=>{
+    const x=px(i), y=100-py(p.v);
+    if(i===0) path+=`M ${x} ${y}`;
+    else{
+      const xPrev=px(i-1);
+      const yPrev=100-py(pontos[i-1].v);
+      path+=` L ${x} ${yPrev} L ${x} ${y}`;  // escada
+    }
+  });
+  let dots='', labs='';
+  pontos.forEach((p,i)=>{
+    dots+=`<div class="ch-dot" style="left:${px(i)}%;bottom:${py(p.v)}%" title="${fmtDataLonga(p.d)}: ${fmt(p.v)}"></div>`;
+    if(n<=8 || i===0 || i===n-1 || i%Math.ceil(n/5)===0)
+      labs+=`<div class="ch-xlab" style="left:${px(i)}%">${fmtData(p.d)}</div>`;
+  });
+  return `<div class="chart">
+    ${grid}
+    <svg class="ch-line" viewBox="0 0 100 100" preserveAspectRatio="none">
+      <path d="${path}" fill="none" stroke="var(--rebar)" stroke-width="0.7" vector-effect="non-scaling-stroke"/>
+    </svg>
+    ${dots}${labs}
+  </div>`;
+}
+
+// ---- RENDER PRINCIPAL ----
+function renderHist(){ if(mpReady) salvarMP();
+  sincronizarPrecos();
+  const wrap=document.getElementById('h-conteudo');
+  let pontos=[], atual=0, unidade='', titulo='', sub='';
+
+  if(hNivel==='material'){
+    const k=hItem;
+    const m=matPorChave(k);
+    if(!m){wrap.innerHTML='';return;}
+    const cs=comprasDe(k).slice().reverse();
+    pontos=cs.map(c=>{
+      const tmp={...m,precoCompra:c.preco};
+      if(c.precoNF>0){tmp.precoNF=c.precoNF;tmp.qtdeNF=c.qtdeNF;tmp.qtdeReal=c.qtdeReal;}
+      return {d:c.data, v:custoUnit(tmp), preco:c.preco, c};
+    });
+    atual=pontos.length?pontos[pontos.length-1].v:0;
+    unidade='R$/'+m.um;
+    titulo=m.nome; sub='custo unitário por compra';
+  } else if(hNivel==='traco'){
+    const t=D.tracos[+hItem];
+    const datas=datasRelevantes(KEYS);
+    pontos=datas.map(d=>({d, v:custoTracoEm(t,d)}));
+    atual=pontos.length?pontos[pontos.length-1].v:0;
+    unidade='R$/batida'; titulo=t.nome; sub=`custo da batida de ${fmt0(t.pesoTraco)} kg`;
+  } else {
+    const p=D.produtos[+hItem];
+    const chaves=[...KEYS, ...D.aco.map((_,i)=>'aco_'+i), ...D.embalagem.map((_,i)=>'emb_'+i)];
+    const datas=datasRelevantes(chaves);
+    pontos=datas.map(d=>({d, v:custoProdutoEm(p,d)}));
+    atual=pontos.length?pontos[pontos.length-1].v:0;
+    unidade='R$/peça'; titulo=p.nome; sub='custo de matéria-prima por peça';
+  }
+
+  // variação
+  const primeiro=pontos.length?pontos[0].v:0;
+  const varPct = primeiro>0 ? (atual-primeiro)/primeiro : 0;
+  const cls = Math.abs(varPct)<0.005?'eq':(varPct>0?'up':'dn');
+  const seta = Math.abs(varPct)<0.005?'':(varPct>0?'▲':'▼');
+
+  let html=`<div class="chart-card">
+    <div class="chart-t">${titulo}</div>
+    <div class="chart-s">${sub}</div>
+    <div class="chart-atual">
+      <span class="ca-v mono">R$ ${fmt(atual)}</span>
+      <span class="ca-u">${unidade}</span>
+      ${pontos.length>1?`<span class="ca-d ${cls}">${seta} ${varPct>0?'+':''}${(varPct*100).toFixed(1)}%</span>`:''}
+    </div>
+    ${grafico(pontos, unidade)}
+  </div>`;
+
+  // lista de compras (só no nível material)
+  if(hNivel==='material'){
+    const k=hItem;
+    const cs=comprasDe(k);
+    html+=`<div class="chart-card">
+      <div class="chart-t">Compras registradas</div>
+      <div class="chart-s">o preço vigente é o da compra mais recente</div>
+      <div class="compras" id="lista-compras"></div>
+      <button class="btn-add" id="btn-nc">+ Registrar nova compra</button>
+      <div class="form-nc${formOpen?' on':''}" id="form-nc">
+        <div class="fnc-t">Nova compra — ${nomeMat(k)}</div>
+        <div class="fnc-g">
+          <div class="fnc-f"><label>Data</label><input type="date" id="nc-data" value="${D.hoje}"></div>
+          <div class="fnc-f"><label>Preço (R$/${matPorChave(k).unidCompra})</label><input type="number" id="nc-preco" step="0.01" placeholder="0,00"></div>
+          <div class="fnc-f"><label>Quantidade</label><input type="number" id="nc-qtde" step="0.01" placeholder="0"></div>
+          <div class="fnc-f"><label>Fornecedor</label><input type="text" id="nc-forn" placeholder="opcional"></div>
+        </div>
+        <div class="fnc-btns">
+          <button class="btn-cx" id="nc-cancel">Cancelar</button>
+          <button class="btn-ok" id="nc-save">Salvar compra</button>
+        </div>
+      </div>
+    </div>`;
+  }
+
+  // impacto (nível traço e produto)
+  if(hNivel==='traco'){
+    const t=D.tracos[+hItem];
+    html+=`<div class="chart-card">
+      <div class="chart-t">Composição do custo</div>
+      <div class="chart-s">quanto cada material pesa nesta batida</div>`;
+    const ct=custoTraco(t);
+    KEYS.forEach(k=>{
+      const q=t.materiais[k]||0;
+      if(!q) return;
+      const c=q*custoUnit(D.agregados[k]);
+      const pct=ct>0?c/ct*100:0;
+      html+=`<div class="imp-row">
+        <span class="imp-n">${LBL[k]} <span style="font-size:.58rem;color:var(--txt3)">${fmt0(q)} ${D.agregados[k].um}</span></span>
+        <span class="imp-v mono">R$ ${fmt(c)}</span>
+        <span class="imp-d" style="color:var(--txt3)">${pct.toFixed(0)}%</span>
+      </div>`;
+    });
+    html+='</div>';
+  }
+
+  wrap.innerHTML=html;
+
+  // eventos do form
+  if(hNivel==='material'){
+    renderListaCompras(hItem);
+    const btn=document.getElementById('btn-nc');
+    if(btn) btn.onclick=()=>{formOpen=true;document.getElementById('form-nc').classList.add('on');};
+    const cx=document.getElementById('nc-cancel');
+    if(cx) cx.onclick=()=>{formOpen=false;document.getElementById('form-nc').classList.remove('on');};
+    const sv=document.getElementById('nc-save');
+    if(sv) sv.onclick=()=>salvarCompra(hItem);
+  }
+}
+function renderListaCompras(k){
+  const box=document.getElementById('lista-compras');
+  if(!box) return;
+  const cs=comprasDe(k);
+  const m=matPorChave(k);
+  box.innerHTML='';
+  cs.forEach((c,i)=>{
+    const anterior = cs[i+1];
+    const varP = anterior && anterior.preco>0 ? (c.preco-anterior.preco)/anterior.preco : null;
+    const div=document.createElement('div');
+    div.className='compra'+(i===0?' cp-atual':'');
+    const [y,mo,dd]=c.data.split('-');
+    let varTxt='';
+    if(varP!==null){
+      const cl=Math.abs(varP)<0.005?'cmp-eq':(varP>0?'cmp-up':'cmp-dn');
+      const st=Math.abs(varP)<0.005?'≈':(varP>0?'▲':'▼');
+      varTxt=`<span class="cp-var ${cl}">${st} ${varP>0?'+':''}${(varP*100).toFixed(1)}%</span>`;
+    } else varTxt='<span class="cp-var" style="color:var(--txt3);font-size:.6rem">1ª</span>';
+    div.innerHTML=`
+      <div class="cp-data"><b>${dd}/${mo}</b>${y.slice(2)}</div>
+      <div class="cp-info">
+        <div class="cp-preco mono">R$ ${fmt(c.preco)} <span style="font-size:.6rem;color:var(--txt3);font-weight:400">/${m.unidCompra}</span>
+          ${i===0?'<span style="font-size:.52rem;background:var(--rebar);color:#fff;padding:1px 5px;border-radius:3px;margin-left:5px">VIGENTE</span>':''}</div>
+        <div class="cp-meta">${c.qtde?fmt0(c.qtde)+' '+m.unidCompra:''}${c.qtde&&c.forn?' · ':''}${c.forn||''}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:4px">${varTxt}
+        ${cs.length>1?'<button class="cp-del" title="Remover">×</button>':''}</div>`;
+    const del=div.querySelector('.cp-del');
+    if(del) del.onclick=()=>{
+      if(confirm('Remover esta compra do histórico?')){
+        const arr=D.compras[k];
+        const idx=arr.findIndex(x=>x.data===c.data && x.preco===c.preco);
+        if(idx>=0) arr.splice(idx,1);
+        renderHist(); renderAll();
+      }
+    };
+    box.appendChild(div);
+  });
+}
+function salvarCompra(k){
+  const data=document.getElementById('nc-data').value;
+  const preco=parseFloat(document.getElementById('nc-preco').value)||0;
+  const qtde=parseFloat(document.getElementById('nc-qtde').value)||0;
+  const forn=document.getElementById('nc-forn').value||'';
+  if(!data||preco<=0){ alert('Informe a data e o preço.'); return; }
+  const m=matPorChave(k);
+  if(!D.compras[k]) D.compras[k]=[];
+  D.compras[k].push({data,preco,qtde,forn,
+    precoNF:m.precoNF||0, qtdeNF:m.qtdeNF||0, qtdeReal:m.qtdeReal||0});
+  formOpen=false;
+  renderHist();
+  renderAll();
+}
+document.querySelectorAll('.h-sel button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.h-sel button').forEach(x=>x.classList.remove('on'));
+  b.classList.add('on'); hNivel=b.dataset.h; hItem=null; formOpen=false;
+  renderSeletor(); renderHist();
+});
+
+function renderAll(){
+  renderMat(KEYS.map(k=>D.agregados[k]),'agregados','ag');
+  renderMat(D.aco,'aco','ac');
+  renderMat(D.embalagem,'embalagem','em');
+  renderTracos();
+  renderAcoEmb();
+}
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('on'));
+  t.classList.add('on');
+  document.getElementById('v-'+t.dataset.v).classList.add('on');
+});
+renderAll();
+renderSeletor();
+renderHist();
+
+}
+
+// ===================================================================
+// START
+// ===================================================================
+Persist.init(db, fb, "custos", updateSync);
+initAuth();
+</script>
+</body>
+</html>
