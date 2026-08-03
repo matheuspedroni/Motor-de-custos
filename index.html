@@ -582,6 +582,9 @@ main{padding:16px;max-width:680px;margin:0 auto}
 #mp-container .tpe-un{font-size:.56rem;color:var(--txt3)}
 #mp-container .tpe-custo{font-size:.72rem;color:var(--txt2);min-width:64px;text-align:right}
 
+
+#mp-container .tr-peso-calc{font-weight:800;color:var(--rebar2);font-size:.9rem;font-variant-numeric:tabular-nums}
+
 </style>
 </head>
 <body>
@@ -625,7 +628,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v9</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v10</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado</span></div>
     </div>
     <div class="ah-user">
@@ -1123,7 +1126,7 @@ const AJUDAS={
   traco:{t:'Traço',c:`<p>A "receita" do concreto — quanto de cada material entra numa batida. Seus 95 produtos usam apenas <b>13 traços</b>.</p>
     <p>Edite o traço uma vez e o custo muda em <b>todos os produtos</b> que o usam. O custo por peça é proporcional ao peso da peça.</p>
     <div class="ex">O traço das fossas serve 56 produtos de uma vez.</div>`},
-  pesobatida:{t:'Peso da batida',c:`<p>O peso total de uma batida de concreto (soma de todos os materiais). Usado pra calcular o custo por peça:</p>
+  pesobatida:{t:'Peso da batida',c:`<p>O peso total da batida é somado <b>automaticamente</b> conforme você preenche a quantidade de cada material. Usado pra calcular o custo por peça:</p>
     <p><b>custo por peça = custo da batida ÷ peso da batida × peso da peça</b></p>`},
   pecaspalete:{t:'Peças por palete',c:`<p>Quantas peças cabem num palete. O custo do palete (e dos selos, fitas) se divide por elas.</p>
     <div class="ex">Palete de R$ 10 com 163 blocos = R$ 0,06 de palete por bloco.</div>`},
@@ -1271,6 +1274,13 @@ function refreshMat(div,m){ salvarMP();
 }
 
 // ---- traços ----
+function pesoBatida(t){
+  // soma os materiais sólidos em kg (aditivos são ML, não entram no peso)
+  const solidos=['areiaInd','granilha','pedrisco','brita','areiaNat','cimento'];
+  let total=0;
+  solidos.forEach(k=>{ total += parseFloat(t.materiais[k])||0; });
+  return total;
+}
 function custoTraco(t){
   let total=0;
   KEYS.forEach(k=>{ total += (t.materiais[k]||0) * custoUnit(D.agregados[k]); });
@@ -1278,7 +1288,8 @@ function custoTraco(t){
 }
 function custoPeca(t,pesoPeca){
   const ct=custoTraco(t);
-  return t.pesoTraco>0 ? (ct/t.pesoTraco)*pesoPeca : 0;
+  const pb=pesoBatida(t);
+  return pb>0 ? (ct/pb)*pesoPeca : 0;
 }
 function renderTracos(){
   const wrap=document.getElementById('tracos'); wrap.innerHTML='';
@@ -1294,17 +1305,17 @@ function renderTracos(){
         <div class="tr-nome"><span class="tr-exp">▶</span>${t.nome}</div>
         <div class="tr-custo mono ct-out">R$ ${fmt(ct)}</div>
       </div>
-      <div class="tr-sub">${prods.length} produto${prods.length>1?'s':''} · batida de <span class="pt-out">${fmt0(t.pesoTraco)}</span> kg</div>`;
+      <div class="tr-sub">${prods.length} produto${prods.length>1?'s':''} · batida de <span class="pt-out">${fmt0(pesoBatida(t))}</span> kg</div>`;
     head.onclick=()=>{tracoOpen[t.id]=!tracoOpen[t.id];renderTracos();};
     div.appendChild(head);
     // body
     const body=document.createElement('div');body.className='tr-body';
-    // peso do traço
+    // peso do traço (SOMA AUTOMÁTICA dos materiais sólidos)
     const pw=document.createElement('div');pw.className='tr-peso';
     pw.innerHTML=`<span style="color:var(--txt2)">Peso da batida (kg) ${helpIcon('pesobatida')}</span>`;
-    const pi=document.createElement('input');pi.type='number';pi.value=t.pesoTraco;
-    pi.oninput=()=>{t.pesoTraco=parseFloat(pi.value)||0;refreshTraco(div,t);};
-    pw.appendChild(pi);body.appendChild(pw);
+    const pb=document.createElement('span');pb.className='tr-peso-calc pb-out';
+    pb.textContent=fmt(pesoBatida(t));
+    pw.appendChild(pb);body.appendChild(pw);
     // header colunas
     const h=document.createElement('div');h.className='tr-hdr';
     h.innerHTML='<span>Material</span><span>Qtde</span><span>Custo</span>';
@@ -1400,15 +1411,26 @@ function renderTracos(){
 }
 function refreshTraco(div,t){ salvarMP();
   const ct=custoTraco(t);
+  const pb=pesoBatida(t);
+  t.pesoTraco=pb;  // mantém sincronizado
   div.querySelector('.ct-out').textContent='R$ '+fmt(ct);
   const ctt=div.querySelector('.ct-total'); if(ctt) ctt.textContent='R$ '+fmt(ct);
-  const pt=div.querySelector('.pt-out'); if(pt) pt.textContent=fmt0(t.pesoTraco);
+  const pt=div.querySelector('.pt-out'); if(pt) pt.textContent=fmt0(pb);
+  const pbo=div.querySelector('.pb-out'); if(pbo) pbo.textContent=fmt(pb);
   // custos por material
   div.querySelectorAll('.tr-mat-custo').forEach(el=>{
     const k=el.dataset.mat;
     el.textContent='R$ '+fmt((t.materiais[k]||0)*custoUnit(D.agregados[k]));
   });
-  // custo por produto
+  // custo por produto (layout novo: peso editável + custo)
+  const prodsDoTraco=D.produtos.filter(p=>p.traco===t.id);
+  div.querySelectorAll('.tr-prod-edit').forEach((row,idx)=>{
+    const p=prodsDoTraco[idx];
+    if(!p) return;
+    const custoEl=row.querySelector('.tpe-custo');
+    if(custoEl) custoEl.textContent='R$ '+fmt3(custoPeca(t,p.pesoPeca||0));
+  });
+  // compatibilidade com layout antigo (se existir)
   div.querySelectorAll('.tr-prod-item .c').forEach(el=>{
     const peso=parseFloat(el.dataset.peso)||0;
     el.textContent='R$ '+fmt3(custoPeca(t,peso));
