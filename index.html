@@ -594,6 +594,20 @@ main{padding:16px;max-width:680px;margin:0 auto}
 #mp-container .mpl-tag.ok{background:var(--good-dim,rgba(63,184,115,.14));color:var(--good)}
 #mp-container .mpl-tag.pend{background:rgba(232,197,71,.14);color:var(--warn)}
 
+
+/* CORREÇÃO: gráfico não captura cliques (deixava o centro do botão "morto") */
+#mp-container .ch-line, #mp-container .ch-grid, #mp-container .ch-xlab,
+#mp-container .ch-ylab, #mp-container .ch-dot, #mp-container svg,
+#mp-container .chart-graph, #mp-container [class*="ch-"]{pointer-events:none}
+/* garante que o botão de compra sempre recebe cliques */
+#mp-container #btn-nc, #mp-container .btn-add{pointer-events:auto!important;position:relative;z-index:5}
+
+
+/* CORREÇÃO v16: container do gráfico não deixa nada vazar por cima do botão */
+#mp-container .chart{overflow:hidden;pointer-events:none}
+#mp-container .chart *{pointer-events:none}
+#mp-container #btn-nc{pointer-events:auto!important;position:relative;z-index:10}
+
 </style>
 </head>
 <body>
@@ -605,7 +619,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
 </div>
 
 <!-- LOGIN -->
-<div id="login-screen" class="hidden">
+<div id="login-screen" class="hidden" style="display:none!important">
   <div class="login-box">
     <div class="brand">
       <div class="brand-mark">🏗️</div>
@@ -637,7 +651,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v15</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v16</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado</span></div>
     </div>
     <div class="ah-user">
@@ -1764,7 +1778,7 @@ function grafico(pontos, unidade, casas){
   });
   return `<div class="chart">
     ${grid}
-    <svg class="ch-line" viewBox="0 0 100 100" preserveAspectRatio="none">
+    <svg class="ch-line" viewBox="0 0 100 100" preserveAspectRatio="none" style="pointer-events:none">
       <path d="${path}" fill="none" stroke="var(--rebar)" stroke-width="0.7" vector-effect="non-scaling-stroke"/>
     </svg>
     ${dots}${labs}
