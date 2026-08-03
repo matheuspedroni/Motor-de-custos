@@ -635,7 +635,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v12</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v13</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado</span></div>
     </div>
     <div class="ah-user">
@@ -1082,7 +1082,8 @@ const D_DEFAULT = {"versaoDados":3,"agregados": {"areiaInd": {"nome": "Areia Ind
 
 function salvarMP(){
   if(!D || !mpReady) return;
-  Persist.save('materia_prima', D);
+  try{ Persist.save('materia_prima', D); }
+  catch(e){ console.warn('salvarMP falhou (ignorado):', e.message); }
 }
 
 async function initMateriaPrima(container){
@@ -1117,6 +1118,24 @@ async function initMateriaPrima(container){
 }
 
 function runMateriaPrima(){
+  // Delegação global: garante que o botão de nova compra SEMPRE responde,
+  // mesmo se algum religamento de handler falhar.
+  const _cont=document.getElementById('mp-container');
+  if(_cont && !_cont._ncDelegado){
+    _cont._ncDelegado=true;
+    _cont.addEventListener('click', (ev)=>{
+      const btn=ev.target.closest('#btn-nc');
+      if(btn){
+        formOpen=true;
+        const f=document.getElementById('form-nc');
+        if(f){
+          f.classList.add('on');
+          setTimeout(()=>{ f.scrollIntoView({behavior:'smooth',block:'center'});
+            const d=document.getElementById('nc-data'); if(d) d.focus(); }, 50);
+        }
+      }
+    });
+  }
 
 const AJUDAS={
   precocompra:{t:'Preço de compra',c:`<p>Quanto você paga pelo material na unidade de compra (saco, tonelada, metro). O app converte pra unidade de uso (kg, ml) usando o divisor.</p>`},
@@ -1844,7 +1863,15 @@ function renderHist(){ if(mpReady) salvarMP();
   if(hNivel==='material'){
     renderListaCompras(hItem);
     const btn=document.getElementById('btn-nc');
-    if(btn) btn.onclick=()=>{formOpen=true;document.getElementById('form-nc').classList.add('on');};
+    if(btn) btn.onclick=()=>{
+      formOpen=true;
+      const f=document.getElementById('form-nc');
+      f.classList.add('on');
+      // rola até o formulário pra garantir que fica visível
+      setTimeout(()=>{ f.scrollIntoView({behavior:'smooth', block:'center'});
+        const d=document.getElementById('nc-data'); if(d) d.focus();
+      }, 50);
+    };
     const cx=document.getElementById('nc-cancel');
     if(cx) cx.onclick=()=>{formOpen=false;document.getElementById('form-nc').classList.remove('on');};
     const sv=document.getElementById('nc-save');
@@ -1855,14 +1882,14 @@ function renderListaCompras(k){
   const box=document.getElementById('lista-compras');
   if(!box) return;
   const cs=comprasDe(k);
-  const m=matPorChave(k);
+  const m=matPorChave(k)||{unidCompra:'un'};
   box.innerHTML='';
-  cs.forEach((c,i)=>{
+  cs.forEach((c,i)=>{ try{
     const anterior = cs[i+1];
     const varP = anterior && anterior.preco>0 ? (c.preco-anterior.preco)/anterior.preco : null;
     const div=document.createElement('div');
     div.className='compra'+(i===0?' cp-atual':'');
-    const [y,mo,dd]=c.data.split('-');
+    const _dt=(c.data||'').split('-'); const y=_dt[0]||'----', mo=_dt[1]||'--', dd=_dt[2]||'--';
     let varTxt='';
     if(varP!==null){
       const cl=Math.abs(varP)<0.005?'cmp-eq':(varP>0?'cmp-up':'cmp-dn');
@@ -1888,6 +1915,7 @@ function renderListaCompras(k){
       }
     };
     box.appendChild(div);
+    }catch(e){ console.warn('compra malformada ignorada:', e.message); }
   });
 }
 function salvarCompra(k){
@@ -2480,7 +2508,7 @@ function renderEpi(){
         const ant=compras[i+1];
         const vp= ant&&ant.preco>0 ? (c.preco-ant.preco)/ant.preco : null;
         const l=document.createElement('div'); l.className='compra-l'+(i===0?' cl-atual':'');
-        const [y,mo,dd]=c.data.split('-');
+        const _dt=(c.data||'').split('-'); const y=_dt[0]||'----', mo=_dt[1]||'--', dd=_dt[2]||'--';
         let vt='';
         if(vp!==null){
           const cl=Math.abs(vp)<0.005?'var(--txt3)':(vp>0?'var(--bad)':'var(--good)');
