@@ -651,7 +651,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v16</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v17</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado</span></div>
     </div>
     <div class="ah-user">
@@ -904,8 +904,15 @@ async function doLogout(){
 // ===================================================================
 function updateSync(state){
   const dot = $("sync-dot"), txt = $("sync-txt");
+  if(DEMO){
+    // MODO LOCAL: Firebase não carregou — dados NÃO sincronizam entre aparelhos
+    dot.className = "sync-dot off";
+    txt.textContent = "⚠ Modo local (não sincroniza)";
+    txt.style.color = "#e8c547";
+    return;
+  }
   dot.className = "sync-dot" + (state==="syncing"?" syncing":state==="off"?" off":"");
-  txt.textContent = state==="syncing" ? "Salvando…" : state==="off" ? "Modo local" : "Sincronizado";
+  txt.textContent = state==="syncing" ? "Salvando…" : state==="off" ? "⚠ Sem conexão" : "Sincronizado na nuvem";
 }
 
 // ===================================================================
