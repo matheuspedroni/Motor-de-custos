@@ -637,7 +637,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v14</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v15</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado</span></div>
     </div>
     <div class="ah-user">
@@ -1830,7 +1830,7 @@ function renderHist(){ if(mpReady) salvarMP();
       <div class="chart-t">Compras registradas</div>
       <div class="chart-s">o preço vigente é o da compra mais recente</div>
       <div class="compras" id="lista-compras"></div>
-      <button class="btn-add" id="btn-nc">+ Registrar nova compra</button>
+      <button class="btn-add" id="btn-nc" onclick="(function(){var f=document.getElementById('form-nc');if(!f){alert('Formulário não encontrado');return;}f.classList.add('on');f.style.position='fixed';f.style.left='50%';f.style.top='50%';f.style.transform='translate(-50%,-50%)';f.style.zIndex='99999';f.style.maxWidth='400px';f.style.width='calc(100% - 40px)';f.style.background='#22262f';f.style.border='2px solid #d97642';f.style.borderRadius='12px';f.style.padding='18px';f.style.boxShadow='0 12px 40px rgba(0,0,0,.6)';f.style.maxHeight='85vh';f.style.overflowY='auto';var bd=document.getElementById('form-nc-bd');if(!bd){bd=document.createElement('div');bd.id='form-nc-bd';document.body.appendChild(bd);bd.onclick=function(){f.classList.remove('on');f.style.display='none';bd.style.display='none';};}bd.style.display='block';bd.style.position='fixed';bd.style.inset='0';bd.style.zIndex='99998';bd.style.background='rgba(0,0,0,.65)';var d=document.getElementById('nc-data');if(d)setTimeout(function(){d.focus();},50);})()">+ Registrar nova compra</button>
       <div class="form-nc${formOpen?' on':''}" id="form-nc">
         <div class="fnc-t">Nova compra — ${nomeMat(k)}</div>
         <div class="fnc-g">
@@ -2653,6 +2653,23 @@ window.fecharAjuda = function(){
   const bd = document.getElementById('help-backdrop-global');
   if(pop) pop.classList.remove('on');
   if(bd) bd.classList.remove('on');
+};
+
+
+// Função GLOBAL para abrir o formulário de nova compra (máxima robustez)
+window.abrirFormCompra = function(){
+  const f = document.getElementById('form-nc');
+  if(!f){ alert('Formulário não encontrado na tela.'); return; }
+  f.classList.add('on');
+  // fundo escuro
+  let bd = document.getElementById('form-nc-bd');
+  if(!bd){
+    bd = document.createElement('div'); bd.id='form-nc-bd'; bd.className='form-nc-backdrop';
+    document.body.appendChild(bd);
+    bd.onclick = ()=>{ f.classList.remove('on'); bd.classList.remove('on'); };
+  }
+  bd.classList.add('on');
+  const d = document.getElementById('nc-data'); if(d) setTimeout(()=>d.focus(), 50);
 };
 
 // ===================================================================
