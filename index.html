@@ -651,7 +651,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v20</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v21</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado</span></div>
     </div>
     <div class="ah-user">
@@ -1142,7 +1142,7 @@ const Persist = {
 const Sync = {
   db:null, fb:null, base:'custos/mp', demo:true, _timers:{}, _mine:{},
 
-  init(db, fb){ this.db=db; this.fb=fb; this.demo=!db; },
+  init(db, fb){ this.db=db; this.fb=fb; this.demo=!db; this._wroteAt={}; },
 
   // salva UMA ficha: colecao ('tracos'), id, dado. Só toca nessa ficha.
   saveItem(colecao, id, dado){
@@ -1162,7 +1162,7 @@ const Sync = {
     clearTimeout(this._timers[chave]);
     this._timers[chave] = setTimeout(async ()=>{
       try{
-        this._mine[chave] = JSON.stringify(dado); // marca como escrita nossa
+        if(this._wroteAt) this._wroteAt[colecao] = Date.now();
         await this.fb.set(this.fb.ref(this.db, path), dado);
       }catch(e){ console.warn('saveItem falhou:', colecao, id, e.message); }
     }, 400);
@@ -1182,7 +1182,10 @@ const Sync = {
   async saveAll(colecao, objMap){
     const path = this.base+'/'+colecao;
     if(this.demo){ try{ localStorage.setItem('pedroni:'+path, JSON.stringify(objMap)); }catch(e){} return; }
-    try{ await this.fb.set(this.fb.ref(this.db, path), objMap); }catch(e){ console.warn('saveAll falhou:', colecao, e.message); }
+    try{
+      if(this._wroteAt) this._wroteAt[colecao] = Date.now();
+      await this.fb.set(this.fb.ref(this.db, path), objMap);
+    }catch(e){ console.warn('saveAll falhou:', colecao, e.message); }
   },
 
   // lê a coleção inteira uma vez (retorna objeto {id:dado} ou null)
@@ -1202,8 +1205,16 @@ const Sync = {
     if(this.demo) return;
     const path = this.base+'/'+colecao;
     try{
+      let primeira = true;
       this.fb.onValue(this.fb.ref(this.db, path), (snap)=>{
-        onChange(snap.exists() ? snap.val() : null);
+        const val = snap.exists() ? snap.val() : null;
+        // a primeira chamada é o estado inicial — sempre aplica
+        if(primeira){ primeira=false; onChange(val); return; }
+        // ignora echo da própria escrita recente (janela de 1,5s após salvar)
+        const agora = Date.now();
+        const wroteAt = (this._wroteAt && this._wroteAt[colecao]) || 0;
+        if(agora - wroteAt < 1500) return;
+        onChange(val);
       });
     }catch(e){ console.warn('watch falhou:', colecao, e.message); }
   }
@@ -1326,7 +1337,18 @@ async function initMateriaPrima(container){
   // === TEMPO REAL: escuta cada coleção; mudança de outro aparelho atualiza a tela ===
   if(!mpWatching){
     mpWatching = true;
-    const reRender = ()=>{ if(document.getElementById('mp-container')) renderAll(); };
+    const reRender = ()=>{
+      if(!document.getElementById('mp-container')) return;
+      // se o usuário está digitando num campo, adia pra não atrapalhar/perder edição
+      const foco = document.activeElement;
+      const digitando = foco && (foco.tagName==='INPUT'||foco.tagName==='SELECT'||foco.tagName==='TEXTAREA') && document.getElementById('mp-container').contains(foco);
+      if(digitando){
+        // reagenda pra quando terminar de digitar (evento blur uma vez)
+        foco.addEventListener('blur', ()=>{ if(document.getElementById('mp-container')) renderAll(); }, {once:true});
+        return;
+      }
+      renderAll();
+    };
     const avisou = ()=>{ const st=document.getElementById('sync-txt'); if(st){ st.textContent='Atualizado de outro aparelho'; setTimeout(()=>{ if(!DEMO) st.textContent='Sincronizado na nuvem'; },2000); } };
     Sync.watch('tracos', (mapa)=>{ if(mapa){ D.tracos=mapaParaLista(mapa); reRender(); avisou(); } });
     Sync.watch('agregados', (mapa)=>{ if(mapa){ D.agregados=mapa; reRender(); avisou(); } });
