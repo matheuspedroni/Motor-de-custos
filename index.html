@@ -651,7 +651,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v23</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v24</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado</span></div>
     </div>
     <div class="ah-user">
@@ -1188,6 +1188,30 @@ function salvarMaterial(chave){
   if(DEMO || !db){ salvarMP(); return; }
   try{ if(D.agregados[chave]) fb.set(fb.ref(db,'custos/mp/agregados/'+chave), D.agregados[chave]); }catch(e){ console.warn(e.message); }
 }
+// salva SÓ um produto (edição de aço/embalagem/peso do produto)
+function salvarProduto(p){
+  if(!D || !mpReady || !p) return;
+  if(DEMO || !db){ salvarMP(); return; }
+  try{ fb.set(fb.ref(db,'custos/mp/produtos/'+p.id), p); }catch(e){ console.warn(e.message); }
+}
+// salva SÓ um item de aço (por índice)
+function salvarAco(i){
+  if(!D || !mpReady) return;
+  if(DEMO || !db){ salvarMP(); return; }
+  try{ if(D.aco[i]) fb.set(fb.ref(db,'custos/mp/aco/'+i), D.aco[i]); }catch(e){ console.warn(e.message); }
+}
+// salva SÓ um item de embalagem (por índice)
+function salvarEmb(i){
+  if(!D || !mpReady) return;
+  if(DEMO || !db){ salvarMP(); return; }
+  try{ if(D.embalagem[i]) fb.set(fb.ref(db,'custos/mp/embalagem/'+i), D.embalagem[i]); }catch(e){ console.warn(e.message); }
+}
+// salva a coleção de agregados inteira (só 8 itens, ok salvar junto quando edita um)
+function salvarAgregados(){
+  if(!D || !mpReady) return;
+  if(DEMO || !db){ salvarMP(); return; }
+  try{ fb.set(fb.ref(db,'custos/mp/agregados'), D.agregados); }catch(e){ console.warn(e.message); }
+}
 // salva SÓ um traço (usado ao editar um traço específico — mais eficiente)
 // salva SÓ um material agregado
 
@@ -1424,7 +1448,12 @@ function formulaTxt(m){
   }
   return `(${fmt(m.precoCompra)} − ${cred}%) ÷ ${m.divisor} = <b>R$ ${fmt4(cu)}/${m.um}</b>`;
 }
-function refreshMat(div,m){ salvarMP();
+function refreshMat(div,m){
+  // salva SÓ o material editado (não tudo)
+  const ia=D.aco.indexOf(m); const ie=D.embalagem.indexOf(m);
+  if(ia>=0) salvarAco(ia);
+  else if(ie>=0) salvarEmb(ie);
+  else salvarAgregados();
   const cu=custoUnit(m);
   div.querySelector('.mat-custo').textContent=fmt4(cu);
   const out=div.querySelector('.cu-out'); if(out) out.value=fmt4(cu);
@@ -1567,7 +1596,7 @@ function renderTracos(){
     grupos[g].forEach(t=>montaCard(t));
   });
 }
-function refreshTraco(div,t){ salvarMP();
+function refreshTraco(div,t){ salvarTraco(t);
   const ct=custoTraco(t);
   const pb=pesoBatida(t);
   t.pesoTraco=pb;  // mantém sincronizado
@@ -1713,7 +1742,7 @@ function embDetalhe(p){
   const tot=cp+cs+cf+cfi;
   return `Palete R$ ${fmt(cp)} + selos R$ ${fmt(cs)} + fitas R$ ${fmt(cf)} + filme R$ ${fmt(cfi)} = <b style="color:var(--rebar2)">R$ ${fmt(tot)}</b> ÷ ${fmt0(pp)} peças`;
 }
-function refreshAep(div,p){ salvarMP();
+function refreshAep(div,p){ salvarProduto(p);
   const c = aeFiltro==='aco' ? custoAco(p) : custoEmb(p);
   div.querySelector('.aep-c').textContent='R$ '+fmt3(c);
   const t=div.querySelector('.aep-total'); if(t) t.textContent='R$ '+fmt3(c);
