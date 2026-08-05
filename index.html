@@ -651,7 +651,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v21</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v22</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado</span></div>
     </div>
     <div class="ah-user">
@@ -1138,87 +1138,7 @@ const Persist = {
 // SYNC — sincronização por FICHAS SOLTAS (padrão FROTA)
 // Cada item (traço, material, compra) é salvo separado no Firebase.
 // Editar um item toca só aquele item; onValue por coleção escuta em tempo real.
-// ===================================================================
-const Sync = {
-  db:null, fb:null, base:'custos/mp', demo:true, _timers:{}, _mine:{},
-
-  init(db, fb){ this.db=db; this.fb=fb; this.demo=!db; this._wroteAt={}; },
-
-  // salva UMA ficha: colecao ('tracos'), id, dado. Só toca nessa ficha.
-  saveItem(colecao, id, dado){
-    const path = this.base+'/'+colecao+'/'+id;
-    if(this.demo){
-      // modo local: atualiza a coleção agrupada (pra loadAll ler certo)
-      try{
-        const cpath='pedroni:'+this.base+'/'+colecao;
-        const atual = JSON.parse(localStorage.getItem(cpath)||'{}');
-        atual[id]=dado;
-        localStorage.setItem(cpath, JSON.stringify(atual));
-      }catch(e){}
-      return;
-    }
-    // debounce por ficha (não grava a cada tecla)
-    const chave = colecao+'/'+id;
-    clearTimeout(this._timers[chave]);
-    this._timers[chave] = setTimeout(async ()=>{
-      try{
-        if(this._wroteAt) this._wroteAt[colecao] = Date.now();
-        await this.fb.set(this.fb.ref(this.db, path), dado);
-      }catch(e){ console.warn('saveItem falhou:', colecao, id, e.message); }
-    }, 400);
-  },
-
-  // remove uma ficha
-  removeItem(colecao, id){
-    const path = this.base+'/'+colecao+'/'+id;
-    if(this.demo){
-      try{ const cpath='pedroni:'+this.base+'/'+colecao; const atual=JSON.parse(localStorage.getItem(cpath)||'{}'); delete atual[id]; localStorage.setItem(cpath, JSON.stringify(atual)); }catch(e){}
-      return;
-    }
-    try{ this.fb.remove(this.fb.ref(this.db, path)); }catch(e){ console.warn('removeItem falhou:', e.message); }
-  },
-
-  // salva a coleção INTEIRA de uma vez (usado na migração inicial)
-  async saveAll(colecao, objMap){
-    const path = this.base+'/'+colecao;
-    if(this.demo){ try{ localStorage.setItem('pedroni:'+path, JSON.stringify(objMap)); }catch(e){} return; }
-    try{
-      if(this._wroteAt) this._wroteAt[colecao] = Date.now();
-      await this.fb.set(this.fb.ref(this.db, path), objMap);
-    }catch(e){ console.warn('saveAll falhou:', colecao, e.message); }
-  },
-
-  // lê a coleção inteira uma vez (retorna objeto {id:dado} ou null)
-  async loadAll(colecao){
-    const path = this.base+'/'+colecao;
-    if(this.demo){
-      try{ const v=localStorage.getItem('pedroni:'+path); return v?JSON.parse(v):null; }catch(e){ return null; }
-    }
-    try{
-      const snap = await this.fb.get(this.fb.ref(this.db, path));
-      return snap.exists() ? snap.val() : null;
-    }catch(e){ console.warn('loadAll falhou:', colecao, e.message); return null; }
-  },
-
-  // escuta a coleção em TEMPO REAL. onChange(objMap) roda a cada mudança.
-  watch(colecao, onChange){
-    if(this.demo) return;
-    const path = this.base+'/'+colecao;
-    try{
-      let primeira = true;
-      this.fb.onValue(this.fb.ref(this.db, path), (snap)=>{
-        const val = snap.exists() ? snap.val() : null;
-        // a primeira chamada é o estado inicial — sempre aplica
-        if(primeira){ primeira=false; onChange(val); return; }
-        // ignora echo da própria escrita recente (janela de 1,5s após salvar)
-        const agora = Date.now();
-        const wroteAt = (this._wroteAt && this._wroteAt[colecao]) || 0;
-        if(agora - wroteAt < 1500) return;
-        onChange(val);
-      });
-    }catch(e){ console.warn('watch falhou:', colecao, e.message); }
-  }
-};;
+;
 
 const MP_HTML = '<div class="tabs">\n  <button class="tab on" data-v="materiais">Materiais</button>\n  <button class="tab" data-v="tracos">Traços</button>\n  <button class="tab" data-v="acoemb">Aço/Emb.</button>\n  <button class="tab" data-v="hist">📈 Histórico</button>\n</div>\n<main class="mp-main">\n  <section class="view on" id="v-materiais">\n    <div class="intro">\n      Aqui você atualiza o <b>preço de compra</b> de cada material. O app converte pra unidade de uso (kg, ml, m²) e desconta o <b>crédito de imposto</b> — exatamente como sua planilha faz. Toque num material para editar.\n    </div>\n    <div class="sect">Agregados e cimento</div>\n    <div id="agregados"></div>\n    <div class="sect">Aço</div>\n    <div id="aco"></div>\n    <div class="sect">Embalagem</div>\n    <div id="embalagem"></div>\n  </section>\n\n  <section class="view" id="v-tracos">\n    <div class="intro">\n      Seus 100 produtos usam apenas <b>13 traços</b> <span class="help" onclick="abrirAjuda(\'traco\')">?</span>. Edite o traço e o custo muda em todos os produtos que o usam. O custo por peça é proporcional ao peso da peça.\n    </div>\n    <div id="tracos"></div>\n  </section>\n\n  <section class="view" id="v-acoemb">\n    <div class="intro">\n      <b>Aço</b>: quantos metros de cada tela o produto usa (fossas, tubos, caixas). <b>Embalagem</b>: quantas peças cabem no palete — o custo do palete se divide por elas (blocos e pavers). Toque num produto para editar.\n    </div>\n    <div class="ae-filtro">\n      <button class="on" data-f="aco">Com aço (64)</button>\n      <button data-f="emb">Com embalagem (11)</button>\n    </div>\n    <div id="acoemb"></div>\n  </section>\n\n  <section class="view" id="v-hist">\n    <div class="intro">\n      Registre <b>cada compra</b> com data, preço e fornecedor <span class="help" onclick="abrirAjuda(\'histpreco\')">?</span>. O preço vigente é sempre o da <b>última compra</b> (custo de reposição). Os gráficos mostram a evolução em três níveis: material → traço → produto.\n    </div>\n    <div class="h-sel">\n      <button class="on" data-h="material">Material</button>\n      <button data-h="traco">Traço</button>\n      <button data-h="produto">Produto</button>\n    </div>\n    <select class="h-mat" id="h-item"></select>\n    <div id="h-conteudo"></div>\n  </section>\n\n  <div class="note">\n    <b>Cálculo:</b> Custo unitário = (preço de compra − crédito de imposto) ÷ divisor. Custo do traço = soma de (kg × custo unitário) de cada material. Custo por peça = custo do traço ÷ peso do traço × peso da peça.\n  </div>\n</main>';
 
@@ -1237,127 +1157,81 @@ function chaveProduto(nome){
 }
 function salvarMP(){
   if(!D || !mpReady) return;
-  // salva cada coleção como fichas soltas (padrão FROTA)
+  // PADRÃO FROTA: salva direto no Firebase, sem camadas
+  if(DEMO || !db){
+    // modo local: guarda o bloco no localStorage
+    try{ localStorage.setItem('pedroni:custos/mp_bloco', JSON.stringify(D)); }catch(e){}
+    return;
+  }
   try{
-    // agregados: objeto {chave:material}
-    for(const k in D.agregados) Sync.saveItem('agregados', k, D.agregados[k]);
-    // aço e embalagem: por índice
-    D.aco.forEach((it,i)=> Sync.saveItem('aco', i, it));
-    D.embalagem.forEach((it,i)=> Sync.saveItem('embalagem', i, it));
-    // traços: por id
-    D.tracos.forEach(t=> Sync.saveItem('tracos', t.id, t));
-    // produtos: por nome (chave estável)
-    D.produtos.forEach(p=> Sync.saveItem('produtos', p.id, p));
-    // preços e compras
-    Sync.saveAll('precosAco', D.precosAco);
-    Sync.saveAll('precosEmb', D.precosEmb);
-    Sync.saveAll('compras', D.compras);
+    const R=(p)=>fb.ref(db,'custos/mp/'+p);
+    const mapaDe=(lista,ch='id')=>{ const m={}; lista.forEach((it,idx)=>{ m[(it[ch]!==undefined?it[ch]:idx)]=it; }); return m; };
+    fb.set(R('agregados'), D.agregados);
+    fb.set(R('aco'), mapaDe(D.aco));
+    fb.set(R('embalagem'), mapaDe(D.embalagem));
+    fb.set(R('tracos'), mapaDe(D.tracos));
+    fb.set(R('produtos'), mapaDe(D.produtos,'id'));
+    fb.set(R('precosAco'), D.precosAco);
+    fb.set(R('precosEmb'), D.precosEmb);
+    fb.set(R('compras'), D.compras);
   }catch(e){ console.warn('salvarMP falhou:', e.message); }
 }
-// salva SÓ um traço (usado ao editar um traço específico — mais eficiente)
+// salva SÓ um traço (edição de traço) — direto, como a FROTA
 function salvarTraco(t){
   if(!D || !mpReady || !t) return;
-  try{ Sync.saveItem('tracos', t.id, t); }catch(e){ console.warn(e.message); }
+  if(DEMO || !db){ salvarMP(); return; }
+  try{ fb.set(fb.ref(db,'custos/mp/tracos/'+t.id), t); }catch(e){ console.warn(e.message); }
 }
-// salva SÓ um material agregado
+// salva SÓ um material agregado — direto
 function salvarMaterial(chave){
   if(!D || !mpReady) return;
-  try{ if(D.agregados[chave]) Sync.saveItem('agregados', chave, D.agregados[chave]); }catch(e){ console.warn(e.message); }
+  if(DEMO || !db){ salvarMP(); return; }
+  try{ if(D.agregados[chave]) fb.set(fb.ref(db,'custos/mp/agregados/'+chave), D.agregados[chave]); }catch(e){ console.warn(e.message); }
 }
+// salva SÓ um traço (usado ao editar um traço específico — mais eficiente)
+// salva SÓ um material agregado
 
 async function initMateriaPrima(container){
   mpReady = false;
-  const novo = JSON.parse(JSON.stringify(D_DEFAULT));
+  // começa com os defaults; o Firebase (onValue) sobrescreve com os dados reais
+  D = JSON.parse(JSON.stringify(D_DEFAULT));
 
-  // === Carrega as FICHAS SOLTAS do Firebase (padrão FROTA) ===
-  // helper: converte lista [{id,...}] <-> objeto {id:{...}}
-  const listaParaMapa = (lista, chaveId='id') => {
-    const m={}; lista.forEach((it,idx)=>{ const k=(it[chaveId]!==undefined?it[chaveId]:idx); m[k]=it; }); return m;
-  };
-  const mapaParaLista = (mapa) => mapa ? Object.keys(mapa).sort((a,b)=>(+a)-(+b)).map(k=>mapa[k]) : null;
-
-  // tenta ler o que já existe no formato novo
-  const meta = await Sync.loadAll('meta');
-  const jaMigrado = meta && meta.versaoDados === D_DEFAULT.versaoDados;
-
-  if(!jaMigrado){
-    // === MIGRAÇÃO: pega os dados do formato ANTIGO (bloco único) e quebra em fichas ===
-    let base = novo;  // padrão
-    const antigoBloco = await Persist.load('materia_prima');  // bloco único antigo
-    if(antigoBloco){
-      // preserva o que o usuário editou, adotando a estrutura nova
-      base = novo;
-      if(antigoBloco.agregados) for(const k in antigoBloco.agregados){ if(base.agregados[k]) base.agregados[k]=antigoBloco.agregados[k]; }
-      if(antigoBloco.precosAco) base.precosAco = {...base.precosAco, ...antigoBloco.precosAco};
-      if(antigoBloco.precosEmb) base.precosEmb = {...base.precosEmb, ...antigoBloco.precosEmb};
-      if(antigoBloco.compras) base.compras = {...base.compras, ...antigoBloco.compras};
-      // se o bloco antigo já tinha a estrutura nova de traços/produtos (versaoDados 3), usa ela
-      if(antigoBloco.versaoDados === novo.versaoDados){
-        if(antigoBloco.tracos) base.tracos = antigoBloco.tracos;
-        if(antigoBloco.produtos) base.produtos = antigoBloco.produtos;
-        if(antigoBloco.aco) base.aco = antigoBloco.aco;
-        if(antigoBloco.embalagem) base.embalagem = antigoBloco.embalagem;
-      }
-    }
-    D = base;
-    // salva cada coleção como fichas soltas no Firebase
-    await Sync.saveAll('agregados', D.agregados);
-    await Sync.saveAll('aco', listaParaMapa(D.aco));
-    await Sync.saveAll('embalagem', listaParaMapa(D.embalagem));
-    await Sync.saveAll('tracos', listaParaMapa(D.tracos));
-    await Sync.saveAll('produtos', listaParaMapa(D.produtos, 'id'));
-    await Sync.saveAll('precosAco', D.precosAco);
-    await Sync.saveAll('precosEmb', D.precosEmb);
-    await Sync.saveAll('compras', D.compras);
-    await Sync.saveAll('meta', {versaoDados: D_DEFAULT.versaoDados});
-  } else {
-    // === JÁ MIGRADO: carrega as fichas soltas ===
-    D = JSON.parse(JSON.stringify(D_DEFAULT));
-    const [agg, aco, emb, tr, pr, pAco, pEmb, comp] = await Promise.all([
-      Sync.loadAll('agregados'), Sync.loadAll('aco'), Sync.loadAll('embalagem'),
-      Sync.loadAll('tracos'), Sync.loadAll('produtos'),
-      Sync.loadAll('precosAco'), Sync.loadAll('precosEmb'), Sync.loadAll('compras')
-    ]);
-    if(agg) D.agregados = agg;
-    if(aco) D.aco = mapaParaLista(aco);
-    if(emb) D.embalagem = mapaParaLista(emb);
-    if(tr) D.tracos = mapaParaLista(tr);
-    if(pr) D.produtos = Object.keys(pr).sort((a,b)=>(+a)-(+b)).map(k=>pr[k]);
-    if(pAco) D.precosAco = pAco;
-    if(pEmb) D.precosEmb = pEmb;
-    if(comp) D.compras = comp;
-  }
-
-  // injeta o HTML e roda a lógica
-  window.__mpD = D;
+  // injeta HTML e roda a lógica ANTES dos listeners (pra renderizar já com defaults)
   container.innerHTML = MP_HTML;
   runMateriaPrima();
   mpReady = true;
 
-  // === TEMPO REAL: escuta cada coleção; mudança de outro aparelho atualiza a tela ===
+  // === PADRÃO FROTA: onValue direto por coleção, sem camadas ===
+  if(DEMO || !db){
+    // modo local (sem Firebase): carrega do localStorage uma vez
+    try{
+      const raw = localStorage.getItem('pedroni:custos/mp_bloco');
+      if(raw){ const s=JSON.parse(raw); Object.assign(D, s); if(document.getElementById('mp-container')) renderAll(); }
+    }catch(e){}
+    mpWatching = true;
+    return;
+  }
+
   if(!mpWatching){
     mpWatching = true;
+    const R = (p)=> fb.ref(db, 'custos/mp/'+p);
+    const listaDe = (mapa)=> mapa ? Object.keys(mapa).sort((a,b)=>(+a)-(+b)).map(k=>mapa[k]) : null;
     const reRender = ()=>{
       if(!document.getElementById('mp-container')) return;
-      // se o usuário está digitando num campo, adia pra não atrapalhar/perder edição
-      const foco = document.activeElement;
-      const digitando = foco && (foco.tagName==='INPUT'||foco.tagName==='SELECT'||foco.tagName==='TEXTAREA') && document.getElementById('mp-container').contains(foco);
-      if(digitando){
-        // reagenda pra quando terminar de digitar (evento blur uma vez)
-        foco.addEventListener('blur', ()=>{ if(document.getElementById('mp-container')) renderAll(); }, {once:true});
-        return;
-      }
+      const f=document.activeElement;
+      const digitando = f && (f.tagName==='INPUT'||f.tagName==='SELECT'||f.tagName==='TEXTAREA') && document.getElementById('mp-container').contains(f);
+      if(digitando){ f.addEventListener('blur', ()=>{ if(document.getElementById('mp-container')) renderAll(); }, {once:true}); return; }
       renderAll();
     };
-    const avisou = ()=>{ const st=document.getElementById('sync-txt'); if(st){ st.textContent='Atualizado de outro aparelho'; setTimeout(()=>{ if(!DEMO) st.textContent='Sincronizado na nuvem'; },2000); } };
-    Sync.watch('tracos', (mapa)=>{ if(mapa){ D.tracos=mapaParaLista(mapa); reRender(); avisou(); } });
-    Sync.watch('agregados', (mapa)=>{ if(mapa){ D.agregados=mapa; reRender(); avisou(); } });
-    Sync.watch('aco', (mapa)=>{ if(mapa){ D.aco=mapaParaLista(mapa); reRender(); avisou(); } });
-    Sync.watch('embalagem', (mapa)=>{ if(mapa){ D.embalagem=mapaParaLista(mapa); reRender(); avisou(); } });
-    Sync.watch('produtos', (mapa)=>{ if(mapa){ D.produtos=Object.keys(mapa).sort((a,b)=>(+a)-(+b)).map(k=>mapa[k]); reRender(); avisou(); } });
-    Sync.watch('compras', (mapa)=>{ if(mapa){ D.compras=mapa; reRender(); avisou(); } });
-    Sync.watch('precosAco', (mapa)=>{ if(mapa){ D.precosAco=mapa; reRender(); } });
-    Sync.watch('precosEmb', (mapa)=>{ if(mapa){ D.precosEmb=mapa; reRender(); } });
+    // um listener por coleção — igual à FROTA (frota={}, abasts={}, ...)
+    fb.onValue(R('tracos'),    s=>{ const v=s.val(); if(v){ D.tracos=listaDe(v); reRender(); } });
+    fb.onValue(R('produtos'),  s=>{ const v=s.val(); if(v){ D.produtos=listaDe(v); reRender(); } });
+    fb.onValue(R('agregados'), s=>{ const v=s.val(); if(v){ D.agregados=v; reRender(); } });
+    fb.onValue(R('aco'),       s=>{ const v=s.val(); if(v){ D.aco=listaDe(v); reRender(); } });
+    fb.onValue(R('embalagem'), s=>{ const v=s.val(); if(v){ D.embalagem=listaDe(v); reRender(); } });
+    fb.onValue(R('compras'),   s=>{ const v=s.val(); if(v){ D.compras=v; reRender(); } });
+    fb.onValue(R('precosAco'), s=>{ const v=s.val(); if(v){ D.precosAco=v; reRender(); } });
+    fb.onValue(R('precosEmb'), s=>{ const v=s.val(); if(v){ D.precosEmb=v; reRender(); } });
   }
 }
 
@@ -2182,6 +2056,9 @@ function salvarCompra(k){
   if(!D.compras[k]) D.compras[k]=[];
   D.compras[k].push({data,preco,qtde,forn,
     precoNF:m.precoNF||0, qtdeNF:m.qtdeNF||0, qtdeReal:m.qtdeReal||0});
+  // salva direto (padrão FROTA)
+  if(!DEMO && db){ try{ fb.set(fb.ref(db,'custos/mp/compras'), D.compras); }catch(e){ console.warn(e.message); } }
+  else salvarMP();
   formOpen=false;
   document.getElementById('form-nc-bd')?.classList.remove('on');
   renderHist();
@@ -2918,45 +2795,43 @@ window.abrirFormCompra = function(){
 
 // === Sincronização manual (resolver conflito entre aparelhos) ===
 window.forcarEnvioMP = async function(){
-  if(!window.__mpD) return;
+  if(!window.__mpD || DEMO || !db) return;
   const D = window.__mpD;
-  const listaParaMapa = (lista, chaveId='id') => { const m={}; lista.forEach((it,idx)=>{ const k=(it[chaveId]!==undefined?it[chaveId]:idx); m[k]=it; }); return m; };
-  // sobrescreve TODAS as coleções na nuvem com os dados deste aparelho
-  await Sync.saveAll('agregados', D.agregados);
-  await Sync.saveAll('aco', listaParaMapa(D.aco));
-  await Sync.saveAll('embalagem', listaParaMapa(D.embalagem));
-  await Sync.saveAll('tracos', listaParaMapa(D.tracos));
-  await Sync.saveAll('produtos', listaParaMapa(D.produtos, 'id'));
-  await Sync.saveAll('precosAco', D.precosAco);
-  await Sync.saveAll('precosEmb', D.precosEmb);
-  await Sync.saveAll('compras', D.compras);
-  await Sync.saveAll('meta', {versaoDados: D_DEFAULT.versaoDados});
+  const R=(p)=>fb.ref(db,'custos/mp/'+p);
+  const mapaDe=(lista,ch='id')=>{ const m={}; lista.forEach((it,idx)=>{ m[(it[ch]!==undefined?it[ch]:idx)]=it; }); return m; };
+  await fb.set(R('agregados'), D.agregados);
+  await fb.set(R('aco'), mapaDe(D.aco));
+  await fb.set(R('embalagem'), mapaDe(D.embalagem));
+  await fb.set(R('tracos'), mapaDe(D.tracos));
+  await fb.set(R('produtos'), mapaDe(D.produtos,'id'));
+  await fb.set(R('precosAco'), D.precosAco);
+  await fb.set(R('precosEmb'), D.precosEmb);
+  await fb.set(R('compras'), D.compras);
 };
 window.forcarBaixarMP = async function(){
-  const mapaParaLista = (mapa) => mapa ? Object.keys(mapa).sort((a,b)=>(+a)-(+b)).map(k=>mapa[k]) : null;
-  const [agg, aco, emb, tr, pr, pAco, pEmb, comp] = await Promise.all([
-    Sync.loadAll('agregados'), Sync.loadAll('aco'), Sync.loadAll('embalagem'),
-    Sync.loadAll('tracos'), Sync.loadAll('produtos'),
-    Sync.loadAll('precosAco'), Sync.loadAll('precosEmb'), Sync.loadAll('compras')
-  ]);
-  if(!window.__mpD) return;
+  if(!window.__mpD || DEMO || !db) return;
   const D = window.__mpD;
-  if(agg) D.agregados = agg;
-  if(aco) D.aco = mapaParaLista(aco);
-  if(emb) D.embalagem = mapaParaLista(emb);
-  if(tr) D.tracos = mapaParaLista(tr);
-  if(pr) D.produtos = Object.keys(pr).sort((a,b)=>(+a)-(+b)).map(k=>pr[k]);
-  if(pAco) D.precosAco = pAco;
-  if(pEmb) D.precosEmb = pEmb;
-  if(comp) D.compras = comp;
-  if(typeof renderAll === "function") renderAll();
+  const R=(p)=>fb.ref(db,'custos/mp/'+p);
+  const listaDe=(mapa)=> mapa ? Object.keys(mapa).sort((a,b)=>(+a)-(+b)).map(k=>mapa[k]) : null;
+  const get=async(p)=>{ try{ const s=await fb.get(R(p)); return s.exists()?s.val():null; }catch(e){ return null; } };
+  const [agg,aco,emb,tr,pr,pA,pE,comp]=await Promise.all([
+    get('agregados'),get('aco'),get('embalagem'),get('tracos'),get('produtos'),get('precosAco'),get('precosEmb'),get('compras')
+  ]);
+  if(agg) D.agregados=agg;
+  if(aco) D.aco=listaDe(aco);
+  if(emb) D.embalagem=listaDe(emb);
+  if(tr) D.tracos=listaDe(tr);
+  if(pr) D.produtos=listaDe(pr);
+  if(pA) D.precosAco=pA;
+  if(pE) D.precosEmb=pE;
+  if(comp) D.compras=comp;
+  if(typeof renderAll==="function") renderAll();
 };
 
 // ===================================================================
 // START
 // ===================================================================
 Persist.init(db, fb, "custos", updateSync);
-Sync.init(db, fb);
 initAuth();
 </script>
 </body>
