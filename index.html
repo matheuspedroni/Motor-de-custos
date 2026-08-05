@@ -651,7 +651,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v19</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v20</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado</span></div>
     </div>
     <div class="ah-user">
@@ -876,13 +876,37 @@ function toggleUserMenu(){
       <div class="um-name">${name}</div>
       <div class="um-email">${LOGIN_ATIVO ? currentUser.email : "acesso sem login"}</div>
     </div>
-    ${LOGIN_ATIVO ? '<button id="menu-signout" class="danger">↩ Sair</button>' : '<button id="menu-info">ℹ Sobre o app</button>'}`;
+    ${LOGIN_ATIVO ? '<button id="menu-signout" class="danger">↩ Sair</button>' : '<button id="menu-info">ℹ Sobre o app</button>'}
+    <button id="menu-push" style="color:var(--rebar2)">⬆ Enviar meus dados p/ nuvem</button>
+    <button id="menu-pull">⬇ Baixar dados da nuvem</button>`;
   $("app-screen").appendChild(menu);
   if(LOGIN_ATIVO){
     $("menu-signout").addEventListener("click", doLogout);
   } else {
     $("menu-info").addEventListener("click", ()=>{ closeUserMenu(); currentNav="home"; renderNav(); window.scrollTo(0,0); });
   }
+  // sincronização manual
+  const bPush = $("menu-push"), bPull = $("menu-pull");
+  if(bPush) bPush.addEventListener("click", async ()=>{
+    closeUserMenu();
+    if(!confirm("Enviar os dados DESTE aparelho para a nuvem?\n\nIsso vai SOBRESCREVER o que está na nuvem com o que você vê aqui. Use no aparelho que tem os dados certos.")) return;
+    if(typeof D !== "undefined" && D && typeof forcarEnvioMP === "function"){
+      await forcarEnvioMP();
+      alert("✓ Dados enviados para a nuvem! Agora abra o outro aparelho e toque em 'Baixar dados da nuvem'.");
+    } else {
+      alert("Abra a aba Material primeiro, depois tente novamente.");
+    }
+  });
+  if(bPull) bPull.addEventListener("click", async ()=>{
+    closeUserMenu();
+    if(!confirm("Baixar os dados da nuvem para ESTE aparelho?\n\nIsso vai SUBSTITUIR o que você vê aqui pelo que está na nuvem.")) return;
+    if(typeof forcarBaixarMP === "function"){
+      await forcarBaixarMP();
+      alert("✓ Dados baixados da nuvem!");
+    } else {
+      alert("Abra a aba Material primeiro, depois tente novamente.");
+    }
+  });
   userMenuOpen = true;
   setTimeout(()=>document.addEventListener("click", outsideMenu), 10);
 }
@@ -1294,6 +1318,7 @@ async function initMateriaPrima(container){
   }
 
   // injeta o HTML e roda a lógica
+  window.__mpD = D;
   container.innerHTML = MP_HTML;
   runMateriaPrima();
   mpReady = true;
@@ -1315,6 +1340,7 @@ async function initMateriaPrima(container){
 }
 
 function runMateriaPrima(){
+  window.__mpD = D;  // expõe D para sync manual
   // Delegação global: garante que o botão de nova compra SEMPRE responde,
   // mesmo se algum religamento de handler falhar.
   const _cont=document.getElementById('mp-container');
@@ -2865,6 +2891,43 @@ window.abrirFormCompra = function(){
   }
   bd.classList.add('on');
   const d = document.getElementById('nc-data'); if(d) setTimeout(()=>d.focus(), 50);
+};
+
+
+// === Sincronização manual (resolver conflito entre aparelhos) ===
+window.forcarEnvioMP = async function(){
+  if(!window.__mpD) return;
+  const D = window.__mpD;
+  const listaParaMapa = (lista, chaveId='id') => { const m={}; lista.forEach((it,idx)=>{ const k=(it[chaveId]!==undefined?it[chaveId]:idx); m[k]=it; }); return m; };
+  // sobrescreve TODAS as coleções na nuvem com os dados deste aparelho
+  await Sync.saveAll('agregados', D.agregados);
+  await Sync.saveAll('aco', listaParaMapa(D.aco));
+  await Sync.saveAll('embalagem', listaParaMapa(D.embalagem));
+  await Sync.saveAll('tracos', listaParaMapa(D.tracos));
+  await Sync.saveAll('produtos', listaParaMapa(D.produtos, 'id'));
+  await Sync.saveAll('precosAco', D.precosAco);
+  await Sync.saveAll('precosEmb', D.precosEmb);
+  await Sync.saveAll('compras', D.compras);
+  await Sync.saveAll('meta', {versaoDados: D_DEFAULT.versaoDados});
+};
+window.forcarBaixarMP = async function(){
+  const mapaParaLista = (mapa) => mapa ? Object.keys(mapa).sort((a,b)=>(+a)-(+b)).map(k=>mapa[k]) : null;
+  const [agg, aco, emb, tr, pr, pAco, pEmb, comp] = await Promise.all([
+    Sync.loadAll('agregados'), Sync.loadAll('aco'), Sync.loadAll('embalagem'),
+    Sync.loadAll('tracos'), Sync.loadAll('produtos'),
+    Sync.loadAll('precosAco'), Sync.loadAll('precosEmb'), Sync.loadAll('compras')
+  ]);
+  if(!window.__mpD) return;
+  const D = window.__mpD;
+  if(agg) D.agregados = agg;
+  if(aco) D.aco = mapaParaLista(aco);
+  if(emb) D.embalagem = mapaParaLista(emb);
+  if(tr) D.tracos = mapaParaLista(tr);
+  if(pr) D.produtos = Object.keys(pr).sort((a,b)=>(+a)-(+b)).map(k=>pr[k]);
+  if(pAco) D.precosAco = pAco;
+  if(pEmb) D.precosEmb = pEmb;
+  if(comp) D.compras = comp;
+  if(typeof renderAll === "function") renderAll();
 };
 
 // ===================================================================
