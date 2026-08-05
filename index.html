@@ -651,7 +651,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v24</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v26</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado</span></div>
     </div>
     <div class="ah-user">
@@ -1815,7 +1815,7 @@ function custoTracoEm(t,dataISO){
 }
 // custo por peça de um produto numa data (MP + aço + emb)
 function custoProdutoEm(p,dataISO){
-  const t=D.tracos[p.traco];
+  const t=D.tracos.find(x=>x.id===p.traco);
   let mp=0;
   if(t && t.pesoTraco>0) mp=(custoTracoEm(t,dataISO)/t.pesoTraco)*p.pesoPeca;
   // aço
@@ -1857,7 +1857,7 @@ function renderSeletor(){
   sel.innerHTML='';
   if(hNivel==='material'){
     todasChaves().forEach(k=>{
-      if(!D.compras[k]||!D.compras[k].length) return;
+      // mostra TODOS os materiais, mesmo sem compra ainda (pra cadastrar a 1ª compra)
       const o=document.createElement('option');o.value=k;o.textContent=nomeMat(k);sel.appendChild(o);
     });
   } else if(hNivel==='traco'){
