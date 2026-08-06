@@ -651,7 +651,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v26</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v28</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado</span></div>
     </div>
     <div class="ah-user">
@@ -1652,6 +1652,7 @@ function custoEmb(p){
   return (custoPalete + custoSelos + custoFitas + custoFilme) / pp;
 }
 function renderAcoEmb(){
+  sincronizarPrecos(); // garante que precosEmb reflita as últimas compras
   const wrap=document.getElementById('acoemb'); wrap.innerHTML='';
   const lista = aeFiltro==='aco'
     ? D.produtos.filter(p=>p.aco && Object.keys(p.aco).length)
@@ -1794,7 +1795,23 @@ function sincronizarPrecos(){
     if(c[0].precoNF!==undefined && c[0].precoNF>0){
       m.precoNF=c[0].precoNF; m.qtdeNF=c[0].qtdeNF; m.qtdeReal=c[0].qtdeReal;
     }
+    // embalagem: atualiza também o D.precosEmb (usado pelo cálculo de custo) pelo nome
+    if(k.startsWith('emb_')){
+      const custoUnitE = custoUnitEmb(m);
+      if(D.precosEmb && m.nome!==undefined) D.precosEmb[m.nome]=custoUnitE;
+    }
+    // aço: atualiza também o D.precosAco (usado pelo custoAco) pelo nome/tipo
+    if(k.startsWith('aco_')){
+      if(D.precosAco && m.nome!==undefined) D.precosAco[m.nome]=custoUnit(m);
+    }
   });
+}
+// custo unitário de uma embalagem (preço da compra ÷ divisor, líquido de crédito)
+function custoUnitEmb(m){
+  const preco = m.precoCompra||0;
+  const cred = m.credito||0;
+  const div = m.divisor||1;
+  return (preco - preco*cred) / div;
 }
 // custo unitário numa data (usa a compra vigente naquela data)
 function custoUnitEm(k,dataISO){
@@ -2099,6 +2116,7 @@ document.querySelectorAll('.h-sel button').forEach(b=>b.onclick=()=>{
 });
 
 function renderAll(){
+  sincronizarPrecos(); // garante que TODOS os custos usem a última compra
   renderMat(KEYS.map(k=>D.agregados[k]),'agregados','ag');
   renderMat(D.aco,'aco','ac');
   renderMat(D.embalagem,'embalagem','em');
