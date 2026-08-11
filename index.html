@@ -651,7 +651,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v33</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v34</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -2773,8 +2773,17 @@ const pessoas = Dmo.pessoas.map((p,i)=>{
   let tipoRisco='none';
   if(/renato/i.test(p.nome)) tipoRisco='periculosidade';
   else if((p.insalubridade||0)>0) tipoRisco='insalubridade';
-  return {...p, periculosidade:0, tipoRisco, _idx:i, _open:false, _tipo:'fixo', _fam:FAM[0], _rateios:{}};
+  // lê o setor/tipo/rateios SALVOS (fallback pro default se ainda não tiver)
+  const famSalvo = (p.fam && FAM.includes(p.fam)) ? p.fam : FAM[0];
+  return {...p, periculosidade:0, tipoRisco, _idx:i, _open:false,
+          _tipo:p.tipo||'fixo', _fam:famSalvo, _rateios:p.rateios?{...p.rateios}:{}};
 });
+// grava a alocação (setor/tipo/rateios) da pessoa no objeto real do Dmo
+function gravarAlocPessoa(p){
+  const orig = Dmo.pessoas[p._idx];
+  if(!orig) return;
+  orig.fam = p._fam; orig.tipo = p._tipo; orig.rateios = p._rateios||{};
+}
 // capacidade editável por produto (prodDia)
 const prodDia = {};
 FAM.forEach(f=>{ prodDia[f]={}; (Dmo.produtos[f]||[]).forEach(p=>{ prodDia[f][p.nome]=p; }); });
@@ -2946,13 +2955,13 @@ function renderPessoas(){
     const sel=document.createElement('select');sel.className='p-sel';
     FAM.forEach(f=>{const o=document.createElement('option');o.value=f;o.textContent=f;if(p._tipo==='fixo'&&p._fam===f)o.selected=true;sel.appendChild(o);});
     const oR=document.createElement('option');oR.value='__rateio__';oR.textContent='⚙ Ratear entre linhas';if(p._tipo==='rateio')oR.selected=true;sel.appendChild(oR);
-    sel.onchange=()=>{if(sel.value==='__rateio__'){p._tipo='rateio';if(!Object.keys(p._rateios).length)p._rateios[FAM[0]]=100;}else{p._tipo='fixo';p._fam=sel.value;}renderPessoas();recalc();};
+    sel.onchange=()=>{if(sel.value==='__rateio__'){p._tipo='rateio';if(!Object.keys(p._rateios).length)p._rateios[FAM[0]]=100;}else{p._tipo='fixo';p._fam=sel.value;}gravarAlocPessoa(p);renderPessoas();recalc();};
     sr.appendChild(sel);body.appendChild(sr);
     if(p._tipo==='rateio'){
       const rb=document.createElement('div');rb.className='rateio-box on';
       FAM.forEach(f=>{const row=document.createElement('div');row.className='rateio-row';row.innerHTML=`<span class="rateio-fam">${f}</span>`;
         const inp=document.createElement('input');inp.className='rateio-in';inp.type='number';inp.value=p._rateios[f]||0;
-        inp.oninput=()=>{p._rateios[f]=parseFloat(inp.value)||0;updTot(rb,p);recalc();};row.appendChild(inp);
+        inp.oninput=()=>{p._rateios[f]=parseFloat(inp.value)||0;gravarAlocPessoa(p);updTot(rb,p);recalc();};row.appendChild(inp);
         const s=document.createElement('span');s.style.cssText='font-size:.6rem;color:var(--txt3)';s.textContent='%';row.appendChild(s);rb.appendChild(row);});
       const tot=document.createElement('div');tot.className='rateio-tot';rb.appendChild(tot);body.appendChild(rb);updTot(rb,p);
     }
