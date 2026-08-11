@@ -651,7 +651,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v30</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v31</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -2343,9 +2343,10 @@ function custoProdutoEm(p,dataISO){
   return mp+aco+emb;
 }
 // todas as datas de compra relevantes (para plotar)
+const HIST_DATA_CORTE='2026-06-23'; // histórico exibido a partir desta data (compras antigas ficam salvas, só não aparecem)
 function datasRelevantes(chaves){
   const s=new Set();
-  chaves.forEach(k=>(D.compras[k]||[]).forEach(c=>s.add(c.data)));
+  chaves.forEach(k=>(D.compras[k]||[]).forEach(c=>{ if(!HIST_DATA_CORTE || c.data>=HIST_DATA_CORTE) s.add(c.data); }));
   return [...s].sort();
 }
 function fmtData(iso){
