@@ -651,7 +651,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v34</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v35</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -2769,14 +2769,25 @@ let jornada = Dmo.jornada;
 let diasIdeal = Dmo.diasIdeal;
 
 // estado pessoas
+// PADRÃO FROTA: edita os objetos REAIS do Dmo (sem cópias). Assim toda edição já persiste.
 const pessoas = Dmo.pessoas.map((p,i)=>{
   let tipoRisco='none';
   if(/renato/i.test(p.nome)) tipoRisco='periculosidade';
   else if((p.insalubridade||0)>0) tipoRisco='insalubridade';
-  // lê o setor/tipo/rateios SALVOS (fallback pro default se ainda não tiver)
-  const famSalvo = (p.fam && FAM.includes(p.fam)) ? p.fam : FAM[0];
-  return {...p, periculosidade:0, tipoRisco, _idx:i, _open:false,
-          _tipo:p.tipo||'fixo', _fam:famSalvo, _rateios:p.rateios?{...p.rateios}:{}};
+  // grava os campos de dados NO PRÓPRIO objeto do Dmo (fam/tipo/rateios), com fallback
+  if(!(p.fam && FAM.includes(p.fam))) p.fam = FAM[0];
+  if(!p.tipo) p.tipo = 'fixo';
+  if(!p.rateios) p.rateios = {};
+  // estado de tela (não é dado — NÃO deve persistir): define como não-enumerável (não vai pro JSON salvo)
+  Object.defineProperty(p,'periculosidade',{configurable:true,enumerable:false,writable:true,value:0});
+  Object.defineProperty(p,'tipoRisco',{configurable:true,enumerable:false,writable:true,value:tipoRisco});
+  Object.defineProperty(p,'_idx',{configurable:true,enumerable:false,writable:true,value:i});
+  if(!('_open' in p)) Object.defineProperty(p,'_open',{configurable:true,enumerable:false,writable:true,value:false});
+  // aliases _fam/_tipo/_rateios apontam pros campos reais (via defineProperty) — edição = persistência
+  Object.defineProperty(p,'_fam',{configurable:true,enumerable:false,get(){return p.fam;},set(v){p.fam=v;}});
+  Object.defineProperty(p,'_tipo',{configurable:true,enumerable:false,get(){return p.tipo;},set(v){p.tipo=v;}});
+  Object.defineProperty(p,'_rateios',{configurable:true,enumerable:false,get(){return p.rateios;},set(v){p.rateios=v;}});
+  return p;
 });
 // grava a alocação (setor/tipo/rateios) da pessoa no objeto real do Dmo
 function gravarAlocPessoa(p){
