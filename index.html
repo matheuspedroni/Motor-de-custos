@@ -651,7 +651,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v40</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v41</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -2648,9 +2648,19 @@ function _sanitizeKeys(x){
   if(Array.isArray(x)) return x.map(_sanitizeKeys);
   if(x && typeof x==='object'){
     const o={};
-    for(const k in x) o[_encKey(k)] = _sanitizeKeys(x[k]);
+    for(const k in x){
+      const v = _sanitizeKeys(x[k]);
+      // Firebase DERRUBA a conexão com undefined/NaN/function — descarta essas chaves
+      if(v===undefined) continue;
+      if(typeof v==='number' && !isFinite(v)) continue; // NaN, Infinity
+      if(typeof v==='function') continue;
+      o[_encKey(k)] = v;
+    }
     return o;
   }
+  // valores primitivos inválidos viram algo seguro
+  if(typeof x==='number' && !isFinite(x)) return 0;
+  if(typeof x==='function') return null;
   return x;
 }
 function _desanitizeKeys(x){
@@ -2695,7 +2705,15 @@ function salvarSecaoMO(secao){
       _moLastWriteSec[secao] = JSON.stringify(dado);
       await fb.set(fb.ref(db,'custos/mo/'+secao), dado);
       updateSync&&updateSync('ok');
-    }catch(e){ console.warn('salvarSecaoMO '+secao+' falhou:', e.message); updateSync&&updateSync('off'); }
+    }catch(e){
+      console.error('salvarSecaoMO '+secao+' FALHOU:', e);
+      updateSync&&updateSync('off');
+      // mostra o erro real na tela (uma vez) pra diagnóstico — Firebase costuma explicar por que caiu
+      if(!window.__moErroMostrado){
+        window.__moErroMostrado=true;
+        try{ alert('Erro ao salvar M.O. (seção '+secao+'):\n\n'+(e&&e.message?e.message:e)+'\n\nTire um print desta mensagem.'); }catch(_){}
+      }
+    }
   }, 400);
 }
 // Compat: salvarMO() antigo agora salva as seções de DADOS (usado por handlers que mexem em várias)
