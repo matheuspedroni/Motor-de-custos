@@ -651,7 +651,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v39</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v40</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -2643,6 +2643,25 @@ function _encKey(k){ return String(k).replace(/[.#$/\[\]]/g, m=>({'.':'%2E','#':
 function _decKey(k){ return String(k).replace(/%2E|%23|%24|%2F|%5B|%5D/g, m=>({'%2E':'.','%23':'#','%24':'$','%2F':'/','%5B':'[','%5D':']'}[m])); }
 // codifica as chaves de um objeto {setor: valor} pra salvar no Firebase
 function _encObj(obj){ if(!obj||typeof obj!=='object'||Array.isArray(obj)) return obj; const o={}; for(const k in obj) o[_encKey(k)]=obj[k]; return o; }
+// Sanitiza RECURSIVAMENTE: codifica TODA chave de objeto (qualquer nível) pra passar no Firebase
+function _sanitizeKeys(x){
+  if(Array.isArray(x)) return x.map(_sanitizeKeys);
+  if(x && typeof x==='object'){
+    const o={};
+    for(const k in x) o[_encKey(k)] = _sanitizeKeys(x[k]);
+    return o;
+  }
+  return x;
+}
+function _desanitizeKeys(x){
+  if(Array.isArray(x)) return x.map(_desanitizeKeys);
+  if(x && typeof x==='object'){
+    const o={};
+    for(const k in x) o[_decKey(k)] = _desanitizeKeys(x[k]);
+    return o;
+  }
+  return x;
+}
 function _decObj(obj){ if(!obj||typeof obj!=='object'||Array.isArray(obj)) return obj; const o={}; for(const k in obj) o[_decKey(k)]=obj[k]; return o; }
 // Firebase Realtime pode devolver array como objeto {0:..,1:..}; normaliza de volta pra array
 function _moNormalizaSecao(secao, val){
@@ -2650,9 +2669,8 @@ function _moNormalizaSecao(secao, val){
   if(ehArray && val && !Array.isArray(val) && typeof val==='object'){
     return Object.keys(val).sort((a,b)=>(+a)-(+b)).map(k=>val[k]);
   }
-  // produtos/tipoLanc: decodifica as chaves de setor de volta ("Tampas%2FLeitos" → "Tampas/Leitos")
-  if(secao==='produtos' || secao==='tipoLanc') return _decObj(val);
-  return val;
+  // desanitiza TODAS as chaves recursivamente (volta "%2F" → "/")
+  return _desanitizeKeys(val);
 }
 let _moSaveTimers={};
 let _moLastWriteSec={};
@@ -2662,9 +2680,8 @@ function salvarSecaoMO(secao){
   updateSync && updateSync('syncing');
   clearTimeout(_moSaveTimers[secao]);
   _moSaveTimers[secao]=setTimeout(async ()=>{
-    let dado = Dmo[secao];
-    // produtos e tipoLanc são chaveados por nome de setor (que pode ter "/") — codifica pro Firebase
-    if(secao==='produtos' || secao==='tipoLanc') dado = _encObj(dado);
+    // sanitiza TODAS as chaves recursivamente (setores com "/", nomes com "." etc.) pro Firebase aceitar
+    let dado = _sanitizeKeys(Dmo[secao]);
     if(DEMO || !db){
       try{
         const blob=JSON.parse(localStorage.getItem('pedroni:custos/mo_bloco')||'{}');
