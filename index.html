@@ -414,6 +414,9 @@ main{padding:16px;max-width:680px;margin:0 auto}
 #mo-container .pe-novo{font-size:.52rem;background:var(--good);color:#fff;padding:1px 5px;border-radius:3px;margin-left:5px;vertical-align:middle}
 #mo-container .pe-mo{font-size:.86rem;font-weight:800;color:var(--rebar2);white-space:nowrap}
 #mo-container .pe-mo.zero{color:var(--txt3)}
+#mo-container .pe-setor{display:flex;align-items:center;gap:8px;margin:6px 0;padding:6px 8px;background:rgba(255,255,255,.03);border-radius:6px}
+#mo-container .pe-setor label{font-size:11px;color:#9aa;min-width:90px}
+#mo-container .pe-setor select{flex:1;background:#1a1f26;color:#e8eaed;border:1px solid #333;border-radius:5px;padding:5px 8px;font-size:13px}
 #mo-container .pe-fields{display:grid;grid-template-columns:1fr 1fr 1.2fr;gap:7px}
 #mo-container .pe-f label{font-size:.53rem;color:var(--txt3);display:block;margin-bottom:2px;text-transform:uppercase;letter-spacing:.03em}
 #mo-container .pe-f input{width:100%;background:var(--surf2);border:1px solid var(--line);color:var(--txt);border-radius:5px;padding:6px 5px;font-size:.75rem;text-align:center;font-weight:600}
@@ -651,7 +654,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v41</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v42</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -3152,6 +3155,28 @@ function renderSetores(){
         moEl.textContent = p.prodDia>0 ? 'R$ '+fmt3(p.moPeca) : '— definir';
         top.appendChild(moEl);
         item.appendChild(top);
+        // seletor de setor: move o produto para outra máquina/setor
+        const setorLinha=document.createElement('div');setorLinha.className='pe-setor';
+        setorLinha.innerHTML='<label>Setor / máquina</label>';
+        const selSet=document.createElement('select');
+        FAM.forEach(fam=>{ const o=document.createElement('option');o.value=fam;o.textContent=fam;if(fam===f)o.selected=true;selSet.appendChild(o); });
+        selSet.onchange=()=>{
+          const destino=selSet.value;
+          if(destino===f) return;
+          // remove do setor atual e adiciona no destino
+          const arr=Dmo.produtos[f]||[];
+          const gi=arr.findIndex(x=>x.nome===p.nome);
+          if(gi>=0){
+            const [movido]=arr.splice(gi,1);
+            if(!Dmo.produtos[destino]) Dmo.produtos[destino]=[];
+            Dmo.produtos[destino].push(movido);
+            // move também o tipoLanc se existir por produto (não aplicável aqui, tipoLanc é por setor)
+            salvarSecaoMO('produtos');
+            runMaoDeObra();
+          }
+        };
+        setorLinha.appendChild(selSet);
+        item.appendChild(setorLinha);
         // campos editáveis
         const fields=document.createElement('div');fields.className='pe-fields';
         // pessoas
