@@ -664,7 +664,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v43</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v45</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -3026,7 +3026,14 @@ function calcPericValor(p){ return (p.salario+p.extras50+p.extras100)*0.30; }
 // KG mensal de um setor = Σ (prodDia × pesoPeca × diasIdeal) dos produtos do setor
 // peso vem da matéria-prima (D.produtos), cruzado por nome
 function pesoPecaDe(nome){
-  try{ const p=(typeof D!=='undefined'&&D.produtos)?D.produtos.find(x=>x.nome===nome):null; return p?(p.pesoPeca||0):0; }catch(e){ return 0; }
+  try{
+    // pesos vêm da matéria-prima: window.__mpD (exposto ao abrir Material) ou D_DEFAULT como fallback
+    let fonte = (window.__mpD && window.__mpD.produtos) ? window.__mpD.produtos
+              : (typeof D_DEFAULT!=='undefined' && D_DEFAULT.produtos) ? D_DEFAULT.produtos : null;
+    if(!fonte) return 0;
+    const p = fonte.find(x=>x.nome===nome);
+    return p ? (p.pesoPeca||0) : 0;
+  }catch(e){ return 0; }
 }
 function kgSetor(setor){
   let kg=0;
@@ -3195,7 +3202,7 @@ function renderSetores(){
       if(!Dmo.centrais[f]) Dmo.centrais[f]={atende:[]};
       const cfg=Dmo.centrais[f];
       const wrap=document.createElement('div');wrap.className='central-cfg';
-      wrap.innerHTML='<div class="central-tit">Esta central abastece quais maquinas? O custo das pessoas dela e rateado por KG entre as marcadas.</div>';
+      wrap.innerHTML='<div class="central-tit">Esta central abastece quais maquinas? O custo das pessoas dela e rateado por KG (producao IDEAL) entre as marcadas.</div>';
       const grid=document.createElement('div');grid.className='central-grid';
       FAM.filter(m=>!/^central/i.test(m)).forEach(maq=>{
         const lab=document.createElement('label');lab.className='central-chk';
@@ -3215,7 +3222,7 @@ function renderSetores(){
       const atende=(cfg.atende||[]).filter(m=>FAM.includes(m));
       if(atende.length && r.folha>0){
         const resumo=document.createElement('div');resumo.className='central-resumo';
-        let html2='<div class="cr-tit">Rateio do custo desta central (R$ '+fmt(r.folha)+'/mes) por KG:</div>';
+        let html2='<div class="cr-tit">Rateio do custo desta central (R$ '+fmt(r.folha)+'/mes) por KG ideal:</div>';
         let kgTot=0; const kgs={};
         atende.forEach(m=>{ const k=kgSetor(m); kgs[m]=k; kgTot+=k; });
         atende.forEach(m=>{
@@ -3280,7 +3287,7 @@ function renderSetores(){
         f2.appendChild(i2);fields.appendChild(f2);
         // produção/dia
         const f3=document.createElement('div');f3.className='pe-f';
-        f3.innerHTML='<label>Produção/dia</label>';
+        f3.innerHTML='<label>Produção/dia (ideal)</label>';
         const i3=document.createElement('input');i3.type='number';i3.min='0';i3.value=d.prodDia||'';
         i3.placeholder='definir';
         if(!d.prodDia) i3.classList.add('vazio');
