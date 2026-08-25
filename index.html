@@ -414,6 +414,16 @@ main{padding:16px;max-width:680px;margin:0 auto}
 #mo-container .pe-novo{font-size:.52rem;background:var(--good);color:#fff;padding:1px 5px;border-radius:3px;margin-left:5px;vertical-align:middle}
 #mo-container .pe-mo{font-size:.86rem;font-weight:800;color:var(--rebar2);white-space:nowrap}
 #mo-container .pe-mo.zero{color:var(--txt3)}
+#mo-container .central-cfg{padding:10px;background:rgba(255,140,0,.06);border:1px solid rgba(255,140,0,.25);border-radius:8px;margin:4px 0}
+#mo-container .central-tit{font-size:12px;color:#cbd;margin-bottom:8px;line-height:1.4}
+#mo-container .central-grid{display:flex;flex-direction:column;gap:6px}
+#mo-container .central-chk{display:flex;align-items:center;gap:8px;font-size:13px;color:#e8eaed;cursor:pointer}
+#mo-container .central-chk input{width:16px;height:16px}
+#mo-container .central-resumo{margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.08)}
+#mo-container .cr-tit{font-size:11px;color:#9aa;margin-bottom:6px}
+#mo-container .cr-linha{display:flex;justify-content:space-between;font-size:13px;padding:3px 0;color:#e8eaed}
+#mo-container .cr-linha span:last-child{color:#ff9a3c;font-variant-numeric:tabular-nums}
+#mo-container .cr-nota{font-size:11px;color:#e0a030;margin-top:6px;font-style:italic}
 #mo-container .pe-setor{display:flex;align-items:center;gap:8px;margin:6px 0;padding:6px 8px;background:rgba(255,255,255,.03);border-radius:6px}
 #mo-container .pe-setor label{font-size:11px;color:#9aa;min-width:90px}
 #mo-container .pe-setor select{flex:1;background:#1a1f26;color:#e8eaed;border:1px solid #333;border-radius:5px;padding:5px 8px;font-size:13px}
@@ -654,7 +664,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v42</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v43</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -2722,11 +2732,11 @@ function salvarSecaoMO(secao){
 // Compat: salvarMO() antigo agora salva as seções de DADOS (usado por handlers que mexem em várias)
 function salvarMO(){
   if(!Dmo || !moReady) return;
-  ['pessoas','produtos','tipoLanc','jornada','diasIdeal','indiretos','epis','familias'].forEach(salvarSecaoMO);
+  ['pessoas','produtos','tipoLanc','jornada','diasIdeal','indiretos','epis','familias','centrais'].forEach(salvarSecaoMO);
 }
 async function initMaoDeObra(container){
   moReady = false;
-  const SECOES=['pessoas','produtos','tipoLanc','jornada','diasIdeal','indiretos','epis','familias'];
+  const SECOES=['pessoas','produtos','tipoLanc','jornada','diasIdeal','indiretos','epis','familias','centrais'];
   // carrega cada seção de custos/mo/<secao>; se não existir, tenta o bloco antigo (migração); senão DEFAULT
   Dmo = JSON.parse(JSON.stringify(DMO_DEFAULT));
   if(DEMO || !db){
@@ -3013,6 +3023,41 @@ function calcPessoa(p){
 function calcPericValor(p){ return (p.salario+p.extras50+p.extras100)*0.30; }
 
 // ---- folha e custo/hora por setor ----
+// KG mensal de um setor = Σ (prodDia × pesoPeca × diasIdeal) dos produtos do setor
+// peso vem da matéria-prima (D.produtos), cruzado por nome
+function pesoPecaDe(nome){
+  try{ const p=(typeof D!=='undefined'&&D.produtos)?D.produtos.find(x=>x.nome===nome):null; return p?(p.pesoPeca||0):0; }catch(e){ return 0; }
+}
+function kgSetor(setor){
+  let kg=0;
+  (Dmo.produtos[setor]||[]).forEach(p=>{ kg += (p.prodDia||0) * pesoPecaDe(p.nome) * diasIdeal; });
+  return kg;
+}
+// Identifica as centrais (setores cujo nome começa com "Central")
+function ehCentral(f){ return /^central/i.test(f); }
+// Distribui o custo (folha) de cada central entre as máquinas que ela atende, por KG.
+// Retorna { maquina: custoRecebidoDaCentral }
+function rateioCentrais(folha){
+  const extra={};
+  FAM.forEach(f=>extra[f]=0);
+  FAM.filter(ehCentral).forEach(central=>{
+    const cfg = (Dmo.centrais && Dmo.centrais[central]) || {atende:[]};
+    const atende = (cfg.atende||[]).filter(m=>FAM.includes(m) && !ehCentral(m));
+    if(!atende.length) return;
+    const custoCentral = folha[central]||0;
+    if(custoCentral<=0) return;
+    // KG de cada máquina atendida
+    const kgs={}; let kgTot=0;
+    atende.forEach(m=>{ const k=kgSetor(m); kgs[m]=k; kgTot+=k; });
+    if(kgTot<=0){
+      // sem produção informada: divide igual entre as atendidas
+      atende.forEach(m=>{ extra[m]+=custoCentral/atende.length; });
+    }else{
+      atende.forEach(m=>{ extra[m]+=custoCentral*(kgs[m]/kgTot); });
+    }
+  });
+  return extra;
+}
 function calcSetores(){
   const folha={},nP={};
   FAM.forEach(f=>{folha[f]=0;nP[f]=0;});
@@ -3022,10 +3067,15 @@ function calcSetores(){
     else{const soma=FAM.reduce((s,f)=>s+(p._rateios[f]||0),0)||1;
       FAM.forEach(f=>{const pct=(p._rateios[f]||0)/soma;folha[f]+=c*pct;if(pct>0)nP[f]+=pct;});}
   });
+  // Rateio das CENTRAIS: distribui a folha de cada central entre as máquinas que ela atende, por KG
+  const extraCentral = rateioCentrais(folha);
   const res={};
   FAM.forEach(f=>{
     const indSetor = indiretoSetor(f, epiMes);   // consumo REAL do setor
-    const custoSetor = folha[f] + indSetor;
+    const central = ehCentral(f);
+    // máquinas recebem o custo da central que as atende; a própria central zera a folha (foi distribuída)
+    const folhaEfetiva = central ? 0 : folha[f] + (extraCentral[f]||0);
+    const custoSetor = folhaEfetiva + indSetor;
     const horas = nP[f]*diasIdeal*jornada;
     const custoHora = horas>0 ? custoSetor/horas : 0;
     // custo MO por peça de cada produto = pessoas × ocup × custoHora × jornada / prodDia
@@ -3037,7 +3087,7 @@ function calcSetores(){
       const moPeca = d.prodDia>0 ? custoDia/d.prodDia : 0;
       return {nome:p.nome, ...d, moPeca};
     });
-    res[f]={folha:folha[f],indireto:indSetor,custoTotal:custoSetor,pessoas:nP[f],horas,custoHora,produtos:prods};
+    res[f]={folha:folha[f],indireto:indSetor,custoTotal:custoSetor,pessoas:nP[f],horas,custoHora,produtos:prods,central,deCentral:(extraCentral[f]||0),folhaEfetiva};
   });
   return res;
 }
@@ -3140,7 +3190,44 @@ function renderSetores(){
     div.appendChild(head);
     // BODY - produtos editáveis
     const body=document.createElement('div');body.className='setor-body';
-    if(r.pessoas===0){
+    if(r.central){
+      if(!Dmo.centrais) Dmo.centrais={};
+      if(!Dmo.centrais[f]) Dmo.centrais[f]={atende:[]};
+      const cfg=Dmo.centrais[f];
+      const wrap=document.createElement('div');wrap.className='central-cfg';
+      wrap.innerHTML='<div class="central-tit">Esta central abastece quais maquinas? O custo das pessoas dela e rateado por KG entre as marcadas.</div>';
+      const grid=document.createElement('div');grid.className='central-grid';
+      FAM.filter(m=>!/^central/i.test(m)).forEach(maq=>{
+        const lab=document.createElement('label');lab.className='central-chk';
+        const cb=document.createElement('input');cb.type='checkbox';cb.checked=(cfg.atende||[]).includes(maq);
+        cb.onchange=()=>{
+          if(!Dmo.centrais[f].atende) Dmo.centrais[f].atende=[];
+          const arr=Dmo.centrais[f].atende;
+          if(cb.checked){ if(!arr.includes(maq)) arr.push(maq); }
+          else { const gi=arr.indexOf(maq); if(gi>=0) arr.splice(gi,1); }
+          salvarSecaoMO('centrais'); recalc();
+        };
+        lab.appendChild(cb);
+        const sp=document.createElement('span');sp.textContent=maq;lab.appendChild(sp);
+        grid.appendChild(lab);
+      });
+      wrap.appendChild(grid);
+      const atende=(cfg.atende||[]).filter(m=>FAM.includes(m));
+      if(atende.length && r.folha>0){
+        const resumo=document.createElement('div');resumo.className='central-resumo';
+        let html2='<div class="cr-tit">Rateio do custo desta central (R$ '+fmt(r.folha)+'/mes) por KG:</div>';
+        let kgTot=0; const kgs={};
+        atende.forEach(m=>{ const k=kgSetor(m); kgs[m]=k; kgTot+=k; });
+        atende.forEach(m=>{
+          const pct = kgTot>0 ? (kgs[m]/kgTot) : (1/atende.length);
+          html2+='<div class="cr-linha"><span>'+m+'</span><span>'+(kgTot>0?(kgs[m]/1000).toFixed(1)+' t - ':'')+(pct*100).toFixed(0)+'% - R$ '+fmt(r.folha*pct)+'</span></div>';
+        });
+        if(kgTot===0) html2+='<div class="cr-nota">Sem producao informada - dividindo igual. Preencha a producao das maquinas para ratear por KG.</div>';
+        resumo.innerHTML=html2;
+        wrap.appendChild(resumo);
+      }
+      body.appendChild(wrap);
+    } else if(r.pessoas===0){
       body.innerHTML='<div class="no-people">⚠ Nenhuma pessoa alocada neste setor — aloque alguém no passo 2 para calcular o custo.</div>';
     } else {
       r.produtos.forEach(p=>{
