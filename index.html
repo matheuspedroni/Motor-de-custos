@@ -414,6 +414,28 @@ main{padding:16px;max-width:680px;margin:0 auto}
 #mo-container .pe-novo{font-size:.52rem;background:var(--good);color:#fff;padding:1px 5px;border-radius:3px;margin-left:5px;vertical-align:middle}
 #mo-container .pe-mo{font-size:.86rem;font-weight:800;color:var(--rebar2);white-space:nowrap}
 #mo-container .pe-mo.zero{color:var(--txt3)}
+#mo-container .prod-real-barra{margin:8px 0}
+#mo-container .btn-lanc-prod{width:100%;text-align:left;background:rgba(90,140,255,.08);border:1px solid rgba(90,140,255,.25);color:#bcd;border-radius:8px;padding:9px 12px;font-size:13px;cursor:pointer;font-weight:600}
+#mo-container .btn-lanc-prod:hover{background:rgba(90,140,255,.14)}
+#mo-container .pr-painel{padding:10px;background:rgba(90,140,255,.05);border:1px solid rgba(90,140,255,.18);border-radius:8px;margin:2px 0 8px}
+#mo-container .pr-intro{font-size:11px;color:#9ab;margin-bottom:10px;line-height:1.4}
+#mo-container .pr-produto{padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+#mo-container .pr-produto:last-child{border-bottom:none}
+#mo-container .pr-prod-cab{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:6px}
+#mo-container .pr-nome{font-size:13px;color:#e8eaed;font-weight:600}
+#mo-container .pr-nums{font-size:12px;color:#9aa;white-space:nowrap;font-variant-numeric:tabular-nums}
+#mo-container .ef-ok{color:#4ccf7a}
+#mo-container .ef-med{color:#e0a030}
+#mo-container .ef-bad{color:#e0603c}
+#mo-container .pr-lista{margin:4px 0 6px;display:flex;flex-direction:column;gap:3px}
+#mo-container .pr-lanc{display:flex;align-items:center;gap:8px;font-size:12px;color:#cbd;background:rgba(255,255,255,.03);padding:3px 8px;border-radius:5px}
+#mo-container .pr-lanc span:first-child{min-width:74px}
+#mo-container .pr-lanc span:nth-child(2){flex:1;color:#e8eaed}
+#mo-container .pr-del{background:none;border:none;color:#e0603c;font-size:16px;cursor:pointer;line-height:1;padding:0 4px}
+#mo-container .pr-add{display:flex;gap:6px;align-items:center;margin-top:4px}
+#mo-container .pr-data{flex:1;background:#1a1f26;color:#e8eaed;border:1px solid #333;border-radius:5px;padding:5px;font-size:12px}
+#mo-container .pr-qtd{width:70px;background:#1a1f26;color:#e8eaed;border:1px solid #333;border-radius:5px;padding:5px;font-size:12px}
+#mo-container .pr-add-btn{background:rgba(90,140,255,.15);border:1px solid rgba(90,140,255,.35);color:#bcd;border-radius:5px;padding:5px 10px;font-size:12px;cursor:pointer;white-space:nowrap}
 #mo-container .central-cfg{padding:10px;background:rgba(255,140,0,.06);border:1px solid rgba(255,140,0,.25);border-radius:8px;margin:4px 0}
 #mo-container .central-tit{font-size:12px;color:#cbd;margin-bottom:8px;line-height:1.4}
 #mo-container .central-grid{display:flex;flex-direction:column;gap:6px}
@@ -664,7 +686,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v45</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v47</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -2732,15 +2754,15 @@ function salvarSecaoMO(secao){
 // Compat: salvarMO() antigo agora salva as seções de DADOS (usado por handlers que mexem em várias)
 function salvarMO(){
   if(!Dmo || !moReady) return;
-  ['pessoas','produtos','tipoLanc','jornada','diasIdeal','indiretos','epis','familias','centrais'].forEach(salvarSecaoMO);
+  ['pessoas','produtos','tipoLanc','jornada','diasIdeal','indiretos','epis','familias','centrais','prodReal'].forEach(salvarSecaoMO);
 }
 async function initMaoDeObra(container){
   moReady = false;
-  const SECOES=['pessoas','produtos','tipoLanc','jornada','diasIdeal','indiretos','epis','familias','centrais'];
+  const SECOES=['pessoas','produtos','tipoLanc','jornada','diasIdeal','indiretos','epis','familias','centrais','prodReal'];
   // carrega cada seção de custos/mo/<secao>; se não existir, tenta o bloco antigo (migração); senão DEFAULT
   Dmo = JSON.parse(JSON.stringify(DMO_DEFAULT));
   if(DEMO || !db){
-    try{ const blob=JSON.parse(localStorage.getItem('pedroni:custos/mo_bloco')||'null'); if(blob) SECOES.forEach(s=>{ if(blob[s]!==undefined) Dmo[s]=blob[s]; }); }catch(e){}
+    try{ const blob=JSON.parse(localStorage.getItem('pedroni:custos/mo_bloco')||'null'); if(blob) SECOES.forEach(s=>{ if(blob[s]!==undefined) Dmo[s]=_moNormalizaSecao(s, blob[s]); }); }catch(e){}
   }else{
     // tenta por seção
     let achouAlguma=false;
@@ -2916,7 +2938,7 @@ FAM.forEach(f=>{ prodDia[f]={}; (Dmo.produtos[f]||[]).forEach(p=>{ prodDia[f][p.
 // estado aberto dos setores
 const setorOpen = {}; FAM.forEach(f=>setorOpen[f]=false);
 // ===== EPI: consumo por setor =====
-let epiAba='cons', epiMes='2026-07';
+let epiAba='cons', epiMes=new Date().toISOString().slice(0,7);
 const epiOpen={}, precOpen={}, ncOpen={};
 // consumo: {mes: {epiId: {setor: qtde}}}
 const consumo={};
@@ -3041,6 +3063,96 @@ function kgSetor(setor){
   return kg;
 }
 // Identifica as centrais (setores cujo nome começa com "Central")
+function fmtData(iso){ try{ if(!iso) return ''; const [a,m,d]=iso.split('-'); return d+'/'+m+'/'+a.slice(2); }catch(e){ return iso||''; } }
+function fmtNum(n){ n=Number(n)||0; return n.toLocaleString('pt-BR',{maximumFractionDigits:0}); }
+// ===== PRODUÇÃO REAL =====
+const _prAberto = {};       // estado aberto/fechado do painel por setor
+const _prNovoLanc = {};     // rascunho do lançamento em digitação por setor|produto
+function tipoLancDe(setor){ return (Dmo.tipoLanc && Dmo.tipoLanc[setor]) || 'mensal'; }
+function mesRefLabel(mesRef){
+  try{ const [a,m]=mesRef.split('-'); const nomes=['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez']; return nomes[+m]+'/'+a; }catch(e){ return mesRef; }
+}
+// Painel de lançamento de produção real de um setor
+function painelProducaoReal(setor, mesRef){
+  const wrap=document.createElement('div');wrap.className='pr-painel';
+  const diario = tipoLancDe(setor)==='diario';
+  const prods = (Dmo.produtos[setor]||[]);
+  const intro=document.createElement('div');intro.className='pr-intro';
+  intro.textContent = diario
+    ? 'Setor diário: lance a produção de cada dia. O app soma os dias do mês.'
+    : 'Setor mensal: lance o total do mês (ou vários lançamentos; o app soma).';
+  wrap.appendChild(intro);
+  prods.forEach(p=>{
+    const bloco=document.createElement('div');bloco.className='pr-produto';
+    const realMes = prodRealMes(setor, p.nome, mesRef);
+    const idealMes = (p.prodDia||0)*diasIdeal;
+    const efic = idealMes>0 ? (realMes/idealMes) : 0;
+    // cabeçalho do produto: nome + real/ideal + eficiência
+    const cab=document.createElement('div');cab.className='pr-prod-cab';
+    cab.innerHTML='<span class="pr-nome">'+p.nome+'</span>'
+      +'<span class="pr-nums">'+fmtNum(realMes)+' / '+fmtNum(idealMes)+' pç'
+      +(idealMes>0?' · <b class="'+(efic>=0.85?'ef-ok':(efic>=0.6?'ef-med':'ef-bad'))+'">'+(efic*100).toFixed(0)+'%</b>':'')
+      +'</span>';
+    bloco.appendChild(cab);
+    // lista de lançamentos existentes do mês
+    const lancs=((Dmo.prodReal&&Dmo.prodReal[setor]&&Dmo.prodReal[setor][p.nome])||[])
+      .map((l,idx)=>({l,idx})).filter(o=>o.l&&o.l.data&&o.l.data.slice(0,7)===mesRef);
+    if(lancs.length){
+      const lista=document.createElement('div');lista.className='pr-lista';
+      lancs.forEach(o=>{
+        const li=document.createElement('div');li.className='pr-lanc';
+        li.innerHTML='<span>'+fmtData(o.l.data)+'</span><span>'+fmtNum(o.l.qtd)+' pç</span>';
+        const del=document.createElement('button');del.className='pr-del';del.textContent='×';
+        del.onclick=()=>{ Dmo.prodReal[setor][p.nome].splice(o.idx,1); salvarSecaoMO('prodReal'); recalc(); };
+        li.appendChild(del); lista.appendChild(li);
+      });
+      bloco.appendChild(lista);
+    }
+    // linha de novo lançamento: data + qtd + adicionar
+    const add=document.createElement('div');add.className='pr-add';
+    const hoje=new Date().toISOString().slice(0,10);
+    const chave=setor+'|'+p.nome;
+    const dData=document.createElement('input');dData.type='date';dData.className='pr-data';
+    dData.value=(_prNovoLanc[chave]&&_prNovoLanc[chave].data)|| (diario?hoje:(mesRef+'-01'));
+    dData.onchange=()=>{ _prNovoLanc[chave]=_prNovoLanc[chave]||{}; _prNovoLanc[chave].data=dData.value; };
+    const dQtd=document.createElement('input');dQtd.type='number';dQtd.className='pr-qtd';dQtd.placeholder='qtd';
+    dQtd.value=(_prNovoLanc[chave]&&_prNovoLanc[chave].qtd)||'';
+    dQtd.oninput=()=>{ _prNovoLanc[chave]=_prNovoLanc[chave]||{}; _prNovoLanc[chave].qtd=dQtd.value; };
+    const bAdd=document.createElement('button');bAdd.className='pr-add-btn';bAdd.textContent='+ lançar';
+    bAdd.onclick=()=>{
+      const data=dData.value; const qtd=parseFloat(dQtd.value)||0;
+      if(!data||qtd<=0){ alert('Informe a data e a quantidade produzida.'); return; }
+      if(!Dmo.prodReal) Dmo.prodReal={};
+      if(!Dmo.prodReal[setor]) Dmo.prodReal[setor]={};
+      if(!Dmo.prodReal[setor][p.nome]) Dmo.prodReal[setor][p.nome]=[];
+      Dmo.prodReal[setor][p.nome].push({data, qtd});
+      _prNovoLanc[chave]={};
+      salvarSecaoMO('prodReal'); recalc();
+    };
+    add.appendChild(dData); add.appendChild(dQtd); add.appendChild(bAdd);
+    bloco.appendChild(add);
+    wrap.appendChild(bloco);
+  });
+  return wrap;
+}
+// Estrutura: Dmo.prodReal = { setor: { produto: [ {data:'YYYY-MM-DD', qtd:N}, ... ] } }
+// Soma os lançamentos de um produto que caem no mês de referência (YYYY-MM)
+function prodRealMes(setor, produto, mesRef){
+  try{
+    const lancs = (Dmo.prodReal && Dmo.prodReal[setor] && Dmo.prodReal[setor][produto]) || [];
+    return lancs.filter(l=>l && l.data && l.data.slice(0,7)===mesRef)
+               .reduce((s,l)=>s+(parseFloat(l.qtd)||0),0);
+  }catch(e){ return 0; }
+}
+// produção real diária equivalente = total do mês ÷ dias trabalhados (pra comparar com prodDia ideal)
+function prodRealDia(setor, produto, mesRef){
+  const total = prodRealMes(setor, produto, mesRef);
+  return diasIdeal>0 ? total/diasIdeal : 0;
+}
+// eficiência do produto = real ÷ ideal (0..1+)
+function eficiencia(prodIdealDia, realDia){
+  return prodIdealDia>0 ? realDia/prodIdealDia : 0;
+}
 function ehCentral(f){ return /^central/i.test(f); }
 // Distribui o custo (folha) de cada central entre as máquinas que ela atende, por KG.
 // Retorna { maquina: custoRecebidoDaCentral }
@@ -3197,6 +3309,15 @@ function renderSetores(){
     div.appendChild(head);
     // BODY - produtos editáveis
     const body=document.createElement('div');body.className='setor-body';
+    if(!r.central){
+      const barra=document.createElement('div');barra.className='prod-real-barra';
+      const mesRef = (typeof epiMes!=='undefined') ? epiMes : (new Date().toISOString().slice(0,7));
+      const abertoPR = _prAberto[f];
+      barra.innerHTML='<button class="btn-lanc-prod">'+(abertoPR?'▼':'▶')+' Lançar produção real ('+(tipoLancDe(f)==='diario'?'diário':'mensal')+') — '+mesRefLabel(mesRef)+'</button>';
+      barra.querySelector('button').onclick=()=>{ _prAberto[f]=!_prAberto[f]; renderSetores(); };
+      body.appendChild(barra);
+      if(abertoPR) body.appendChild(painelProducaoReal(f, mesRef));
+    }
     if(r.central){
       if(!Dmo.centrais) Dmo.centrais={};
       if(!Dmo.centrais[f]) Dmo.centrais[f]={atende:[]};
@@ -3235,7 +3356,9 @@ function renderSetores(){
       }
       body.appendChild(wrap);
     } else if(r.pessoas===0){
-      body.innerHTML='<div class="no-people">⚠ Nenhuma pessoa alocada neste setor — aloque alguém no passo 2 para calcular o custo.</div>';
+      const aviso=document.createElement('div');aviso.className='no-people';
+      aviso.textContent='⚠ Nenhuma pessoa alocada neste setor — aloque alguém no passo 2 para calcular o custo.';
+      body.appendChild(aviso);
     } else {
       r.produtos.forEach(p=>{
         const d = prodDia[f][p.nome];
