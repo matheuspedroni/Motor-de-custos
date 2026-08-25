@@ -418,6 +418,25 @@ main{padding:16px;max-width:680px;margin:0 auto}
 #mo-container .btn-lanc-prod{width:100%;text-align:left;background:rgba(90,140,255,.08);border:1px solid rgba(90,140,255,.25);color:#bcd;border-radius:8px;padding:9px 12px;font-size:13px;cursor:pointer;font-weight:600}
 #mo-container .btn-lanc-prod:hover{background:rgba(90,140,255,.14)}
 #mo-container .pr-painel{padding:10px;background:rgba(90,140,255,.05);border:1px solid rgba(90,140,255,.18);border-radius:8px;margin:2px 0 8px}
+.cal-back{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px}
+.cal-box{background:#161b22;border:1px solid #2a3038;border-radius:12px;padding:16px;width:100%;max-width:340px;box-shadow:0 10px 40px rgba(0,0,0,.5)}
+.cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.cal-titulo{font-size:15px;font-weight:700;color:#e8eaed;text-transform:capitalize}
+.cal-nav{background:#222a33;border:1px solid #333;color:#e8eaed;width:34px;height:34px;border-radius:8px;font-size:18px;cursor:pointer}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.cal-dow{text-align:center;font-size:11px;color:#8a94a0;padding:4px 0;font-weight:600}
+.cal-vazio{aspect-ratio:1}
+.cal-dia{aspect-ratio:1;background:#222a33;border:1px solid #2e3640;color:#cbd;border-radius:7px;font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.cal-dia:hover{background:#2b3440}
+.cal-dia.sel{background:#e8701c;border-color:#e8701c;color:#fff;font-weight:700}
+.cal-rodape{display:flex;align-items:center;justify-content:space-between;margin-top:14px;font-size:13px;color:#9aa}
+.cal-ok{background:#e8701c;border:none;color:#fff;padding:8px 18px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer}
+#mo-container .pr-cal-btn{width:100%;background:rgba(232,112,28,.1);border:1px solid rgba(232,112,28,.35);color:#f0a060;border-radius:6px;padding:7px 10px;font-size:13px;cursor:pointer;margin:4px 0}
+#mo-container .pr-qtd-full{flex:1;background:#1a1f26;color:#e8eaed;border:1px solid #333;border-radius:5px;padding:6px 8px;font-size:13px}
+#mo-container .pr-resumo{background:rgba(90,140,255,.07);border-radius:7px;padding:8px 10px;margin-bottom:10px}
+#mo-container .pr-res-linha{display:flex;justify-content:space-between;font-size:12px;padding:2px 0;color:#cbd}
+#mo-container .pr-res-linha b{font-variant-numeric:tabular-nums}
+#mo-container .pr-res-linha span:last-child{font-variant-numeric:tabular-nums;color:#e8eaed}
 #mo-container .pr-intro{font-size:11px;color:#9ab;margin-bottom:10px;line-height:1.4}
 #mo-container .pr-produto{padding:8px 0;border-bottom:1px solid rgba(255,255,255,.06)}
 #mo-container .pr-produto:last-child{border-bottom:none}
@@ -686,7 +705,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v47</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v49</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -2671,7 +2690,7 @@ let moReady = false;
 let moWatching = false;
 let moWroteAt = 0;
 let _moLastWrite = null;
-const DMO_DEFAULT = {"pessoas": [{"nome": "Ramon", "salario": 2500, "extras50": 0, "extras100": 0, "foraFolha": 0, "va": 576, "quinquenio": 0, "anuenio": 77.45, "insalubridade": 648.4}, {"nome": "Ryan", "salario": 2500, "extras50": 0, "extras100": 0, "foraFolha": 0, "va": 576, "quinquenio": 0, "anuenio": 0, "insalubridade": 648.4}, {"nome": "Ignacio", "salario": 2300, "extras50": 0, "extras100": 0, "foraFolha": 0, "va": 576, "quinquenio": 0, "anuenio": 0, "insalubridade": 648.4}, {"nome": "Jorge", "salario": 2300, "extras50": 0, "extras100": 0, "foraFolha": 0, "va": 576, "quinquenio": 0, "anuenio": 0, "insalubridade": 648.4}, {"nome": "Reginaldo", "salario": 2563, "extras50": 0, "extras100": 0, "foraFolha": 0, "va": 576, "quinquenio": 0, "anuenio": 77.45, "insalubridade": 648.4}, {"nome": "Tales", "salario": 2300, "extras50": 0, "extras100": 0, "foraFolha": 0, "va": 576, "quinquenio": 0, "anuenio": 0, "insalubridade": 648.4}, {"nome": "Paulo", "salario": 2525.5, "extras50": 0, "extras100": 0, "foraFolha": 0, "va": 576, "quinquenio": 0, "anuenio": 77.45, "insalubridade": 648.4}, {"nome": "Isac", "salario": 2550.75, "extras50": 0, "extras100": 0, "foraFolha": 0, "va": 576, "quinquenio": 0, "anuenio": 77.45, "insalubridade": 648.4}, {"nome": "David Renato", "salario": 2500, "extras50": 0, "extras100": 0, "foraFolha": 0, "va": 576, "quinquenio": 0, "anuenio": 0, "insalubridade": 648.4}, {"nome": "Jhon Pierre", "salario": 3275.84, "extras50": 0, "extras100": 0, "foraFolha": 0, "va": 576, "quinquenio": 360, "anuenio": 77.45, "insalubridade": 648.4}, {"nome": "Leonardo (misturador)", "salario": 3754.75, "extras50": 0, "extras100": 0, "foraFolha": 0, "va": 576, "quinquenio": 0, "anuenio": 77.45, "insalubridade": 648.4}, {"nome": "Delmir da Rosa", "salario": 4796.87, "extras50": 0, "extras100": 0, "foraFolha": 700, "va": 576, "quinquenio": 1058.04, "anuenio": 77.45, "insalubridade": 648.4}], "familias": ["Blocos maquina PWR", "Blocos maquina Gervasi", "Tubos maquina LKR", "Tubos vibrados", "Tubos Maquina Tuber", "Fossas", "Caixas", "Tampas/Leitos", "Central dosadora 01", "Central dosadora 02 (nova)"], "produtos": {"Blocos maquina PWR": [{"nome": "PAVER 6 CM HOLANDÊS", "pessoas": 2, "ocup": 1, "prodDia": 21000, "moAtual": 0.038, "novo": false}, {"nome": "PAVER 6 CM UNISTEIN", "pessoas": 2, "ocup": 1, "prodDia": 22386, "moAtual": 0.036, "novo": false}, {"nome": "PAVER 8 CM HOLANDÊS", "pessoas": 2, "ocup": 1, "prodDia": 21000, "moAtual": 0.038, "novo": false}, {"nome": "PAVER 8 CM UNISTEIN", "pessoas": 2, "ocup": 1, "prodDia": 22386, "moAtual": 0.036, "novo": false}], "Blocos maquina Gervasi": [{"nome": "BLOCO 09", "pessoas": 4, "ocup": 1, "prodDia": 5400, "moAtual": 0.296, "novo": false}, {"nome": "BLOCO 11,5", "pessoas": 4, "ocup": 1.0, "prodDia": 0, "moAtual": 0, "novo": true}, {"nome": "BLOCOS 14", "pessoas": 2, "ocup": 1, "prodDia": 8400, "moAtual": 0.095, "novo": false}, {"nome": "BLOCOS 19", "pessoas": 2, "ocup": 1, "prodDia": 6000, "moAtual": 0.133, "novo": false}, {"nome": "CANALETA 14", "pessoas": 4, "ocup": 1, "prodDia": 3600, "moAtual": 0.444, "novo": false}, {"nome": "CANALETA 19", "pessoas": 4, "ocup": 1, "prodDia": 3000, "moAtual": 0.532, "novo": false}, {"nome": "MEIO FIO", "pessoas": 4, "ocup": 1, "prodDia": 600, "moAtual": 2.662, "novo": false}, {"nome": "PISO GRAMA", "pessoas": 4, "ocup": 1, "prodDia": 1200, "moAtual": 1.331, "novo": false}], "Tubos maquina LKR": [{"nome": "TUBOS DN 200 PS1", "pessoas": 2, "ocup": 1, "prodDia": 200, "moAtual": 3.473, "novo": false}, {"nome": "TUBOS DN 300 MF SIMPLES", "pessoas": 2, "ocup": 1, "prodDia": 200, "moAtual": 3.473, "novo": false}, {"nome": "TUBOS DN 400 MF  SIMPLES", "pessoas": 3, "ocup": 1, "prodDia": 200, "moAtual": 5.209, "novo": false}, {"nome": "TUBOS DN 400 MF ARMADO", "pessoas": 3, "ocup": 1, "prodDia": 150, "moAtual": 6.656, "novo": false}, {"nome": "TUBOS DN 400 PB  ARMADO", "pessoas": 3, "ocup": 1, "prodDia": 130, "moAtual": 6.656, "novo": false}, {"nome": "TUBOS DN 500 MF  ARMADO", "pessoas": 3, "ocup": 1, "prodDia": 150, "moAtual": 6.656, "novo": false}, {"nome": "TUBOS DN 500 MF  SIMPLES", "pessoas": 3, "ocup": 1, "prodDia": 200, "moAtual": 5.209, "novo": false}, {"nome": "TUBOS DN 600 MF  ARMADO", "pessoas": 3, "ocup": 1, "prodDia": 150, "moAtual": 6.656, "novo": false}, {"nome": "TUBOS DN 600 MF  SIMPLES", "pessoas": 3, "ocup": 1, "prodDia": 200, "moAtual": 5.209, "novo": false}, {"nome": "TUBOS DN 600 PB  ARMADO PA1", "pessoas": 5, "ocup": 1, "prodDia": 100, "moAtual": 15.36, "novo": false}, {"nome": "TUBOS DN 600 PB  ARMADO PA2", "pessoas": 5, "ocup": 1, "prodDia": 100, "moAtual": 15.36, "novo": false}], "Tubos vibrados": [{"nome": "TESTE 01", "pessoas": 1, "ocup": 1, "prodDia": 200, "moAtual": 0, "novo": false}, {"nome": "TUBOS DN 1000 MF  ARMADO PA1", "pessoas": 2, "ocup": 1, "prodDia": 40, "moAtual": 19.968, "novo": false}, {"nome": "TUBOS DN 1000 PB ARMADO PA1", "pessoas": 2, "ocup": 1, "prodDia": 40, "moAtual": 19.968, "novo": false}, {"nome": "TUBOS DN 1000 PB ARMADO PA2", "pessoas": 2, "ocup": 1, "prodDia": 40, "moAtual": 19.968, "novo": false}, {"nome": "TUBOS DN 1200 PB ARMADO PA1", "pessoas": 2, "ocup": 1, "prodDia": 35, "moAtual": 22.821, "novo": false}, {"nome": "TUBOS DN 1200 PB ARMADO PA2", "pessoas": 2, "ocup": 1, "prodDia": 35, "moAtual": 22.821, "novo": false}, {"nome": "TUBOS DN 1500 PB ARMADO PA1", "pessoas": 2, "ocup": 1, "prodDia": 25, "moAtual": 31.949, "novo": false}, {"nome": "TUBOS DN 1500 PB ARMADO PA2", "pessoas": 2, "ocup": 1, "prodDia": 25, "moAtual": 31.949, "novo": false}, {"nome": "TUBOS DN 800 MF  ARMADO", "pessoas": 2, "ocup": 1, "prodDia": 46, "moAtual": 17.364, "novo": false}, {"nome": "TUBOS DN 800 MF  SIMPLES", "pessoas": 2, "ocup": 1, "prodDia": 46, "moAtual": 17.364, "novo": false}, {"nome": "TUBOS DN 800 PB ARMADO PA1", "pessoas": 2, "ocup": 1, "prodDia": 45, "moAtual": 17.749, "novo": false}, {"nome": "TUBOS DN 800 PB ARMADO PA2", "pessoas": 2, "ocup": 1, "prodDia": 45, "moAtual": 17.749, "novo": false}], "Tubos Maquina Tuber": [], "Fossas": [{"nome": "ANEL DE CONCRETO C/ FUNDO Ø1,70 x1,60", "pessoas": 2, "ocup": 0.5, "prodDia": 4, "moAtual": 99.841, "novo": false}, {"nome": "ANEL DE CONCRETO C/ FUNDO Ø2,00 x1,60", "pessoas": 2, "ocup": 0.5, "prodDia": 4, "moAtual": 99.841, "novo": false}, {"nome": "ANEL DE CONCRETO C/ FUNDO Ø2,30 x1,10", "pessoas": 2, "ocup": 0.3333, "prodDia": 2, "moAtual": 133.108, "novo": false}, {"nome": "ANEL DE CONCRETO C/ FUNDO Ø2,30 x1,60", "pessoas": 2, "ocup": 0.25, "prodDia": 2, "moAtual": 99.841, "novo": false}, {"nome": "ANEL DE CONCRETO C/ FUNDO Ø2,75 x1,10", "pessoas": 2, "ocup": 0.3333, "prodDia": 2, "moAtual": 133.108, "novo": false}, {"nome": "ANEL DE CONCRETO C/ FUNDO Ø3,30 x0,60", "pessoas": 2, "ocup": 0.1666, "prodDia": 1, "moAtual": 133.068, "novo": false}, {"nome": "ANEL DE CONCRETO C/ FUNDO Ø3,30 x1,10", "pessoas": 2, "ocup": 0.5, "prodDia": 2, "moAtual": 199.681, "novo": false}, {"nome": "ANEL DE CONCRETO C/ FUNDO Ø3,85 x0,60", "pessoas": 2, "ocup": 0.1666, "prodDia": 1, "moAtual": 133.068, "novo": false}, {"nome": "ANEL DE CONCRETO C/ FUNDO Ø3,85 x0,85", "pessoas": 2, "ocup": 0.5, "prodDia": 2, "moAtual": 199.681, "novo": false}, {"nome": "ANEL DE CONCRETO C/ FUNDO Ø3,85 x1,15", "pessoas": 2, "ocup": 0.25, "prodDia": 1, "moAtual": 199.681, "novo": false}, {"nome": "ANEL DE CONCRETO VAZADO Ø2,30 x0,60", "pessoas": 2, "ocup": 0.1666, "prodDia": 1, "moAtual": 133.068, "novo": false}, {"nome": "ANEL DE CONCRETO VAZADO Ø2,30 x1,10", "pessoas": 2, "ocup": 0.25, "prodDia": 2, "moAtual": 99.841, "novo": false}, {"nome": "ANEL DE CONCRETO VAZADO Ø2,75 x0,60", "pessoas": 2, "ocup": 0.1666, "prodDia": 1, "moAtual": 133.068, "novo": false}, {"nome": "ANEL DE CONCRETO VAZADO Ø2,75 x1,10", "pessoas": 2, "ocup": 0.375, "prodDia": 3, "moAtual": 99.841, "novo": false}, {"nome": "ANEL DE CONCRETO VAZADO Ø3,30 x0,60", "pessoas": 2, "ocup": 0.1666, "prodDia": 1, "moAtual": 133.068, "novo": false}, {"nome": "ANEL DE CONCRETO VAZADO Ø3,30 x1,10", "pessoas": 2, "ocup": 0.3333, "prodDia": 2, "moAtual": 88.738, "novo": false}, {"nome": "ANEL DE CONCRETO VAZADO Ø3,85 x0,60", "pessoas": 2, "ocup": 0.1666, "prodDia": 1, "moAtual": 133.068, "novo": false}, {"nome": "ANEL DE CONCRETO VAZADO Ø3,85 x0,85", "pessoas": 2, "ocup": 0.3333, "prodDia": 2, "moAtual": 133.108, "novo": false}, {"nome": "ANEL DE CONCRETO VAZADO Ø3,85 x1,15", "pessoas": 2, "ocup": 0.25, "prodDia": 1, "moAtual": 199.681, "novo": false}, {"nome": "ANEL DE CONCRETO VAZADO SUMIDOURO Ø1,70 x1,60", "pessoas": 2, "ocup": 0.5, "prodDia": 4, "moAtual": 0, "novo": false}, {"nome": "ANEL DE CONCRETO VAZADO SUMIDOURO Ø2,00 x1,60", "pessoas": 2, "ocup": 0.5, "prodDia": 4, "moAtual": 0, "novo": false}, {"nome": "ANEL DE CONCRETO VAZADO SUMIDOURO Ø2,30 x0,60", "pessoas": 2, "ocup": 0.1666, "prodDia": 1, "moAtual": 0, "novo": false}, {"nome": "ANEL DE CONCRETO VAZADO SUMIDOURO Ø2,30 x1,10", "pessoas": 2, "ocup": 0.25, "prodDia": 2, "moAtual": 0, "novo": false}, {"nome": "ANEL DE CONCRETO VAZADO SUMIDOURO Ø2,75 x0,60", "pessoas": 2, "ocup": 0.1666, "prodDia": 1, "moAtual": 0, "novo": false}, {"nome": "ANEL DE CONCRETO VAZADO SUMIDOURO Ø2,75 x1,10", "pessoas": 2, "ocup": 0.375, "prodDia": 3, "moAtual": 0, "novo": false}, {"nome": "ANEL DE CONCRETO VAZADO SUMIDOURO Ø3,30 x0,60", "pessoas": 2, "ocup": 0.1666, "prodDia": 1, "moAtual": 0, "novo": false}, {"nome": "ANEL DE CONCRETO VAZADO SUMIDOURO Ø3,30 x1,10", "pessoas": 2, "ocup": 0.3333, "prodDia": 2, "moAtual": 0, "novo": false}, {"nome": "ANEL DE CONCRETO VAZADO SUMIDOURO Ø3,85 x0,60", "pessoas": 2, "ocup": 0.1666, "prodDia": 1, "moAtual": 0, "novo": false}, {"nome": "ANEL DE CONCRETO VAZADO SUMIDOURO Ø3,85 x0,85", "pessoas": 2, "ocup": 0.3333, "prodDia": 2, "moAtual": 0, "novo": false}, {"nome": "ANEL DE CONCRETO VAZADO SUMIDOURO Ø3,85 x1,15", "pessoas": 2, "ocup": 0.25, "prodDia": 1, "moAtual": 0, "novo": false}], "Caixas": [{"nome": "CAIXA DE CONCRETO 0,40x0,40x0,40", "pessoas": 2, "ocup": 0.25, "prodDia": 10, "moAtual": 19.968, "novo": false}, {"nome": "CAIXA DE CONCRETO 0,60x0,60x0,60", "pessoas": 2, "ocup": 0.25, "prodDia": 10, "moAtual": 19.968, "novo": false}, {"nome": "CAIXA DE CONCRETO 1x1x0,80", "pessoas": 2, "ocup": 0.25, "prodDia": 3, "moAtual": 66.56, "novo": false}, {"nome": "CAIXA DE CONCRETO 1x1x1", "pessoas": 2, "ocup": 0.1666, "prodDia": 2, "moAtual": 66.534, "novo": false}, {"nome": "CAIXA DE CONCRETO 1x1x1,2", "pessoas": 2, "ocup": 0.0833, "prodDia": 1, "moAtual": 66.534, "novo": false}, {"nome": "CAIXA DE CONCRETO C/ FUNDO 0,40x0,40x0,40", "pessoas": 2, "ocup": 0.25, "prodDia": 10, "moAtual": 19.968, "novo": false}, {"nome": "CAIXA DE CONCRETO C/ FUNDO 0,60x0,60x0,60", "pessoas": 2, "ocup": 0.25, "prodDia": 10, "moAtual": 19.968, "novo": false}, {"nome": "CAIXA DE CONCRETO C/ FUNDO 1x1x0,80", "pessoas": 2, "ocup": 0.25, "prodDia": 3, "moAtual": 66.56, "novo": false}, {"nome": "CAIXA DE CONCRETO C/ FUNDO 1x1x1", "pessoas": 2, "ocup": 0.1666, "prodDia": 2, "moAtual": 66.534, "novo": false}, {"nome": "CAIXA DE CONCRETO C/ FUNDO 1x1x1,2", "pessoas": 2, "ocup": 0.0833, "prodDia": 1, "moAtual": 66.534, "novo": false}, {"nome": "CAIXA DE CONCRETO Ø0,85 x0,75", "pessoas": 2, "ocup": 0.3333, "prodDia": 4, "moAtual": 66.554, "novo": false}, {"nome": "CAIXA DE CONCRETO Ø1,10 x1,00", "pessoas": 2, "ocup": 0.0833, "prodDia": 1, "moAtual": 66.534, "novo": false}, {"nome": "CAIXA DE CONCRETO Ø1,10 x1,20", "pessoas": 2, "ocup": 0.0833, "prodDia": 1, "moAtual": 66.534, "novo": false}], "Tampas/Leitos": [{"nome": "LAJE PRÉ FABRICADA p/ LEITO FILTRANTE Ø1,70", "pessoas": 2, "ocup": 1, "prodDia": 20, "moAtual": 39.936, "novo": false}, {"nome": "LAJE PRÉ FABRICADA p/ LEITO FILTRANTE Ø2,00", "pessoas": 2, "ocup": 1, "prodDia": 20, "moAtual": 39.936, "novo": false}, {"nome": "LAJE PRÉ FABRICADA p/ LEITO FILTRANTE Ø2,30", "pessoas": 2, "ocup": 1, "prodDia": 16, "moAtual": 49.92, "novo": false}, {"nome": "LAJE PRÉ FABRICADA p/ LEITO FILTRANTE Ø2,75", "pessoas": 2, "ocup": 1, "prodDia": 12, "moAtual": 66.56, "novo": false}, {"nome": "LAJE PRÉ FABRICADA p/ LEITO FILTRANTE Ø3,30", "pessoas": 2, "ocup": 1, "prodDia": 8, "moAtual": 99.841, "novo": false}, {"nome": "LAJE PRÉ FABRICADA p/ LEITO FILTRANTE Ø3,85", "pessoas": 2, "ocup": 1, "prodDia": 7, "moAtual": 114.104, "novo": false}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA 0,40x0,40", "pessoas": 2, "ocup": 1, "prodDia": 200, "moAtual": 3.994, "novo": false}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA 0,60x0,60", "pessoas": 2, "ocup": 1, "prodDia": 60, "moAtual": 13.312, "novo": false}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA 1,0x1,0", "pessoas": 2, "ocup": 1, "prodDia": 30, "moAtual": 26.624, "novo": false}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA Ø0,54", "pessoas": 2, "ocup": 1, "prodDia": 100, "moAtual": 7.987, "novo": false}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA Ø0,60", "pessoas": 2, "ocup": 1, "prodDia": 80, "moAtual": 9.984, "novo": false}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA Ø0,85", "pessoas": 2, "ocup": 1, "prodDia": 50, "moAtual": 15.975, "novo": false}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA Ø1,70", "pessoas": 2, "ocup": 1, "prodDia": 20, "moAtual": 39.936, "novo": false}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA Ø2,00", "pessoas": 2, "ocup": 1, "prodDia": 18, "moAtual": 44.374, "novo": false}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA Ø2,30", "pessoas": 2, "ocup": 1, "prodDia": 16, "moAtual": 49.92, "novo": false}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA Ø2,75", "pessoas": 2, "ocup": 1, "prodDia": 14, "moAtual": 57.052, "novo": false}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA Ø3,30", "pessoas": 2, "ocup": 1, "prodDia": 10, "moAtual": 79.873, "novo": false}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA Ø3,85", "pessoas": 2, "ocup": 1, "prodDia": 8, "moAtual": 99.841, "novo": false}, {"nome": "PILARETE DE CONCRETO PRÉ FABRICADO 12x12x30", "pessoas": 2, "ocup": 1, "prodDia": 215, "moAtual": 3.715, "novo": false}], "Central dosadora 01": [], "Central dosadora 02 (nova)": []}, "tipoLanc": {"Blocos maquina PWR": "mensal", "Blocos maquina Gervasi": "mensal", "Tubos maquina LKR": "mensal", "Tubos vibrados": "mensal", "Tubos Maquina Tuber": "mensal", "Fossas": "diario", "Caixas": "diario", "Tampas/Leitos": "diario", "Central dosadora 01": "mensal", "Central dosadora 02 (nova)": "mensal"}, "jornada": 8.8, "diasIdeal": 22, "indiretos": [{"cat": "EPI", "itens": ["Bota de segurança", "Luva (raspa/nitrílica)", "Capacete", "Óculos de proteção", "Protetor auricular", "Máscara respiratória / PFF2", "Protetor solar", "Avental / manga", "Cinto de segurança (altura)", "Colete refletivo", "Perneira", "Creme protetor de pele"]}, {"cat": "Uniformes e vestuário", "itens": ["Camiseta / camisa", "Calça", "Jaleco / macacão", "Capa de chuva", "Blusa de frio / jaqueta", "Boné", "Lavagem de uniformes"]}, {"cat": "Saúde e segurança", "itens": ["Exame periódico (ASO)", "Exame admissional", "Exame demissional", "Exame de retorno", "Audiometria", "Raio-X / espirometria", "Vacinação", "Ambulatório / enfermaria", "Material de primeiros socorros", "Ginástica laboral"]}, {"cat": "Benefícios", "itens": ["Vale-transporte", "Combustível / auxílio deslocamento", "Refeição / marmita", "Cesta básica", "Plano de saúde", "Plano odontológico", "Convênio farmácia", "Seguro de vida", "Auxílio creche", "Premiação / bônus de produção"]}, {"cat": "Treinamento e capacitação", "itens": ["NR-11 (empilhadeira)", "NR-12 (máquinas)", "NR-18 (construção)", "NR-35 (altura)", "NR-06 (EPI)", "CIPA", "Brigada de incêndio", "Curso técnico / operacional", "Reciclagem de CNH", "Treinamento interno / DDS"]}, {"cat": "Ferramentas e consumo da equipe", "itens": ["Ferramentas manuais", "Carrinho de mão / pá", "Material de limpeza da área", "Água / bebedouro", "Copos e descartáveis", "Armário / vestiário", "Sabonete / creme de mãos", "Papel toalha"]}], "epis": [{"id": "bota", "nome": "Bota de segurança", "cat": "EPI", "preco": 85, "un": "par", "compras": [{"data": "2026-07-13", "preco": 85, "qtde": 0, "forn": ""}]}, {"id": "luva_raspa", "nome": "Luva de raspa", "cat": "EPI", "preco": 12, "un": "par", "compras": [{"data": "2026-07-13", "preco": 12, "qtde": 0, "forn": ""}]}, {"id": "luva_nitr", "nome": "Luva nitrílica", "cat": "EPI", "preco": 8, "un": "par", "compras": [{"data": "2026-07-13", "preco": 8, "qtde": 0, "forn": ""}]}, {"id": "capacete", "nome": "Capacete", "cat": "EPI", "preco": 35, "un": "un", "compras": [{"data": "2026-07-13", "preco": 35, "qtde": 0, "forn": ""}]}, {"id": "oculos", "nome": "Óculos de proteção", "cat": "EPI", "preco": 15, "un": "un", "compras": [{"data": "2026-07-13", "preco": 15, "qtde": 0, "forn": ""}]}, {"id": "protetor_aur", "nome": "Protetor auricular", "cat": "EPI", "preco": 6, "un": "par", "compras": [{"data": "2026-07-13", "preco": 6, "qtde": 0, "forn": ""}]}, {"id": "mascara", "nome": "Máscara PFF2", "cat": "EPI", "preco": 4, "un": "un", "compras": [{"data": "2026-07-13", "preco": 4, "qtde": 0, "forn": ""}]}, {"id": "protetor_solar", "nome": "Protetor solar", "cat": "EPI", "preco": 25, "un": "un", "compras": [{"data": "2026-07-13", "preco": 25, "qtde": 0, "forn": ""}]}, {"id": "avental", "nome": "Avental", "cat": "EPI", "preco": 30, "un": "un", "compras": [{"data": "2026-07-13", "preco": 30, "qtde": 0, "forn": ""}]}, {"id": "colete", "nome": "Colete refletivo", "cat": "EPI", "preco": 22, "un": "un", "compras": [{"data": "2026-07-13", "preco": 22, "qtde": 0, "forn": ""}]}, {"id": "perneira", "nome": "Perneira", "cat": "EPI", "preco": 40, "un": "par", "compras": [{"data": "2026-07-13", "preco": 40, "qtde": 0, "forn": ""}]}, {"id": "cinto_alt", "nome": "Cinto de segurança (altura)", "cat": "EPI", "preco": 180, "un": "un", "compras": [{"data": "2026-07-13", "preco": 180, "qtde": 0, "forn": ""}]}, {"id": "camiseta", "nome": "Camiseta", "cat": "Uniformes", "preco": 28, "un": "un", "compras": [{"data": "2026-07-13", "preco": 28, "qtde": 0, "forn": ""}]}, {"id": "calca", "nome": "Calça", "cat": "Uniformes", "preco": 55, "un": "un", "compras": [{"data": "2026-07-13", "preco": 55, "qtde": 0, "forn": ""}]}, {"id": "jaqueta", "nome": "Blusa de frio / jaqueta", "cat": "Uniformes", "preco": 70, "un": "un", "compras": [{"data": "2026-07-13", "preco": 70, "qtde": 0, "forn": ""}]}, {"id": "capa_chuva", "nome": "Capa de chuva", "cat": "Uniformes", "preco": 35, "un": "un", "compras": [{"data": "2026-07-13", "preco": 35, "qtde": 0, "forn": ""}]}, {"id": "bone", "nome": "Boné", "cat": "Uniformes", "preco": 18, "un": "un", "compras": [{"data": "2026-07-13", "preco": 18, "qtde": 0, "forn": ""}]}, {"id": "colher", "nome": "Colher de pedreiro", "cat": "Ferramentas", "preco": 25, "un": "un", "compras": [{"data": "2026-07-13", "preco": 25, "qtde": 0, "forn": ""}]}, {"id": "pa", "nome": "Pá", "cat": "Ferramentas", "preco": 45, "un": "un", "compras": [{"data": "2026-07-13", "preco": 45, "qtde": 0, "forn": ""}]}, {"id": "enxada", "nome": "Enxada", "cat": "Ferramentas", "preco": 50, "un": "un", "compras": [{"data": "2026-07-13", "preco": 50, "qtde": 0, "forn": ""}]}, {"id": "carrinho", "nome": "Carrinho de mão", "cat": "Ferramentas", "preco": 180, "un": "un", "compras": [{"data": "2026-07-13", "preco": 180, "qtde": 0, "forn": ""}]}, {"id": "martelo", "nome": "Martelo", "cat": "Ferramentas", "preco": 35, "un": "un", "compras": [{"data": "2026-07-13", "preco": 35, "qtde": 0, "forn": ""}]}, {"id": "vassoura", "nome": "Vassoura", "cat": "Ferramentas", "preco": 20, "un": "un", "compras": [{"data": "2026-07-13", "preco": 20, "qtde": 0, "forn": ""}]}], "hoje": "2026-07-13"};
+const DMO_DEFAULT = {"pessoas": [{"nome": "Ramon", "salario": 2500, "extras50": 0, "extras100": 0, "foraFolha": 0, "va": 576, "quinquenio": 0, "anuenio": 77.45, "insalubridade": 648.4}, {"nome": "Ryan", "salario": 2500, "extras50": 0, "extras100": 0, "foraFolha": 0, "va": 576, "quinquenio": 0, "anuenio": 0, "insalubridade": 648.4}, {"nome": "Ignacio", "salario": 2300, "extras50": 0, "extras100": 0, "foraFolha": 0, "va": 576, "quinquenio": 0, "anuenio": 0, "insalubridade": 648.4}, {"nome": "Jorge", "salario": 2300, "extras50": 0, "extras100": 0, "foraFolha": 0, "va": 576, "quinquenio": 0, "anuenio": 0, "insalubridade": 648.4}, {"nome": "Reginaldo", "salario": 2563, "extras50": 0, "extras100": 0, "foraFolha": 0, "va": 576, "quinquenio": 0, "anuenio": 77.45, "insalubridade": 648.4}, {"nome": "Tales", "salario": 2300, "extras50": 0, "extras100": 0, "foraFolha": 0, "va": 576, "quinquenio": 0, "anuenio": 0, "insalubridade": 648.4}, {"nome": "Paulo", "salario": 2525.5, "extras50": 0, "extras100": 0, "foraFolha": 0, "va": 576, "quinquenio": 0, "anuenio": 77.45, "insalubridade": 648.4}, {"nome": "Isac", "salario": 2550.75, "extras50": 0, "extras100": 0, "foraFolha": 0, "va": 576, "quinquenio": 0, "anuenio": 77.45, "insalubridade": 648.4}, {"nome": "David Renato", "salario": 2500, "extras50": 0, "extras100": 0, "foraFolha": 0, "va": 576, "quinquenio": 0, "anuenio": 0, "insalubridade": 648.4}, {"nome": "Jhon Pierre", "salario": 3275.84, "extras50": 0, "extras100": 0, "foraFolha": 0, "va": 576, "quinquenio": 360, "anuenio": 77.45, "insalubridade": 648.4}, {"nome": "Leonardo (misturador)", "salario": 3754.75, "extras50": 0, "extras100": 0, "foraFolha": 0, "va": 576, "quinquenio": 0, "anuenio": 77.45, "insalubridade": 648.4}, {"nome": "Delmir da Rosa", "salario": 4796.87, "extras50": 0, "extras100": 0, "foraFolha": 700, "va": 576, "quinquenio": 1058.04, "anuenio": 77.45, "insalubridade": 648.4}], "familias": ["Blocos maquina PWR", "Blocos maquina Gervasi", "Tubos maquina LKR", "Tubos vibrados", "Tubos Maquina Tuber", "Fossas", "Caixas", "Tampas/Leitos", "Central dosadora 01", "Central dosadora 02 (nova)"], "produtos": {"Blocos maquina PWR": [{"nome": "PAVER 6 CM HOLANDÊS", "pessoas": 2, "ocup": 1, "prodDia": 21000, "moAtual": 0.038, "novo": false}, {"nome": "PAVER 6 CM UNISTEIN", "pessoas": 2, "ocup": 1, "prodDia": 22386, "moAtual": 0.036, "novo": false}, {"nome": "PAVER 8 CM HOLANDÊS", "pessoas": 2, "ocup": 1, "prodDia": 21000, "moAtual": 0.038, "novo": false}, {"nome": "PAVER 8 CM UNISTEIN", "pessoas": 2, "ocup": 1, "prodDia": 22386, "moAtual": 0.036, "novo": false}], "Blocos maquina Gervasi": [{"nome": "BLOCO 09", "pessoas": 4, "ocup": 1, "prodDia": 5400, "moAtual": 0.296, "novo": false}, {"nome": "BLOCO 11,5", "pessoas": 4, "ocup": 1.0, "prodDia": 0, "moAtual": 0, "novo": true}, {"nome": "BLOCOS 14", "pessoas": 2, "ocup": 1, "prodDia": 8400, "moAtual": 0.095, "novo": false}, {"nome": "BLOCOS 19", "pessoas": 2, "ocup": 1, "prodDia": 6000, "moAtual": 0.133, "novo": false}, {"nome": "CANALETA 14", "pessoas": 4, "ocup": 1, "prodDia": 3600, "moAtual": 0.444, "novo": false}, {"nome": "CANALETA 19", "pessoas": 4, "ocup": 1, "prodDia": 3000, "moAtual": 0.532, "novo": false}, {"nome": "MEIO FIO", "pessoas": 4, "ocup": 1, "prodDia": 600, "moAtual": 2.662, "novo": false}, {"nome": "PISO GRAMA", "pessoas": 4, "ocup": 1, "prodDia": 1200, "moAtual": 1.331, "novo": false}], "Tubos maquina LKR": [{"nome": "TUBOS DN 200 PS1", "pessoas": 2, "ocup": 1, "prodDia": 200, "moAtual": 3.473, "novo": false}, {"nome": "TUBOS DN 300 MF SIMPLES", "pessoas": 2, "ocup": 1, "prodDia": 200, "moAtual": 3.473, "novo": false}, {"nome": "TUBOS DN 400 MF  SIMPLES", "pessoas": 3, "ocup": 1, "prodDia": 200, "moAtual": 5.209, "novo": false}, {"nome": "TUBOS DN 400 MF ARMADO", "pessoas": 3, "ocup": 1, "prodDia": 150, "moAtual": 6.656, "novo": false}, {"nome": "TUBOS DN 400 PB  ARMADO", "pessoas": 3, "ocup": 1, "prodDia": 130, "moAtual": 6.656, "novo": false}, {"nome": "TUBOS DN 500 MF  ARMADO", "pessoas": 3, "ocup": 1, "prodDia": 150, "moAtual": 6.656, "novo": false}, {"nome": "TUBOS DN 500 MF  SIMPLES", "pessoas": 3, "ocup": 1, "prodDia": 200, "moAtual": 5.209, "novo": false}, {"nome": "TUBOS DN 600 MF  ARMADO", "pessoas": 3, "ocup": 1, "prodDia": 150, "moAtual": 6.656, "novo": false}, {"nome": "TUBOS DN 600 MF  SIMPLES", "pessoas": 3, "ocup": 1, "prodDia": 200, "moAtual": 5.209, "novo": false}, {"nome": "TUBOS DN 600 PB  ARMADO PA1", "pessoas": 5, "ocup": 1, "prodDia": 100, "moAtual": 15.36, "novo": false}, {"nome": "TUBOS DN 600 PB  ARMADO PA2", "pessoas": 5, "ocup": 1, "prodDia": 100, "moAtual": 15.36, "novo": false}], "Tubos vibrados": [{"nome": "TESTE 01", "pessoas": 1, "ocup": 1, "prodDia": 200, "moAtual": 0, "novo": false}, {"nome": "TUBOS DN 1000 MF  ARMADO PA1", "pessoas": 2, "ocup": 1, "prodDia": 40, "moAtual": 19.968, "novo": false}, {"nome": "TUBOS DN 1000 PB ARMADO PA1", "pessoas": 2, "ocup": 1, "prodDia": 40, "moAtual": 19.968, "novo": false}, {"nome": "TUBOS DN 1000 PB ARMADO PA2", "pessoas": 2, "ocup": 1, "prodDia": 40, "moAtual": 19.968, "novo": false}, {"nome": "TUBOS DN 1200 PB ARMADO PA1", "pessoas": 2, "ocup": 1, "prodDia": 35, "moAtual": 22.821, "novo": false}, {"nome": "TUBOS DN 1200 PB ARMADO PA2", "pessoas": 2, "ocup": 1, "prodDia": 35, "moAtual": 22.821, "novo": false}, {"nome": "TUBOS DN 1500 PB ARMADO PA1", "pessoas": 2, "ocup": 1, "prodDia": 25, "moAtual": 31.949, "novo": false}, {"nome": "TUBOS DN 1500 PB ARMADO PA2", "pessoas": 2, "ocup": 1, "prodDia": 25, "moAtual": 31.949, "novo": false}, {"nome": "TUBOS DN 800 MF  ARMADO", "pessoas": 2, "ocup": 1, "prodDia": 46, "moAtual": 17.364, "novo": false}, {"nome": "TUBOS DN 800 MF  SIMPLES", "pessoas": 2, "ocup": 1, "prodDia": 46, "moAtual": 17.364, "novo": false}, {"nome": "TUBOS DN 800 PB ARMADO PA1", "pessoas": 2, "ocup": 1, "prodDia": 45, "moAtual": 17.749, "novo": false}, {"nome": "TUBOS DN 800 PB ARMADO PA2", "pessoas": 2, "ocup": 1, "prodDia": 45, "moAtual": 17.749, "novo": false}], "Tubos Maquina Tuber": [], "Fossas": [{"nome": "ANEL DE CONCRETO C/ FUNDO Ø1,70 x1,60", "pessoas": 2, "ocup": 0.5, "prodDia": 4, "moAtual": 99.841, "novo": false}, {"nome": "ANEL DE CONCRETO C/ FUNDO Ø2,00 x1,60", "pessoas": 2, "ocup": 0.5, "prodDia": 4, "moAtual": 99.841, "novo": false}, {"nome": "ANEL DE CONCRETO C/ FUNDO Ø2,30 x1,10", "pessoas": 2, "ocup": 0.3333, "prodDia": 2, "moAtual": 133.108, "novo": false}, {"nome": "ANEL DE CONCRETO C/ FUNDO Ø2,30 x1,60", "pessoas": 2, "ocup": 0.25, "prodDia": 2, "moAtual": 99.841, "novo": false}, {"nome": "ANEL DE CONCRETO C/ FUNDO Ø2,75 x1,10", "pessoas": 2, "ocup": 0.3333, "prodDia": 2, "moAtual": 133.108, "novo": false}, {"nome": "ANEL DE CONCRETO C/ FUNDO Ø3,30 x0,60", "pessoas": 2, "ocup": 0.1666, "prodDia": 1, "moAtual": 133.068, "novo": false}, {"nome": "ANEL DE CONCRETO C/ FUNDO Ø3,30 x1,10", "pessoas": 2, "ocup": 0.5, "prodDia": 2, "moAtual": 199.681, "novo": false}, {"nome": "ANEL DE CONCRETO C/ FUNDO Ø3,85 x0,60", "pessoas": 2, "ocup": 0.1666, "prodDia": 1, "moAtual": 133.068, "novo": false}, {"nome": "ANEL DE CONCRETO C/ FUNDO Ø3,85 x0,85", "pessoas": 2, "ocup": 0.5, "prodDia": 2, "moAtual": 199.681, "novo": false}, {"nome": "ANEL DE CONCRETO C/ FUNDO Ø3,85 x1,15", "pessoas": 2, "ocup": 0.25, "prodDia": 1, "moAtual": 199.681, "novo": false}, {"nome": "ANEL DE CONCRETO VAZADO Ø2,30 x0,60", "pessoas": 2, "ocup": 0.1666, "prodDia": 1, "moAtual": 133.068, "novo": false}, {"nome": "ANEL DE CONCRETO VAZADO Ø2,30 x1,10", "pessoas": 2, "ocup": 0.25, "prodDia": 2, "moAtual": 99.841, "novo": false}, {"nome": "ANEL DE CONCRETO VAZADO Ø2,75 x0,60", "pessoas": 2, "ocup": 0.1666, "prodDia": 1, "moAtual": 133.068, "novo": false}, {"nome": "ANEL DE CONCRETO VAZADO Ø2,75 x1,10", "pessoas": 2, "ocup": 0.375, "prodDia": 3, "moAtual": 99.841, "novo": false}, {"nome": "ANEL DE CONCRETO VAZADO Ø3,30 x0,60", "pessoas": 2, "ocup": 0.1666, "prodDia": 1, "moAtual": 133.068, "novo": false}, {"nome": "ANEL DE CONCRETO VAZADO Ø3,30 x1,10", "pessoas": 2, "ocup": 0.3333, "prodDia": 2, "moAtual": 88.738, "novo": false}, {"nome": "ANEL DE CONCRETO VAZADO Ø3,85 x0,60", "pessoas": 2, "ocup": 0.1666, "prodDia": 1, "moAtual": 133.068, "novo": false}, {"nome": "ANEL DE CONCRETO VAZADO Ø3,85 x0,85", "pessoas": 2, "ocup": 0.3333, "prodDia": 2, "moAtual": 133.108, "novo": false}, {"nome": "ANEL DE CONCRETO VAZADO Ø3,85 x1,15", "pessoas": 2, "ocup": 0.25, "prodDia": 1, "moAtual": 199.681, "novo": false}, {"nome": "ANEL DE CONCRETO VAZADO SUMIDOURO Ø1,70 x1,60", "pessoas": 2, "ocup": 0.5, "prodDia": 4, "moAtual": 0, "novo": false}, {"nome": "ANEL DE CONCRETO VAZADO SUMIDOURO Ø2,00 x1,60", "pessoas": 2, "ocup": 0.5, "prodDia": 4, "moAtual": 0, "novo": false}, {"nome": "ANEL DE CONCRETO VAZADO SUMIDOURO Ø2,30 x0,60", "pessoas": 2, "ocup": 0.1666, "prodDia": 1, "moAtual": 0, "novo": false}, {"nome": "ANEL DE CONCRETO VAZADO SUMIDOURO Ø2,30 x1,10", "pessoas": 2, "ocup": 0.25, "prodDia": 2, "moAtual": 0, "novo": false}, {"nome": "ANEL DE CONCRETO VAZADO SUMIDOURO Ø2,75 x0,60", "pessoas": 2, "ocup": 0.1666, "prodDia": 1, "moAtual": 0, "novo": false}, {"nome": "ANEL DE CONCRETO VAZADO SUMIDOURO Ø2,75 x1,10", "pessoas": 2, "ocup": 0.375, "prodDia": 3, "moAtual": 0, "novo": false}, {"nome": "ANEL DE CONCRETO VAZADO SUMIDOURO Ø3,30 x0,60", "pessoas": 2, "ocup": 0.1666, "prodDia": 1, "moAtual": 0, "novo": false}, {"nome": "ANEL DE CONCRETO VAZADO SUMIDOURO Ø3,30 x1,10", "pessoas": 2, "ocup": 0.3333, "prodDia": 2, "moAtual": 0, "novo": false}, {"nome": "ANEL DE CONCRETO VAZADO SUMIDOURO Ø3,85 x0,60", "pessoas": 2, "ocup": 0.1666, "prodDia": 1, "moAtual": 0, "novo": false}, {"nome": "ANEL DE CONCRETO VAZADO SUMIDOURO Ø3,85 x0,85", "pessoas": 2, "ocup": 0.3333, "prodDia": 2, "moAtual": 0, "novo": false}, {"nome": "ANEL DE CONCRETO VAZADO SUMIDOURO Ø3,85 x1,15", "pessoas": 2, "ocup": 0.25, "prodDia": 1, "moAtual": 0, "novo": false}], "Caixas": [{"nome": "CAIXA DE CONCRETO 0,40x0,40x0,40", "pessoas": 2, "ocup": 0.25, "prodDia": 10, "moAtual": 19.968, "novo": false}, {"nome": "CAIXA DE CONCRETO 0,60x0,60x0,60", "pessoas": 2, "ocup": 0.25, "prodDia": 10, "moAtual": 19.968, "novo": false}, {"nome": "CAIXA DE CONCRETO 1x1x0,80", "pessoas": 2, "ocup": 0.25, "prodDia": 3, "moAtual": 66.56, "novo": false}, {"nome": "CAIXA DE CONCRETO 1x1x1", "pessoas": 2, "ocup": 0.1666, "prodDia": 2, "moAtual": 66.534, "novo": false}, {"nome": "CAIXA DE CONCRETO 1x1x1,2", "pessoas": 2, "ocup": 0.0833, "prodDia": 1, "moAtual": 66.534, "novo": false}, {"nome": "CAIXA DE CONCRETO C/ FUNDO 0,40x0,40x0,40", "pessoas": 2, "ocup": 0.25, "prodDia": 10, "moAtual": 19.968, "novo": false}, {"nome": "CAIXA DE CONCRETO C/ FUNDO 0,60x0,60x0,60", "pessoas": 2, "ocup": 0.25, "prodDia": 10, "moAtual": 19.968, "novo": false}, {"nome": "CAIXA DE CONCRETO C/ FUNDO 1x1x0,80", "pessoas": 2, "ocup": 0.25, "prodDia": 3, "moAtual": 66.56, "novo": false}, {"nome": "CAIXA DE CONCRETO C/ FUNDO 1x1x1", "pessoas": 2, "ocup": 0.1666, "prodDia": 2, "moAtual": 66.534, "novo": false}, {"nome": "CAIXA DE CONCRETO C/ FUNDO 1x1x1,2", "pessoas": 2, "ocup": 0.0833, "prodDia": 1, "moAtual": 66.534, "novo": false}, {"nome": "CAIXA DE CONCRETO Ø0,85 x0,75", "pessoas": 2, "ocup": 0.3333, "prodDia": 4, "moAtual": 66.554, "novo": false}, {"nome": "CAIXA DE CONCRETO Ø1,10 x1,00", "pessoas": 2, "ocup": 0.0833, "prodDia": 1, "moAtual": 66.534, "novo": false}, {"nome": "CAIXA DE CONCRETO Ø1,10 x1,20", "pessoas": 2, "ocup": 0.0833, "prodDia": 1, "moAtual": 66.534, "novo": false}], "Tampas/Leitos": [{"nome": "LAJE PRÉ FABRICADA p/ LEITO FILTRANTE Ø1,70", "pessoas": 2, "ocup": 1, "prodDia": 20, "moAtual": 39.936, "novo": false}, {"nome": "LAJE PRÉ FABRICADA p/ LEITO FILTRANTE Ø2,00", "pessoas": 2, "ocup": 1, "prodDia": 20, "moAtual": 39.936, "novo": false}, {"nome": "LAJE PRÉ FABRICADA p/ LEITO FILTRANTE Ø2,30", "pessoas": 2, "ocup": 1, "prodDia": 16, "moAtual": 49.92, "novo": false}, {"nome": "LAJE PRÉ FABRICADA p/ LEITO FILTRANTE Ø2,75", "pessoas": 2, "ocup": 1, "prodDia": 12, "moAtual": 66.56, "novo": false}, {"nome": "LAJE PRÉ FABRICADA p/ LEITO FILTRANTE Ø3,30", "pessoas": 2, "ocup": 1, "prodDia": 8, "moAtual": 99.841, "novo": false}, {"nome": "LAJE PRÉ FABRICADA p/ LEITO FILTRANTE Ø3,85", "pessoas": 2, "ocup": 1, "prodDia": 7, "moAtual": 114.104, "novo": false}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA 0,40x0,40", "pessoas": 2, "ocup": 1, "prodDia": 200, "moAtual": 3.994, "novo": false}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA 0,60x0,60", "pessoas": 2, "ocup": 1, "prodDia": 60, "moAtual": 13.312, "novo": false}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA 1,0x1,0", "pessoas": 2, "ocup": 1, "prodDia": 30, "moAtual": 26.624, "novo": false}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA Ø0,54", "pessoas": 2, "ocup": 1, "prodDia": 100, "moAtual": 7.987, "novo": false}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA Ø0,60", "pessoas": 2, "ocup": 1, "prodDia": 80, "moAtual": 9.984, "novo": false}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA Ø0,85", "pessoas": 2, "ocup": 1, "prodDia": 50, "moAtual": 15.975, "novo": false}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA Ø1,70", "pessoas": 2, "ocup": 1, "prodDia": 20, "moAtual": 39.936, "novo": false}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA Ø2,00", "pessoas": 2, "ocup": 1, "prodDia": 18, "moAtual": 44.374, "novo": false}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA Ø2,30", "pessoas": 2, "ocup": 1, "prodDia": 16, "moAtual": 49.92, "novo": false}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA Ø2,75", "pessoas": 2, "ocup": 1, "prodDia": 14, "moAtual": 57.052, "novo": false}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA Ø3,30", "pessoas": 2, "ocup": 1, "prodDia": 10, "moAtual": 79.873, "novo": false}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA Ø3,85", "pessoas": 2, "ocup": 1, "prodDia": 8, "moAtual": 99.841, "novo": false}, {"nome": "PILARETE DE CONCRETO PRÉ FABRICADO 12x12x30", "pessoas": 2, "ocup": 1, "prodDia": 215, "moAtual": 3.715, "novo": false}], "Central dosadora 01": [], "Central dosadora 02 (nova)": []}, "tipoLanc": {"Blocos maquina PWR": "periodo", "Blocos maquina Gervasi": "periodo", "Tubos maquina LKR": "periodo", "Tubos vibrados": "periodo", "Tubos Maquina Tuber": "periodo", "Fossas": "diario", "Caixas": "diario", "Tampas/Leitos": "diario", "Central dosadora 01": "periodo", "Central dosadora 02 (nova)": "periodo"}, "jornada": 8.8, "diasIdeal": 22, "indiretos": [{"cat": "EPI", "itens": ["Bota de segurança", "Luva (raspa/nitrílica)", "Capacete", "Óculos de proteção", "Protetor auricular", "Máscara respiratória / PFF2", "Protetor solar", "Avental / manga", "Cinto de segurança (altura)", "Colete refletivo", "Perneira", "Creme protetor de pele"]}, {"cat": "Uniformes e vestuário", "itens": ["Camiseta / camisa", "Calça", "Jaleco / macacão", "Capa de chuva", "Blusa de frio / jaqueta", "Boné", "Lavagem de uniformes"]}, {"cat": "Saúde e segurança", "itens": ["Exame periódico (ASO)", "Exame admissional", "Exame demissional", "Exame de retorno", "Audiometria", "Raio-X / espirometria", "Vacinação", "Ambulatório / enfermaria", "Material de primeiros socorros", "Ginástica laboral"]}, {"cat": "Benefícios", "itens": ["Vale-transporte", "Combustível / auxílio deslocamento", "Refeição / marmita", "Cesta básica", "Plano de saúde", "Plano odontológico", "Convênio farmácia", "Seguro de vida", "Auxílio creche", "Premiação / bônus de produção"]}, {"cat": "Treinamento e capacitação", "itens": ["NR-11 (empilhadeira)", "NR-12 (máquinas)", "NR-18 (construção)", "NR-35 (altura)", "NR-06 (EPI)", "CIPA", "Brigada de incêndio", "Curso técnico / operacional", "Reciclagem de CNH", "Treinamento interno / DDS"]}, {"cat": "Ferramentas e consumo da equipe", "itens": ["Ferramentas manuais", "Carrinho de mão / pá", "Material de limpeza da área", "Água / bebedouro", "Copos e descartáveis", "Armário / vestiário", "Sabonete / creme de mãos", "Papel toalha"]}], "epis": [{"id": "bota", "nome": "Bota de segurança", "cat": "EPI", "preco": 85, "un": "par", "compras": [{"data": "2026-07-13", "preco": 85, "qtde": 0, "forn": ""}]}, {"id": "luva_raspa", "nome": "Luva de raspa", "cat": "EPI", "preco": 12, "un": "par", "compras": [{"data": "2026-07-13", "preco": 12, "qtde": 0, "forn": ""}]}, {"id": "luva_nitr", "nome": "Luva nitrílica", "cat": "EPI", "preco": 8, "un": "par", "compras": [{"data": "2026-07-13", "preco": 8, "qtde": 0, "forn": ""}]}, {"id": "capacete", "nome": "Capacete", "cat": "EPI", "preco": 35, "un": "un", "compras": [{"data": "2026-07-13", "preco": 35, "qtde": 0, "forn": ""}]}, {"id": "oculos", "nome": "Óculos de proteção", "cat": "EPI", "preco": 15, "un": "un", "compras": [{"data": "2026-07-13", "preco": 15, "qtde": 0, "forn": ""}]}, {"id": "protetor_aur", "nome": "Protetor auricular", "cat": "EPI", "preco": 6, "un": "par", "compras": [{"data": "2026-07-13", "preco": 6, "qtde": 0, "forn": ""}]}, {"id": "mascara", "nome": "Máscara PFF2", "cat": "EPI", "preco": 4, "un": "un", "compras": [{"data": "2026-07-13", "preco": 4, "qtde": 0, "forn": ""}]}, {"id": "protetor_solar", "nome": "Protetor solar", "cat": "EPI", "preco": 25, "un": "un", "compras": [{"data": "2026-07-13", "preco": 25, "qtde": 0, "forn": ""}]}, {"id": "avental", "nome": "Avental", "cat": "EPI", "preco": 30, "un": "un", "compras": [{"data": "2026-07-13", "preco": 30, "qtde": 0, "forn": ""}]}, {"id": "colete", "nome": "Colete refletivo", "cat": "EPI", "preco": 22, "un": "un", "compras": [{"data": "2026-07-13", "preco": 22, "qtde": 0, "forn": ""}]}, {"id": "perneira", "nome": "Perneira", "cat": "EPI", "preco": 40, "un": "par", "compras": [{"data": "2026-07-13", "preco": 40, "qtde": 0, "forn": ""}]}, {"id": "cinto_alt", "nome": "Cinto de segurança (altura)", "cat": "EPI", "preco": 180, "un": "un", "compras": [{"data": "2026-07-13", "preco": 180, "qtde": 0, "forn": ""}]}, {"id": "camiseta", "nome": "Camiseta", "cat": "Uniformes", "preco": 28, "un": "un", "compras": [{"data": "2026-07-13", "preco": 28, "qtde": 0, "forn": ""}]}, {"id": "calca", "nome": "Calça", "cat": "Uniformes", "preco": 55, "un": "un", "compras": [{"data": "2026-07-13", "preco": 55, "qtde": 0, "forn": ""}]}, {"id": "jaqueta", "nome": "Blusa de frio / jaqueta", "cat": "Uniformes", "preco": 70, "un": "un", "compras": [{"data": "2026-07-13", "preco": 70, "qtde": 0, "forn": ""}]}, {"id": "capa_chuva", "nome": "Capa de chuva", "cat": "Uniformes", "preco": 35, "un": "un", "compras": [{"data": "2026-07-13", "preco": 35, "qtde": 0, "forn": ""}]}, {"id": "bone", "nome": "Boné", "cat": "Uniformes", "preco": 18, "un": "un", "compras": [{"data": "2026-07-13", "preco": 18, "qtde": 0, "forn": ""}]}, {"id": "colher", "nome": "Colher de pedreiro", "cat": "Ferramentas", "preco": 25, "un": "un", "compras": [{"data": "2026-07-13", "preco": 25, "qtde": 0, "forn": ""}]}, {"id": "pa", "nome": "Pá", "cat": "Ferramentas", "preco": 45, "un": "un", "compras": [{"data": "2026-07-13", "preco": 45, "qtde": 0, "forn": ""}]}, {"id": "enxada", "nome": "Enxada", "cat": "Ferramentas", "preco": 50, "un": "un", "compras": [{"data": "2026-07-13", "preco": 50, "qtde": 0, "forn": ""}]}, {"id": "carrinho", "nome": "Carrinho de mão", "cat": "Ferramentas", "preco": 180, "un": "un", "compras": [{"data": "2026-07-13", "preco": 180, "qtde": 0, "forn": ""}]}, {"id": "martelo", "nome": "Martelo", "cat": "Ferramentas", "preco": 35, "un": "un", "compras": [{"data": "2026-07-13", "preco": 35, "qtde": 0, "forn": ""}]}, {"id": "vassoura", "nome": "Vassoura", "cat": "Ferramentas", "preco": 20, "un": "un", "compras": [{"data": "2026-07-13", "preco": 20, "qtde": 0, "forn": ""}]}], "hoje": "2026-07-13"};
 
 // Firebase NÃO aceita chaves com . $ # [ ] / — codifica/decodifica os nomes de setor
 function _encKey(k){ return String(k).replace(/[.#$/\[\]]/g, m=>({'.':'%2E','#':'%23','$':'%24','/':'%2F','[':'%5B',']':'%5D'}[m])); }
@@ -2781,6 +2800,13 @@ async function initMaoDeObra(container){
     }
   }
   migrarSetoresMO();  // aplica os 10 setores novos preservando dados
+  // Migração v49: classifica lançamento — diário (fossas/caixas/tampas) vs período (blocos/tubos)
+  if(Dmo.tipoLanc && !Dmo._lancV49){
+    const DIARIOS=['Fossas','Caixas','Tampas/Leitos'];
+    Object.keys(Dmo.tipoLanc).forEach(s=>{ Dmo.tipoLanc[s] = DIARIOS.includes(s) ? 'diario' : 'periodo'; });
+    Object.defineProperty(Dmo,'_lancV49',{value:true,enumerable:false,configurable:true});
+    salvarSecaoMO && salvarSecaoMO('tipoLanc');
+  }
   container.innerHTML = MO_HTML;
   runMaoDeObra();
   moReady = true;
@@ -3066,6 +3092,7 @@ function kgSetor(setor){
 function fmtData(iso){ try{ if(!iso) return ''; const [a,m,d]=iso.split('-'); return d+'/'+m+'/'+a.slice(2); }catch(e){ return iso||''; } }
 function fmtNum(n){ n=Number(n)||0; return n.toLocaleString('pt-BR',{maximumFractionDigits:0}); }
 // ===== PRODUÇÃO REAL =====
+let _resSetores = {};
 const _prAberto = {};       // estado aberto/fechado do painel por setor
 const _prNovoLanc = {};     // rascunho do lançamento em digitação por setor|produto
 function tipoLancDe(setor){ return (Dmo.tipoLanc && Dmo.tipoLanc[setor]) || 'mensal'; }
@@ -3073,64 +3100,186 @@ function mesRefLabel(mesRef){
   try{ const [a,m]=mesRef.split('-'); const nomes=['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez']; return nomes[+m]+'/'+a; }catch(e){ return mesRef; }
 }
 // Painel de lançamento de produção real de um setor
+// dias de um lançamento (período tem .dias[]; diário tem .data única)
+function diasDoLanc(l){ if(!l) return []; if(Array.isArray(l.dias)) return l.dias; if(l.data) return [l.data]; return []; }
+// o lançamento tem algum dia no mês de referência?
+function lancNoMes(l, mesRef){ return diasDoLanc(l).some(d=>d && d.slice(0,7)===mesRef); }
+// nº de dias marcados no mês de referência
+function diasNoMes(l, mesRef){ return diasDoLanc(l).filter(d=>d && d.slice(0,7)===mesRef).length; }
+// resumo curto dos dias (ex: "1-5, 8")
+function resumoDias(l){
+  const ds=diasDoLanc(l).map(d=>+d.slice(8,10)).sort((a,b)=>a-b);
+  if(!ds.length) return '';
+  const faixas=[]; let ini=ds[0], prev=ds[0];
+  for(let k=1;k<=ds.length;k++){
+    if(ds[k]===prev+1){ prev=ds[k]; continue; }
+    faixas.push(ini===prev?(''+ini):(ini+'-'+prev));
+    ini=ds[k]; prev=ds[k];
+  }
+  return faixas.join(', ');
+}
+// base esperada de produção do mês = capacidade diária × dias trabalhados no produto
+// diário: dias com lançamento; período: soma dos dias marcados dos lançamentos do mês
+function baseEsperada(setor, produto, mesRef, prodDiaIdeal){
+  const lancs=((Dmo.prodReal&&Dmo.prodReal[setor]&&Dmo.prodReal[setor][produto])||[]);
+  let dias=0;
+  lancs.forEach(l=>{ dias += diasNoMes(l, mesRef); });
+  return dias>0 ? dias*prodDiaIdeal : 0;
+}
+// CALENDÁRIO modal para marcar dias de produção de um período
+let _calMesAberto=null;
+function abrirCalendario(chave, mesRefInicial){
+  _prNovoLanc[chave]=_prNovoLanc[chave]||{};
+  if(!_prNovoLanc[chave].dias) _prNovoLanc[chave].dias=[];
+  _calMesAberto = _calMesAberto || mesRefInicial;
+  const back=document.createElement('div');back.className='cal-back';back.id='cal-back';
+  const box=document.createElement('div');box.className='cal-box';
+  function render(){
+    const [ano,mes]=_calMesAberto.split('-').map(Number);
+    const primeiro=new Date(ano,mes-1,1);
+    const diasNoMesN=new Date(ano,mes,0).getDate();
+    const inicioSemana=primeiro.getDay(); // 0=dom
+    const nomes=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+    const sel=_prNovoLanc[chave].dias;
+    let h='<div class="cal-head"><button class="cal-nav" id="cal-prev">‹</button>'
+      +'<span class="cal-titulo">'+nomes[mes-1]+' '+ano+'</span>'
+      +'<button class="cal-nav" id="cal-next">›</button></div>';
+    h+='<div class="cal-grid">';
+    ['D','S','T','Q','Q','S','S'].forEach(d=>{ h+='<div class="cal-dow">'+d+'</div>'; });
+    for(let k=0;k<inicioSemana;k++) h+='<div class="cal-vazio"></div>';
+    for(let d=1;d<=diasNoMesN;d++){
+      const iso=ano+'-'+String(mes).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+      const marcado=sel.includes(iso);
+      h+='<button class="cal-dia'+(marcado?' sel':'')+'" data-iso="'+iso+'">'+d+'</button>';
+    }
+    h+='</div>';
+    h+='<div class="cal-rodape"><span>'+sel.length+' dia'+(sel.length!==1?'s':'')+' marcado'+(sel.length!==1?'s':'')+'</span>'
+      +'<button class="cal-ok" id="cal-ok">Confirmar</button></div>';
+    box.innerHTML=h;
+    box.querySelector('#cal-prev').onclick=()=>{ let mm=mes-1; let aa=ano; if(mm<1){mm=12;aa--;} _calMesAberto=aa+'-'+String(mm).padStart(2,'0'); render(); };
+    box.querySelector('#cal-next').onclick=()=>{ let mm=mes+1; let aa=ano; if(mm>12){mm=1;aa++;} _calMesAberto=aa+'-'+String(mm).padStart(2,'0'); render(); };
+    box.querySelectorAll('.cal-dia').forEach(b=>{
+      b.onclick=()=>{ const iso=b.dataset.iso; const i=sel.indexOf(iso); if(i>=0) sel.splice(i,1); else sel.push(iso); render(); };
+    });
+    box.querySelector('#cal-ok').onclick=()=>{ document.body.removeChild(back); renderSetores(); };
+  }
+  render();
+  back.appendChild(box);
+  back.onclick=(e)=>{ if(e.target===back){ document.body.removeChild(back); renderSetores(); } };
+  document.body.appendChild(back);
+}
 function painelProducaoReal(setor, mesRef){
   const wrap=document.createElement('div');wrap.className='pr-painel';
-  const diario = tipoLancDe(setor)==='diario';
+  const modo = tipoLancDe(setor); // 'diario' ou 'periodo'
   const prods = (Dmo.produtos[setor]||[]);
   const intro=document.createElement('div');intro.className='pr-intro';
-  intro.textContent = diario
-    ? 'Setor diário: lance a produção de cada dia. O app soma os dias do mês.'
-    : 'Setor mensal: lance o total do mês (ou vários lançamentos; o app soma).';
+  intro.textContent = modo==='diario'
+    ? 'Setor diário: lance a produção de cada dia. Eficiência = produzido no dia ÷ capacidade diária.'
+    : 'Setor por período: marque no calendário os dias em que produziu este item e informe o total do período. Eficiência = total ÷ (dias marcados × capacidade diária).';
   wrap.appendChild(intro);
+  // RESUMO GERENCIAL do setor
+  (function(){
+    const rr = (typeof _resSetores!=='undefined' && _resSetores[setor]) ? _resSetores[setor] : null;
+    let realTot=0, baseTot=0;
+    prods.forEach(p=>{
+      realTot += prodRealMes(setor, p.nome, mesRef);
+      baseTot += baseEsperada(setor, p.nome, mesRef, p.prodDia||0);
+    });
+    if(baseTot>0){
+      const efSetor = realTot/baseTot;
+      const folhaMes = rr ? (rr.folhaEfetiva||rr.folha||0) : 0;
+      const custoUsado = folhaMes*Math.min(efSetor,1);
+      const custoOcioso = Math.max(folhaMes-custoUsado,0);
+      const box=document.createElement('div');box.className='pr-resumo';
+      box.innerHTML =
+        '<div class="pr-res-linha"><span>Produção do mês</span><span>'+fmtNum(realTot)+' / '+fmtNum(baseTot)+' pç · <b class="'+(efSetor>=0.85?'ef-ok':(efSetor>=0.6?'ef-med':'ef-bad'))+'">'+(efSetor*100).toFixed(0)+'%</b></span></div>'
+        + (folhaMes>0 ? '<div class="pr-res-linha"><span>Custo M.O. do setor</span><span>R$ '+fmt(folhaMes)+'/mês</span></div>'
+          + '<div class="pr-res-linha"><span>→ absorvido pela produção</span><span class="ef-ok">R$ '+fmt(custoUsado)+'</span></div>'
+          + '<div class="pr-res-linha"><span>→ ocioso</span><span class="'+(custoOcioso>0?'ef-bad':'')+'">R$ '+fmt(custoOcioso)+'</span></div>' : '');
+      wrap.appendChild(box);
+    }
+  })();
   prods.forEach(p=>{
     const bloco=document.createElement('div');bloco.className='pr-produto';
     const realMes = prodRealMes(setor, p.nome, mesRef);
-    const idealMes = (p.prodDia||0)*diasIdeal;
-    const efic = idealMes>0 ? (realMes/idealMes) : 0;
-    // cabeçalho do produto: nome + real/ideal + eficiência
+    const base = baseEsperada(setor, p.nome, mesRef, p.prodDia||0);
+    const efic = base>0 ? (realMes/base) : 0;
     const cab=document.createElement('div');cab.className='pr-prod-cab';
     cab.innerHTML='<span class="pr-nome">'+p.nome+'</span>'
-      +'<span class="pr-nums">'+fmtNum(realMes)+' / '+fmtNum(idealMes)+' pç'
-      +(idealMes>0?' · <b class="'+(efic>=0.85?'ef-ok':(efic>=0.6?'ef-med':'ef-bad'))+'">'+(efic*100).toFixed(0)+'%</b>':'')
+      +'<span class="pr-nums">'+fmtNum(realMes)+' / '+fmtNum(base)+' pç'
+      +(base>0?' · <b class="'+(efic>=0.85?'ef-ok':(efic>=0.6?'ef-med':'ef-bad'))+'">'+(efic*100).toFixed(0)+'%</b>':'')
       +'</span>';
     bloco.appendChild(cab);
-    // lista de lançamentos existentes do mês
-    const lancs=((Dmo.prodReal&&Dmo.prodReal[setor]&&Dmo.prodReal[setor][p.nome])||[])
-      .map((l,idx)=>({l,idx})).filter(o=>o.l&&o.l.data&&o.l.data.slice(0,7)===mesRef);
+    // lançamentos existentes do mês
+    const todos=((Dmo.prodReal&&Dmo.prodReal[setor]&&Dmo.prodReal[setor][p.nome])||[]);
+    const lancs=todos.map((l,idx)=>({l,idx})).filter(o=>lancNoMes(o.l,mesRef));
     if(lancs.length){
       const lista=document.createElement('div');lista.className='pr-lista';
       lancs.forEach(o=>{
         const li=document.createElement('div');li.className='pr-lanc';
-        li.innerHTML='<span>'+fmtData(o.l.data)+'</span><span>'+fmtNum(o.l.qtd)+' pç</span>';
+        const nd=diasDoLanc(o.l).length;
+        const desc = modo==='periodo'
+          ? (nd+' dia'+(nd>1?'s':'')+' ('+resumoDias(o.l)+')')
+          : fmtData(o.l.data||(diasDoLanc(o.l)[0]));
+        li.innerHTML='<span>'+desc+'</span><span>'+fmtNum(o.l.qtd)+' pç</span>';
         const del=document.createElement('button');del.className='pr-del';del.textContent='×';
         del.onclick=()=>{ Dmo.prodReal[setor][p.nome].splice(o.idx,1); salvarSecaoMO('prodReal'); recalc(); };
         li.appendChild(del); lista.appendChild(li);
       });
       bloco.appendChild(lista);
     }
-    // linha de novo lançamento: data + qtd + adicionar
-    const add=document.createElement('div');add.className='pr-add';
-    const hoje=new Date().toISOString().slice(0,10);
+    // NOVO lançamento
     const chave=setor+'|'+p.nome;
-    const dData=document.createElement('input');dData.type='date';dData.className='pr-data';
-    dData.value=(_prNovoLanc[chave]&&_prNovoLanc[chave].data)|| (diario?hoje:(mesRef+'-01'));
-    dData.onchange=()=>{ _prNovoLanc[chave]=_prNovoLanc[chave]||{}; _prNovoLanc[chave].data=dData.value; };
-    const dQtd=document.createElement('input');dQtd.type='number';dQtd.className='pr-qtd';dQtd.placeholder='qtd';
-    dQtd.value=(_prNovoLanc[chave]&&_prNovoLanc[chave].qtd)||'';
-    dQtd.oninput=()=>{ _prNovoLanc[chave]=_prNovoLanc[chave]||{}; _prNovoLanc[chave].qtd=dQtd.value; };
-    const bAdd=document.createElement('button');bAdd.className='pr-add-btn';bAdd.textContent='+ lançar';
-    bAdd.onclick=()=>{
-      const data=dData.value; const qtd=parseFloat(dQtd.value)||0;
-      if(!data||qtd<=0){ alert('Informe a data e a quantidade produzida.'); return; }
-      if(!Dmo.prodReal) Dmo.prodReal={};
-      if(!Dmo.prodReal[setor]) Dmo.prodReal[setor]={};
-      if(!Dmo.prodReal[setor][p.nome]) Dmo.prodReal[setor][p.nome]=[];
-      Dmo.prodReal[setor][p.nome].push({data, qtd});
-      _prNovoLanc[chave]={};
-      salvarSecaoMO('prodReal'); recalc();
-    };
-    add.appendChild(dData); add.appendChild(dQtd); add.appendChild(bAdd);
-    bloco.appendChild(add);
+    if(modo==='periodo'){
+      // calendário + quantidade total
+      const calBtn=document.createElement('button');calBtn.className='pr-cal-btn';
+      const sel=(_prNovoLanc[chave]&&_prNovoLanc[chave].dias)||[];
+      calBtn.textContent = sel.length ? ('📅 '+sel.length+' dia'+(sel.length>1?'s':'')+' marcado'+(sel.length>1?'s':'')) : '📅 marcar dias no calendário';
+      calBtn.onclick=()=>{ abrirCalendario(chave, mesRef); };
+      bloco.appendChild(calBtn);
+      const add=document.createElement('div');add.className='pr-add';
+      const dQtd=document.createElement('input');dQtd.type='number';dQtd.className='pr-qtd-full';dQtd.placeholder='total de peças no período';
+      dQtd.value=(_prNovoLanc[chave]&&_prNovoLanc[chave].qtd)||'';
+      dQtd.oninput=()=>{ _prNovoLanc[chave]=_prNovoLanc[chave]||{}; _prNovoLanc[chave].qtd=dQtd.value; };
+      const bAdd=document.createElement('button');bAdd.className='pr-add-btn';bAdd.textContent='+ lançar';
+      bAdd.onclick=()=>{
+        const dias=(_prNovoLanc[chave]&&_prNovoLanc[chave].dias)||[];
+        const qtd=parseFloat(dQtd.value)||0;
+        if(!dias.length){ alert('Marque no calendário os dias em que produziu este item.'); return; }
+        if(qtd<=0){ alert('Informe o total de peças do período.'); return; }
+        if(!Dmo.prodReal) Dmo.prodReal={};
+        if(!Dmo.prodReal[setor]) Dmo.prodReal[setor]={};
+        if(!Dmo.prodReal[setor][p.nome]) Dmo.prodReal[setor][p.nome]=[];
+        Dmo.prodReal[setor][p.nome].push({dias:dias.slice(), qtd});
+        _prNovoLanc[chave]={};
+        salvarSecaoMO('prodReal'); recalc();
+      };
+      add.appendChild(dQtd); add.appendChild(bAdd);
+      bloco.appendChild(add);
+    } else {
+      // diário: data + qtd
+      const add=document.createElement('div');add.className='pr-add';
+      const hoje=new Date().toISOString().slice(0,10);
+      const dData=document.createElement('input');dData.type='date';dData.className='pr-data';
+      dData.value=(_prNovoLanc[chave]&&_prNovoLanc[chave].data)|| hoje;
+      dData.onchange=()=>{ _prNovoLanc[chave]=_prNovoLanc[chave]||{}; _prNovoLanc[chave].data=dData.value; };
+      const dQtd=document.createElement('input');dQtd.type='number';dQtd.className='pr-qtd';dQtd.placeholder='qtd';
+      dQtd.value=(_prNovoLanc[chave]&&_prNovoLanc[chave].qtd)||'';
+      dQtd.oninput=()=>{ _prNovoLanc[chave]=_prNovoLanc[chave]||{}; _prNovoLanc[chave].qtd=dQtd.value; };
+      const bAdd=document.createElement('button');bAdd.className='pr-add-btn';bAdd.textContent='+ lançar';
+      bAdd.onclick=()=>{
+        const data=dData.value; const qtd=parseFloat(dQtd.value)||0;
+        if(!data||qtd<=0){ alert('Informe a data e a quantidade produzida.'); return; }
+        if(!Dmo.prodReal) Dmo.prodReal={};
+        if(!Dmo.prodReal[setor]) Dmo.prodReal[setor]={};
+        if(!Dmo.prodReal[setor][p.nome]) Dmo.prodReal[setor][p.nome]=[];
+        Dmo.prodReal[setor][p.nome].push({data, qtd});
+        _prNovoLanc[chave]={};
+        salvarSecaoMO('prodReal'); recalc();
+      };
+      add.appendChild(dData); add.appendChild(dQtd); add.appendChild(bAdd);
+      bloco.appendChild(add);
+    }
     wrap.appendChild(bloco);
   });
   return wrap;
@@ -3140,7 +3289,7 @@ function painelProducaoReal(setor, mesRef){
 function prodRealMes(setor, produto, mesRef){
   try{
     const lancs = (Dmo.prodReal && Dmo.prodReal[setor] && Dmo.prodReal[setor][produto]) || [];
-    return lancs.filter(l=>l && l.data && l.data.slice(0,7)===mesRef)
+    return lancs.filter(l=>lancNoMes(l, mesRef))
                .reduce((s,l)=>s+(parseFloat(l.qtd)||0),0);
   }catch(e){ return 0; }
 }
@@ -3286,7 +3435,7 @@ function updHead(div,p){div.querySelector('.p-total').textContent='R$ '+fmt(calc
 
 // ---- render setores (resultado) ----
 function renderSetores(){
-  const res=calcSetores();
+  const res=calcSetores(); _resSetores=res;
   const wrap=document.getElementById('setores');wrap.innerHTML='';
   FAM.forEach(f=>{
     const r=res[f];
