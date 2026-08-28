@@ -662,6 +662,37 @@ main{padding:16px;max-width:680px;margin:0 auto}
 #mp-container .chart *{pointer-events:none}
 #mp-container #btn-nc{pointer-events:auto!important;position:relative;z-index:10}
 
+
+/* ===== RELATÓRIOS ===== */
+#rel-container{padding:14px}
+.rel-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.rel-titulo{font-size:1.05rem;font-weight:800;color:var(--txt)}
+.rel-pdf{background:var(--rebar);border:none;color:#fff;padding:8px 14px;border-radius:8px;font-size:.85rem;font-weight:700;cursor:pointer}
+.rel-mes-bar{display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:12px}
+.rel-mes-nav{background:var(--surf2);border:1px solid var(--line);color:var(--txt);width:36px;height:36px;border-radius:8px;font-size:20px;cursor:pointer}
+.rel-mes-lbl{font-size:1rem;font-weight:700;color:var(--rebar2);min-width:90px;text-align:center;text-transform:capitalize}
+.rel-abas{display:flex;gap:6px;margin-bottom:14px}
+.rel-aba{flex:1;background:var(--surf2);border:1px solid var(--line);color:var(--txt3);padding:8px 4px;border-radius:8px;font-size:.8rem;cursor:pointer;font-weight:600}
+.rel-aba.on{background:var(--rebar-dim);color:var(--rebar2);border-color:var(--rebar)}
+.rel-setor{background:var(--surf2);border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:12px}
+.rel-setor-cab{display:flex;justify-content:space-between;font-weight:700;color:var(--txt);margin-bottom:8px;font-size:.95rem}
+.rel-tab{width:100%;border-collapse:collapse;font-size:.8rem}
+.rel-tab th{text-align:left;color:var(--txt3);font-weight:600;padding:4px 6px;border-bottom:1px solid var(--line);font-size:.7rem;text-transform:uppercase}
+.rel-tab td{padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.04);color:var(--txt2)}
+.rel-tab td:not(:first-child),.rel-tab th:not(:first-child){text-align:right;font-variant-numeric:tabular-nums}
+.rel-tab td:first-child{color:var(--txt)}
+.rel-custo{display:flex;gap:10px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line);flex-wrap:wrap}
+.rel-custo>div{flex:1;min-width:90px}
+.rel-custo span{display:block;font-size:.65rem;color:var(--txt3);text-transform:uppercase}
+.rel-custo b{font-size:.85rem;font-variant-numeric:tabular-nums}
+.rel-total{text-align:right;font-weight:800;color:var(--txt);font-size:1rem;padding:8px 4px}
+.rel-vazio{text-align:center;color:var(--txt3);padding:40px 20px;font-size:.9rem}
+.rel-sub{font-size:.8rem;font-weight:700;color:var(--rebar2);margin:14px 0 8px;text-transform:uppercase;letter-spacing:.03em}
+.rel-scroll{overflow-x:auto;margin-bottom:6px}
+.rel-comp th,.rel-comp td{white-space:nowrap}
+.rel-comp td:first-child,.rel-comp th:first-child{position:sticky;left:0;background:var(--surf2)}
+.ef-ok{color:#4ccf7a} .ef-med{color:#e0a030} .ef-bad{color:#e0603c}
+.dash-card.dc-rel .dc-ico{background:rgba(90,140,255,.15)}
 </style>
 <meta id="nedeegdmhlnmboboahchfpkmdnnemapd"><meta id="dcngeagmmhegagicpcmpinaoklddcgon"></head>
 <body>
@@ -705,7 +736,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v49</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v50</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -1502,6 +1533,268 @@ const MODULES = {
   frete:{ ico:"🚚", cls:"dc-frete", name:"Frete e admin",   tag:"Custos fixos rateados",          status:"wip", desc:"Faturamento real; falta combustível da frota." },
 };
 
+// ==================== MÓDULO RELATÓRIOS ====================
+let _relMes = new Date().toISOString().slice(0,7);
+let _relAba = 'producao'; // 'producao' | 'eficiencia' | 'comparar'
+
+function _relDmo(){ return window.__moD || (typeof Dmo!=='undefined'?Dmo:null); }
+function _relJornada(){ const D=_relDmo(); return (D&&D.jornada)||8.8; }
+function _relDias(){ const D=_relDmo(); return (D&&D.diasIdeal)||22; }
+function _relFmtNum(n){ n=Number(n)||0; return n.toLocaleString('pt-BR',{maximumFractionDigits:0}); }
+function _relFmt(n){ n=Number(n)||0; return n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function _relMesLabel(mesRef){ try{const[a,m]=mesRef.split('-');const nn=['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];return nn[+m]+'/'+a;}catch(e){return mesRef;} }
+function _relEhCentral(f){ return /^central/i.test(f); }
+
+// dias de um lançamento (período tem .dias[]; diário tem .data)
+function _relDiasDoLanc(l){ if(!l) return []; if(Array.isArray(l.dias)) return l.dias; if(l.data) return [l.data]; return []; }
+function _relDiasNoMes(l, mesRef){ return _relDiasDoLanc(l).filter(d=>d&&d.slice(0,7)===mesRef).length; }
+function _relLancNoMes(l, mesRef){ return _relDiasDoLanc(l).some(d=>d&&d.slice(0,7)===mesRef); }
+
+// produção real de um produto no mês
+function _relProdRealMes(setor, produto, mesRef){
+  const D=_relDmo(); if(!D||!D.prodReal) return 0;
+  const lancs=(D.prodReal[setor]&&D.prodReal[setor][produto])||[];
+  return lancs.filter(l=>_relLancNoMes(l,mesRef)).reduce((s,l)=>s+(parseFloat(l.qtd)||0),0);
+}
+// base esperada = dias trabalhados no produto × capacidade diária
+function _relBaseEsperada(setor, produto, mesRef, prodDiaIdeal){
+  const D=_relDmo(); if(!D||!D.prodReal) return 0;
+  const lancs=(D.prodReal[setor]&&D.prodReal[setor][produto])||[];
+  let dias=0; lancs.forEach(l=>{ dias+=_relDiasNoMes(l,mesRef); });
+  return dias>0 ? dias*prodDiaIdeal : 0;
+}
+// dias trabalhados de um produto no mês
+function _relDiasProduto(setor, produto, mesRef){
+  const D=_relDmo(); if(!D||!D.prodReal) return 0;
+  const lancs=(D.prodReal[setor]&&D.prodReal[setor][produto])||[];
+  let dias=0; lancs.forEach(l=>{ dias+=_relDiasNoMes(l,mesRef); });
+  return dias;
+}
+
+// custo/hora por setor (replica calcSetores de forma simplificada, sem centrais)
+function _relCalcPessoa(p){
+  const peric = p.tipoRisco==='periculosidade' ? ((p.salario||0)+(p.extras50||0)+(p.extras100||0))*0.30 : 0;
+  const insal = p.tipoRisco==='insalubridade' ? (p.insalubridade||0) : 0;
+  const totalMes=(p.salario||0)+(p.va||0)+(p.quinquenio||0)+(p.anuenio||0)+insal+peric+(p.extras50||0)+(p.extras100||0)+(p.foraFolha||0);
+  const ferias=(((p.salario||0)+(p.extras50||0)+(p.extras100||0))/3)*2.33;
+  const inss=ferias*0.26;
+  return totalMes+ferias+inss;
+}
+function _relCustoHoraSetor(){
+  const D=_relDmo(); if(!D) return {};
+  const FAM=D.familias||[]; const folha={},nP={};
+  FAM.forEach(f=>{folha[f]=0;nP[f]=0;});
+  (D.pessoas||[]).forEach(p=>{
+    const c=_relCalcPessoa(p);
+    const tipo=p.tipo||p._tipo||'fixo'; const fam=p.fam||p._fam||FAM[0]; const rateios=p.rateios||p._rateios||{};
+    if(tipo==='fixo'){ folha[fam]=(folha[fam]||0)+c; nP[fam]=(nP[fam]||0)+1; }
+    else{ const soma=FAM.reduce((s,f)=>s+(rateios[f]||0),0)||1;
+      FAM.forEach(f=>{ const pct=(rateios[f]||0)/soma; folha[f]=(folha[f]||0)+c*pct; if(pct>0)nP[f]=(nP[f]||0)+pct; }); }
+  });
+  const jornada=_relJornada(), dias=_relDias();
+  const res={};
+  FAM.forEach(f=>{ const horas=nP[f]*dias*jornada; res[f]={folha:folha[f],horas,custoHora:horas>0?folha[f]/horas:0}; });
+  return res;
+}
+
+// AGREGA a produção/eficiência de um mês, por setor e produto
+function _relDadosMes(mesRef){
+  const D=_relDmo(); if(!D) return {setores:[], totalReal:0};
+  const chSetor=_relCustoHoraSetor();
+  const jornada=_relJornada();
+  const setores=[];
+  let totalReal=0;
+  (D.familias||[]).filter(f=>!_relEhCentral(f)).forEach(f=>{
+    const prods=[];
+    let realSetor=0, baseSetor=0;
+    (D.produtos[f]||[]).forEach(p=>{
+      const real=_relProdRealMes(f,p.nome,mesRef);
+      const base=_relBaseEsperada(f,p.nome,mesRef,p.prodDia||0);
+      const diasP=_relDiasProduto(f,p.nome,mesRef);
+      if(real>0||base>0){
+        prods.push({nome:p.nome, real, base, dias:diasP, prodDia:p.prodDia||0, efic: base>0?real/base:0});
+        realSetor+=real; baseSetor+=base;
+      }
+    });
+    if(prods.length){
+      const ch=chSetor[f]||{folha:0,horas:0,custoHora:0};
+      const efSetor = baseSetor>0 ? realSetor/baseSetor : 0;
+      const absorvido = ch.folha*Math.min(efSetor,1);
+      const ocioso = Math.max(ch.folha-absorvido,0);
+      setores.push({setor:f, prods, real:realSetor, base:baseSetor, efic:efSetor, folha:ch.folha, absorvido, ocioso});
+      totalReal+=realSetor;
+    }
+  });
+  return {setores, totalReal};
+}
+
+
+// ==================== UI DOS RELATÓRIOS ====================
+function initRelatorios(container){
+  if(!window.__moD){ _relCarregarDmo(()=>renderRelatorios(container)); }
+  renderRelatorios(container);
+}
+// carrega Dmo do localStorage demo se o MO nunca foi aberto
+function _relCarregarDmo(cb){
+  try{
+    const blob=JSON.parse(localStorage.getItem('pedroni:custos/mo_bloco')||'null');
+    if(blob && typeof DMO_DEFAULT!=='undefined'){
+      const base=JSON.parse(JSON.stringify(DMO_DEFAULT));
+      Object.keys(blob).forEach(k=>{ if(blob[k]!==undefined) base[k]=blob[k]; });
+      window.__moD=base;
+    } else if(typeof DMO_DEFAULT!=='undefined'){ window.__moD=JSON.parse(JSON.stringify(DMO_DEFAULT)); }
+  }catch(e){}
+  cb&&cb();
+}
+
+function renderRelatorios(container){
+  const D=_relDmo();
+  let h='<div id="rel-container" class="module-view">';
+  h+='<div class="rel-top"><div class="rel-titulo">📊 Relatórios de produção</div>';
+  h+='<button class="rel-pdf" id="rel-btn-pdf">⬇ PDF</button></div>';
+  // seletor de mês
+  h+='<div class="rel-mes-bar"><button class="rel-mes-nav" id="rel-prev">‹</button>';
+  h+='<span class="rel-mes-lbl">'+_relMesLabel(_relMes)+'</span>';
+  h+='<button class="rel-mes-nav" id="rel-next">›</button></div>';
+  // abas
+  h+='<div class="rel-abas">';
+  h+='<button class="rel-aba'+(_relAba==='producao'?' on':'')+'" data-aba="producao">Produção</button>';
+  h+='<button class="rel-aba'+(_relAba==='eficiencia'?' on':'')+'" data-aba="eficiencia">Eficiência</button>';
+  h+='<button class="rel-aba'+(_relAba==='comparar'?' on':'')+'" data-aba="comparar">Comparar meses</button>';
+  h+='</div>';
+  h+='<div id="rel-corpo">'+_relCorpoHTML()+'</div>';
+  h+='</div>';
+  container.innerHTML=h;
+  // handlers
+  container.querySelector('#rel-prev').onclick=()=>{ _relMes=_relMesShift(_relMes,-1); renderRelatorios(container); };
+  container.querySelector('#rel-next').onclick=()=>{ _relMes=_relMesShift(_relMes,1); renderRelatorios(container); };
+  container.querySelectorAll('.rel-aba').forEach(b=>{ b.onclick=()=>{ _relAba=b.dataset.aba; renderRelatorios(container); }; });
+  container.querySelector('#rel-btn-pdf').onclick=()=>_relGerarPDF();
+}
+function _relMesShift(mesRef, delta){
+  const [a,m]=mesRef.split('-').map(Number);
+  const d=new Date(a,m-1+delta,1); return d.toISOString().slice(0,7);
+}
+
+function _relCorpoHTML(){
+  if(_relAba==='producao') return _relProducaoHTML();
+  if(_relAba==='eficiencia') return _relEficienciaHTML();
+  if(_relAba==='comparar') return _relCompararHTML();
+  return '';
+}
+
+// ABA PRODUÇÃO: tudo que foi produzido no mês
+function _relProducaoHTML(){
+  const dados=_relDadosMes(_relMes);
+  if(!dados.setores.length) return '<div class="rel-vazio">Nenhuma produção lançada em '+_relMesLabel(_relMes)+'.</div>';
+  let h='';
+  dados.setores.forEach(s=>{
+    h+='<div class="rel-setor"><div class="rel-setor-cab"><span>'+s.setor+'</span><span>'+_relFmtNum(s.real)+' pç</span></div>';
+    h+='<table class="rel-tab"><thead><tr><th>Produto</th><th>Dias</th><th>Produzido</th></tr></thead><tbody>';
+    s.prods.forEach(p=>{ h+='<tr><td>'+p.nome+'</td><td>'+p.dias+'</td><td>'+_relFmtNum(p.real)+'</td></tr>'; });
+    h+='</tbody></table></div>';
+  });
+  h+='<div class="rel-total">Total do mês: '+_relFmtNum(dados.totalReal)+' peças</div>';
+  return h;
+}
+
+// ABA EFICIÊNCIA: real vs capacidade + custo absorvido/ocioso
+function _relEficienciaHTML(){
+  const dados=_relDadosMes(_relMes);
+  if(!dados.setores.length) return '<div class="rel-vazio">Nenhuma produção lançada em '+_relMesLabel(_relMes)+'.</div>';
+  let h='';
+  dados.setores.forEach(s=>{
+    const cls=s.efic>=0.85?'ef-ok':(s.efic>=0.6?'ef-med':'ef-bad');
+    h+='<div class="rel-setor"><div class="rel-setor-cab"><span>'+s.setor+'</span><span class="'+cls+'">'+(s.efic*100).toFixed(0)+'%</span></div>';
+    h+='<table class="rel-tab"><thead><tr><th>Produto</th><th>Real</th><th>Base</th><th>Ef.</th></tr></thead><tbody>';
+    s.prods.forEach(p=>{ const c=p.efic>=0.85?'ef-ok':(p.efic>=0.6?'ef-med':'ef-bad');
+      h+='<tr><td>'+p.nome+'</td><td>'+_relFmtNum(p.real)+'</td><td>'+_relFmtNum(p.base)+'</td><td class="'+c+'">'+(p.base>0?(p.efic*100).toFixed(0)+'%':'—')+'</td></tr>'; });
+    h+='</tbody></table>';
+    if(s.folha>0){
+      h+='<div class="rel-custo"><div><span>Custo M.O.</span><b>R$ '+_relFmt(s.folha)+'</b></div>';
+      h+='<div><span>Absorvido</span><b class="ef-ok">R$ '+_relFmt(s.absorvido)+'</b></div>';
+      h+='<div><span>Ocioso</span><b class="ef-bad">R$ '+_relFmt(s.ocioso)+'</b></div></div>';
+    }
+    h+='</div>';
+  });
+  return h;
+}
+
+// ABA COMPARAR: eficiência mês a mês (últimos 6 meses), por setor e por produto
+function _relCompararHTML(){
+  const meses=[]; let m=_relMes;
+  for(let k=0;k<6;k++){ meses.unshift(m); m=_relMesShift(m,-1); }
+  const D=_relDmo(); if(!D) return '<div class="rel-vazio">Sem dados.</div>';
+  // por SETOR
+  let h='<div class="rel-sub">Eficiência por setor</div>';
+  h+='<div class="rel-scroll"><table class="rel-tab rel-comp"><thead><tr><th>Setor</th>';
+  meses.forEach(mm=>{ h+='<th>'+_relMesLabel(mm)+'</th>'; });
+  h+='</tr></thead><tbody>';
+  (D.familias||[]).filter(f=>!_relEhCentral(f)).forEach(f=>{
+    const linha=meses.map(mm=>{ const dd=_relDadosMes(mm); const s=dd.setores.find(x=>x.setor===f); return s?s.efic:null; });
+    if(linha.some(v=>v!==null)){
+      h+='<tr><td>'+f+'</td>';
+      linha.forEach(v=>{ if(v===null){h+='<td>—</td>';} else{const c=v>=0.85?'ef-ok':(v>=0.6?'ef-med':'ef-bad');h+='<td class="'+c+'">'+(v*100).toFixed(0)+'%</td>';} });
+      h+='</tr>';
+    }
+  });
+  h+='</tbody></table></div>';
+  // por PRODUTO
+  h+='<div class="rel-sub">Eficiência por produto</div>';
+  h+='<div class="rel-scroll"><table class="rel-tab rel-comp"><thead><tr><th>Produto</th>';
+  meses.forEach(mm=>{ h+='<th>'+_relMesLabel(mm)+'</th>'; });
+  h+='</tr></thead><tbody>';
+  const prodSet=new Set();
+  (D.familias||[]).filter(f=>!_relEhCentral(f)).forEach(f=>{ (D.produtos[f]||[]).forEach(p=>prodSet.add(f+'||'+p.nome)); });
+  prodSet.forEach(chave=>{
+    const [f,nome]=chave.split('||');
+    const linha=meses.map(mm=>{ const real=_relProdRealMes(f,nome,mm); const pd=(D.produtos[f]||[]).find(x=>x.nome===nome); const base=_relBaseEsperada(f,nome,mm,pd?pd.prodDia:0); return base>0?real/base:null; });
+    if(linha.some(v=>v!==null)){
+      h+='<tr><td>'+nome+'</td>';
+      linha.forEach(v=>{ if(v===null){h+='<td>—</td>';} else{const c=v>=0.85?'ef-ok':(v>=0.6?'ef-med':'ef-bad');h+='<td class="'+c+'">'+(v*100).toFixed(0)+'%</td>';} });
+      h+='</tr>';
+    }
+  });
+  h+='</tbody></table></div>';
+  return h;
+}
+
+
+// ==================== PDF (via impressão do navegador) ====================
+function _relGerarPDF(){
+  const dados=_relDadosMes(_relMes);
+  const D=_relDmo();
+  let corpo='';
+  // Produção
+  corpo+='<h2>Produção — '+_relMesLabel(_relMes)+'</h2>';
+  if(dados.setores.length){
+    dados.setores.forEach(s=>{
+      corpo+='<h3>'+s.setor+' — '+_relFmtNum(s.real)+' pç</h3><table><tr><th>Produto</th><th>Dias</th><th>Produzido</th><th>Base</th><th>Eficiência</th></tr>';
+      s.prods.forEach(p=>{ corpo+='<tr><td>'+p.nome+'</td><td>'+p.dias+'</td><td>'+_relFmtNum(p.real)+'</td><td>'+_relFmtNum(p.base)+'</td><td>'+(p.base>0?(p.efic*100).toFixed(0)+'%':'—')+'</td></tr>'; });
+      corpo+='</table>';
+      if(s.folha>0) corpo+='<p class="cst">Custo M.O.: R$ '+_relFmt(s.folha)+' &nbsp;|&nbsp; Absorvido: R$ '+_relFmt(s.absorvido)+' &nbsp;|&nbsp; Ocioso: R$ '+_relFmt(s.ocioso)+' &nbsp;|&nbsp; Eficiência do setor: '+(s.efic*100).toFixed(0)+'%</p>';
+    });
+    corpo+='<p class="tot">Total do mês: '+_relFmtNum(dados.totalReal)+' peças</p>';
+  } else { corpo+='<p>Nenhuma produção lançada neste mês.</p>'; }
+  const win=window.open('','_blank');
+  win.document.write('<html><head><title>Relatório '+_relMesLabel(_relMes)+'</title><style>'
+    +'body{font-family:Arial,sans-serif;color:#111;padding:24px;font-size:12px}'
+    +'h1{font-size:20px;margin:0 0 4px} h2{font-size:15px;margin:18px 0 8px;border-bottom:2px solid #e8701c;padding-bottom:3px;color:#c0560f}'
+    +'h3{font-size:13px;margin:12px 0 4px}'
+    +'table{border-collapse:collapse;width:100%;margin-bottom:6px} th,td{border:1px solid #ccc;padding:4px 7px;text-align:left} th{background:#f3f3f3}'
+    +'td:not(:first-child),th:not(:first-child){text-align:right}'
+    +'.cst{font-size:11px;color:#555;margin:2px 0 8px} .tot{font-weight:bold;font-size:13px;margin-top:12px}'
+    +'.cab{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #ddd;padding-bottom:8px;margin-bottom:8px}'
+    +'</style></head><body>'
+    +'<div class="cab"><h1>Artefatos de Cimento Pedroni</h1><div>Relatório de produção<br>'+_relMesLabel(_relMes)+'</div></div>'
+    +corpo
+    +'<p style="margin-top:24px;font-size:10px;color:#999">Gerado pelo Motor de Custos em '+new Date().toLocaleDateString('pt-BR')+'</p>'
+    +'</body></html>');
+  win.document.close();
+  setTimeout(()=>{ win.print(); }, 400);
+}
+
+
 function renderNav(){
   if(currentNav === "home") renderHome();
   else renderModule(currentNav);
@@ -1532,6 +1825,11 @@ function renderHome(){
         <div class="dc-name">Preço final</div>
         <div class="dc-desc">Junta os 4 módulos e mostra o preço de cada produto — com e sem nota.</div>
       </div>
+      <div class="dash-card dc-rel" data-go="relatorios">
+        <div class="dc-ico">📊</div>
+        <div class="dc-name">Relatórios</div>
+        <div class="dc-desc">Produção e eficiência do mês, comparação entre meses e PDF para imprimir.</div>
+      </div>
     </div>
     <div class="dash-section">Sobre este app</div>
     <div class="placeholder" style="padding:20px">
@@ -1561,6 +1859,11 @@ function moduleCard(key, m){
 }
 
 function renderModule(key){
+  if(key === "relatorios"){
+    $("app-main").innerHTML = '<div id="rel-container" class="module-view"></div>';
+    initRelatorios($("rel-container"));
+    return;
+  }
   const m = MODULES[key];
   if(!m){ renderHome(); return; }
   if(key === "mp"){
@@ -1571,6 +1874,11 @@ function renderModule(key){
   if(key === "mo"){
     $("app-main").innerHTML = '<div id="mo-container" class="module-view"></div>';
     initMaoDeObra($("mo-container"));
+    return;
+  }
+  if(key === "relatorios"){
+    $("app-main").innerHTML = '<div id="rel-container" class="module-view"></div>';
+    initRelatorios($("rel-container"));
     return;
   }
   $("app-main").innerHTML = `
@@ -2882,6 +3190,7 @@ function migrarSetoresMO(){
 }
 
 function runMaoDeObra(){
+  window.__moD = Dmo; // expõe para os Relatórios
 
 const AJUDAS={
   custohora:{t:'Custo por hora do setor',c:`<p>É quanto custa uma hora de trabalho daquele setor, incluindo <b>todos os encargos</b> e os indiretos (EPI, uniformes).</p>
