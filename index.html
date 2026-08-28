@@ -736,7 +736,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v50</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v51</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -1452,7 +1452,8 @@ function toggleUserMenu(){
     </div>
     ${LOGIN_ATIVO ? '<button id="menu-signout" class="danger">↩ Sair</button>' : '<button id="menu-info">ℹ Sobre o app</button>'}
     <button id="menu-push" style="color:var(--rebar2)">⬆ Enviar meus dados p/ nuvem</button>
-    <button id="menu-pull">⬇ Baixar dados da nuvem</button>`;
+    <button id="menu-pull">⬇ Baixar dados da nuvem</button>
+    <button id="menu-export" style="color:#5a9cff">📤 Exportar backup (arquivo)</button>`;
   $("app-screen").appendChild(menu);
   if(LOGIN_ATIVO){
     $("menu-signout").addEventListener("click", doLogout);
@@ -1461,6 +1462,26 @@ function toggleUserMenu(){
   }
   // sincronização manual
   const bPush = $("menu-push"), bPull = $("menu-pull");
+  const bExport = $("menu-export");
+  if(bExport) bExport.addEventListener("click", ()=>{
+    closeUserMenu();
+    if(!confirm("Para o backup ficar completo, abra as abas Material e M. obra pelo menos uma vez nesta sessão (assim os dados da nuvem carregam).\n\nBaixar o arquivo de backup agora?")) return;
+    try{
+      // junta todos os dados: M.O., matéria-prima e blobs do localStorage
+      const backup = { versao:"v50", geradoEm:new Date().toISOString() };
+      try{ backup.mo = window.__moD || JSON.parse(localStorage.getItem('pedroni:custos/mo_bloco')||'null'); }catch(e){}
+      try{ backup.mp = window.__mpD || JSON.parse(localStorage.getItem('pedroni:custos/mp_bloco')||'null'); }catch(e){}
+      // inclui todos os blobs custos/* do localStorage (garante pegar tudo)
+      backup.localStorage = {};
+      for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k&&k.indexOf('pedroni:')===0){ try{ backup.localStorage[k]=JSON.parse(localStorage.getItem(k)); }catch(e){ backup.localStorage[k]=localStorage.getItem(k); } } }
+      const blob = new Blob([JSON.stringify(backup,null,2)], {type:'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'pedroni_backup_'+new Date().toISOString().slice(0,10)+'.json';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(()=>URL.revokeObjectURL(url), 1000);
+    }catch(e){ alert("Erro ao exportar: "+e.message); }
+  });
   if(bPush) bPush.addEventListener("click", async ()=>{
     closeUserMenu();
     if(!confirm("Enviar os dados DESTE aparelho para a nuvem?\n\nIsso vai SOBRESCREVER o que está na nuvem com o que você vê aqui. Use no aparelho que tem os dados certos.")) return;
