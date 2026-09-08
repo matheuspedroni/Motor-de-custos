@@ -693,6 +693,45 @@ main{padding:16px;max-width:680px;margin:0 auto}
 .rel-comp td:first-child,.rel-comp th:first-child{position:sticky;left:0;background:var(--surf2)}
 .ef-ok{color:#4ccf7a} .ef-med{color:#e0a030} .ef-bad{color:#e0603c}
 .dash-card.dc-rel .dc-ico{background:rgba(90,140,255,.15)}
+
+/* ===== CUSTO DE MÁQUINA ===== */
+#maq-container{padding:12px}
+.maq-abas{display:flex;gap:5px;margin-bottom:14px;flex-wrap:wrap}
+.maq-aba{flex:1;min-width:70px;background:var(--surf2);border:1px solid var(--line);color:var(--txt3);padding:8px 4px;border-radius:8px;font-size:.78rem;cursor:pointer;font-weight:600}
+.maq-aba.on{background:var(--rebar-dim);color:var(--rebar2);border-color:var(--rebar)}
+.maq-intro{font-size:.8rem;color:var(--txt3);margin-bottom:12px;line-height:1.4}
+.maq-card{background:var(--surf2);border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px}
+.maq-card-cab{display:flex;justify-content:space-between;font-weight:700;color:var(--txt);margin-bottom:8px}
+.maq-ton{color:var(--rebar2)}
+.maq-linhas>div{display:flex;justify-content:space-between;padding:3px 0;font-size:.85rem;color:var(--txt2)}
+.maq-linhas>div b{color:var(--txt);font-variant-numeric:tabular-nums}
+.maq-tot{border-top:1px solid var(--line);margin-top:4px;padding-top:6px!important;font-weight:700}
+.maq-sub{font-size:.78rem;font-weight:700;color:var(--rebar2);margin:14px 0 8px;text-transform:uppercase;letter-spacing:.03em}
+.maq-field{margin-bottom:12px}
+.maq-field label{display:block;font-size:.8rem;color:var(--txt3);margin-bottom:4px}
+.maq-field input{width:100%;background:var(--surf);color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:8px}
+.maq-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 0;font-size:.85rem;color:var(--txt2)}
+.maq-row input{width:120px;background:var(--surf);color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:6px}
+.maq-row2{display:flex;gap:6px;margin:6px 0}
+.maq-row2 input{flex:1;background:var(--surf);color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:6px}
+.maq-dep{background:var(--surf2);border:1px solid var(--line);border-radius:8px;padding:10px;margin-bottom:8px}
+.maq-dep-cab{font-weight:700;color:var(--txt);margin-bottom:6px;font-size:.9rem}
+.maq-dep select,.maq-dep input{background:var(--surf);color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:6px;width:100%;margin-bottom:4px}
+.maq-dep-res{font-size:.8rem;color:var(--rebar2);text-align:right;font-weight:600}
+.maq-med{font-size:.72rem;color:var(--txt3);font-weight:400}
+.maq-gd{display:flex;gap:5px;margin-bottom:5px;align-items:center}
+.maq-gd input[type=date]{width:120px}
+.maq-gd input[type=text]{flex:1}
+.maq-gd input[type=number]{width:80px}
+.maq-gd input{background:var(--surf);color:var(--txt);border:1px solid var(--line);border-radius:5px;padding:5px;font-size:.8rem}
+.maq-gg{display:flex;gap:5px;margin-bottom:5px;align-items:center}
+.maq-gg-lbl{flex:1;font-size:.82rem;color:var(--txt2)}
+.maq-gg-nome{flex:1;background:var(--surf);color:var(--txt);border:1px solid var(--line);border-radius:5px;padding:5px;font-size:.8rem}
+.maq-gg-val{width:80px;background:var(--surf);color:var(--txt);border:1px solid var(--line);border-radius:5px;padding:5px}
+.maq-gg-rat{background:var(--surf);color:var(--txt);border:1px solid var(--line);border-radius:5px;padding:5px;font-size:.75rem;max-width:120px}
+.maq-tot-gg{font-weight:700;color:var(--txt);text-align:right;margin-bottom:10px}
+.maq-mini{background:var(--rebar-dim);border:1px solid var(--rebar);color:var(--rebar2);border-radius:6px;padding:5px 10px;font-size:.75rem;cursor:pointer;margin-top:4px}
+.maq-del{background:transparent;border:1px solid var(--line);color:#e0603c;border-radius:5px;padding:4px 8px;font-size:.75rem;cursor:pointer}
 </style>
 <meta id="nedeegdmhlnmboboahchfpkmdnnemapd"><meta id="dcngeagmmhegagicpcmpinaoklddcgon"></head>
 <body>
@@ -736,7 +775,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v51</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v54</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -1816,6 +1855,438 @@ function _relGerarPDF(){
 }
 
 
+const DMAQ_DEFAULT = {"setores": ["Blocos maquina PWR", "Blocos maquina Gervasi", "Tubos maquina LKR", "Tubos vibrados", "Tubos Maquina Tuber", "Fossas", "Caixas", "Tampas/Leitos", "Central dosadora 01", "Central dosadora 02 (nova)"], "deprec": {"Blocos maquina Gervasi": 3404.72, "Blocos maquina PWR": 20763.53, "Tubos maquina LKR": 5051.09, "Tubos vibrados": 2620.25, "Fossas": 2406.92, "Tampas/Leitos": 1604.61, "Caixas": 0, "Tubos Maquina Tuber": 0, "Central dosadora 01": 0, "Central dosadora 02 (nova)": 0}, "depCentral": 9638.89, "depGeral": 6144.17, "potencias": {"Blocos maquina Gervasi": 45, "Blocos maquina PWR": 75, "Tubos maquina LKR": 30, "Tubos vibrados": 20, "Fossas": 15, "Tampas/Leitos": 10, "Caixas": 8, "Tubos Maquina Tuber": 0, "Central dosadora 01": 0, "Central dosadora 02 (nova)": 0}, "horasMes": {"Blocos maquina Gervasi": 176, "Blocos maquina PWR": 176, "Tubos maquina LKR": 176, "Tubos vibrados": 176, "Fossas": 176, "Tampas/Leitos": 176, "Caixas": 176, "Tubos Maquina Tuber": 176, "Central dosadora 01": 176, "Central dosadora 02 (nova)": 176}, "jornada": 8.8, "diasIdeal": 22, "energia": {"contas": [{"mes": "dez/25", "ponta": 432, "fora": 4162, "demanda": 98, "total": 4346.51}, {"mes": "jan/26", "ponta": 671, "fora": 4796, "demanda": 87, "total": 4397.16}, {"mes": "fev/26", "ponta": 945, "fora": 5964, "demanda": 88, "total": 4508.15}, {"mes": "mar/26", "ponta": 105, "fora": 769, "demanda": 52, "total": 3663.53}, {"mes": "abr/26", "ponta": 861, "fora": 6319, "demanda": 78, "total": 4655.02}, {"mes": "mai/26", "ponta": 866, "fora": 9062, "demanda": 101, "total": 4790.9}], "tarifas": {"ponta": 2.1513, "fora": 0.4044, "demanda": 25.53, "demandaContratada": 120}, "media": {"ponta": 755, "fora": 6061, "demanda": 90, "total": 4539.55}, "valorPago": 4539.55, "excluiMarco": true}, "prodPorSetor": {"Blocos maquina Gervasi": [{"nome": "BLOCO 09", "peso": 9.1, "prodMes": 0}, {"nome": "BLOCO 11,5", "peso": 0, "prodMes": 0}, {"nome": "BLOCOS 14", "peso": 12, "prodMes": 0}, {"nome": "BLOCOS 19", "peso": 15.5, "prodMes": 0}, {"nome": "CANALETA 14", "peso": 13.3, "prodMes": 0}, {"nome": "CANALETA 19", "peso": 15, "prodMes": 0}, {"nome": "MEIO FIO", "peso": 80, "prodMes": 0}, {"nome": "PISO GRAMA", "peso": 17.5, "prodMes": 0}], "Blocos maquina PWR": [{"nome": "PAVER 6 CM HOLANDÊS", "peso": 2.53, "prodMes": 0}, {"nome": "PAVER 6 CM UNISTEIN", "peso": 3.333, "prodMes": 0}, {"nome": "PAVER 8 CM HOLANDÊS", "peso": 3.312, "prodMes": 0}, {"nome": "PAVER 8 CM UNISTEIN", "peso": 4.45, "prodMes": 0}], "Tubos maquina LKR": [{"nome": "TUBOS DN 200 PS1", "peso": 55, "prodMes": 0}, {"nome": "TUBOS DN 300 MF SIMPLES", "peso": 80, "prodMes": 0}, {"nome": "TUBOS DN 400 MF  SIMPLES", "peso": 135, "prodMes": 0}, {"nome": "TUBOS DN 400 MF ARMADO", "peso": 135, "prodMes": 0}, {"nome": "TUBOS DN 400 PB  ARMADO", "peso": 150, "prodMes": 0}, {"nome": "TUBOS DN 500 MF  ARMADO", "peso": 205, "prodMes": 0}, {"nome": "TUBOS DN 500 MF  SIMPLES", "peso": 205, "prodMes": 0}, {"nome": "TUBOS DN 600 MF  ARMADO", "peso": 260, "prodMes": 0}, {"nome": "TUBOS DN 600 MF  SIMPLES", "peso": 260, "prodMes": 0}, {"nome": "TUBOS DN 600 PB  ARMADO PA1", "peso": 300, "prodMes": 0}, {"nome": "TUBOS DN 600 PB  ARMADO PA2", "peso": 300, "prodMes": 0}], "Tubos vibrados": [{"nome": "TESTE 01", "peso": 0, "prodMes": 0}, {"nome": "TUBOS DN 1000 MF  ARMADO PA1", "peso": 650, "prodMes": 0}, {"nome": "TUBOS DN 1000 PB ARMADO PA1", "peso": 1000, "prodMes": 0}, {"nome": "TUBOS DN 1000 PB ARMADO PA2", "peso": 1000, "prodMes": 0}, {"nome": "TUBOS DN 1200 PB ARMADO PA1", "peso": 1450, "prodMes": 0}, {"nome": "TUBOS DN 1200 PB ARMADO PA2", "peso": 1450, "prodMes": 0}, {"nome": "TUBOS DN 1500 PB ARMADO PA1", "peso": 1700, "prodMes": 0}, {"nome": "TUBOS DN 1500 PB ARMADO PA2", "peso": 1700, "prodMes": 0}, {"nome": "TUBOS DN 800 MF  ARMADO", "peso": 455, "prodMes": 0}, {"nome": "TUBOS DN 800 MF  SIMPLES", "peso": 455, "prodMes": 0}, {"nome": "TUBOS DN 800 PB ARMADO PA1", "peso": 600, "prodMes": 0}, {"nome": "TUBOS DN 800 PB ARMADO PA2", "peso": 600, "prodMes": 0}], "Fossas": [{"nome": "ANEL DE CONCRETO C/ FUNDO Ø1,70 x1,60", "peso": 1796.9, "prodMes": 0}, {"nome": "ANEL DE CONCRETO C/ FUNDO Ø2,00 x1,60", "peso": 2261.5, "prodMes": 0}, {"nome": "ANEL DE CONCRETO C/ FUNDO Ø2,30 x1,10", "peso": 1984.8, "prodMes": 0}, {"nome": "ANEL DE CONCRETO C/ FUNDO Ø2,30 x1,60", "peso": 2055, "prodMes": 0}, {"nome": "ANEL DE CONCRETO C/ FUNDO Ø2,75 x1,10", "peso": 2711.9999999999995, "prodMes": 0}, {"nome": "ANEL DE CONCRETO C/ FUNDO Ø3,30 x0,60", "peso": 2856, "prodMes": 0}, {"nome": "ANEL DE CONCRETO C/ FUNDO Ø3,30 x1,10", "peso": 3792, "prodMes": 0}, {"nome": "ANEL DE CONCRETO C/ FUNDO Ø3,85 x0,60", "peso": 3624, "prodMes": 0}, {"nome": "ANEL DE CONCRETO C/ FUNDO Ø3,85 x0,85", "peso": 4156.8, "prodMes": 0}, {"nome": "ANEL DE CONCRETO C/ FUNDO Ø3,85 x1,15", "peso": 4735.2, "prodMes": 0}, {"nome": "ANEL DE CONCRETO VAZADO Ø2,30 x0,60", "peso": 768, "prodMes": 0}, {"nome": "ANEL DE CONCRETO VAZADO Ø2,30 x1,10", "peso": 1367.9999999999998, "prodMes": 0}, {"nome": "ANEL DE CONCRETO VAZADO Ø2,75 x0,60", "peso": 955.2, "prodMes": 0}, {"nome": "ANEL DE CONCRETO VAZADO Ø2,75 x1,10", "peso": 1728, "prodMes": 0}, {"nome": "ANEL DE CONCRETO VAZADO Ø3,30 x0,60", "peso": 1159.2, "prodMes": 0}, {"nome": "ANEL DE CONCRETO VAZADO Ø3,30 x1,10", "peso": 2088, "prodMes": 0}, {"nome": "ANEL DE CONCRETO VAZADO Ø3,85 x0,60", "peso": 1315.2, "prodMes": 0}, {"nome": "ANEL DE CONCRETO VAZADO Ø3,85 x0,85", "peso": 1848, "prodMes": 0}, {"nome": "ANEL DE CONCRETO VAZADO Ø3,85 x1,15", "peso": 2426.3999999999996, "prodMes": 0}, {"nome": "ANEL DE CONCRETO VAZADO SUMIDOURO Ø1,70 x1,60", "peso": 1796.9, "prodMes": 0}, {"nome": "ANEL DE CONCRETO VAZADO SUMIDOURO Ø2,00 x1,60", "peso": 2261.5, "prodMes": 0}, {"nome": "ANEL DE CONCRETO VAZADO SUMIDOURO Ø2,30 x0,60", "peso": 768, "prodMes": 0}, {"nome": "ANEL DE CONCRETO VAZADO SUMIDOURO Ø2,30 x1,10", "peso": 1367.9999999999998, "prodMes": 0}, {"nome": "ANEL DE CONCRETO VAZADO SUMIDOURO Ø2,75 x0,60", "peso": 955.2, "prodMes": 0}, {"nome": "ANEL DE CONCRETO VAZADO SUMIDOURO Ø2,75 x1,10", "peso": 1728, "prodMes": 0}, {"nome": "ANEL DE CONCRETO VAZADO SUMIDOURO Ø3,30 x0,60", "peso": 1159.2, "prodMes": 0}, {"nome": "ANEL DE CONCRETO VAZADO SUMIDOURO Ø3,30 x1,10", "peso": 2088, "prodMes": 0}, {"nome": "ANEL DE CONCRETO VAZADO SUMIDOURO Ø3,85 x0,60", "peso": 1315.2, "prodMes": 0}, {"nome": "ANEL DE CONCRETO VAZADO SUMIDOURO Ø3,85 x0,85", "peso": 1848, "prodMes": 0}, {"nome": "ANEL DE CONCRETO VAZADO SUMIDOURO Ø3,85 x1,15", "peso": 2426.3999999999996, "prodMes": 0}], "Tampas/Leitos": [{"nome": "LAJE PRÉ FABRICADA p/ LEITO FILTRANTE Ø1,70", "peso": 221.76, "prodMes": 0}, {"nome": "LAJE PRÉ FABRICADA p/ LEITO FILTRANTE Ø2,00", "peso": 326.88, "prodMes": 0}, {"nome": "LAJE PRÉ FABRICADA p/ LEITO FILTRANTE Ø2,30", "peso": 753.6, "prodMes": 0}, {"nome": "LAJE PRÉ FABRICADA p/ LEITO FILTRANTE Ø2,75", "peso": 1176, "prodMes": 0}, {"nome": "LAJE PRÉ FABRICADA p/ LEITO FILTRANTE Ø3,30", "peso": 1695.6000000000001, "prodMes": 0}, {"nome": "LAJE PRÉ FABRICADA p/ LEITO FILTRANTE Ø3,85", "peso": 2308.7999999999997, "prodMes": 0}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA 0,40x0,40", "peso": 19.2, "prodMes": 0}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA 0,60x0,60", "peso": 43.2, "prodMes": 0}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA 1,0x1,0", "peso": 180, "prodMes": 0}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA Ø0,54", "peso": 27.5, "prodMes": 0}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA Ø0,60", "peso": 34, "prodMes": 0}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA Ø0,85", "peso": 108.72, "prodMes": 0}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA Ø1,70", "peso": 270.34, "prodMes": 0}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA Ø2,00", "peso": 424.98, "prodMes": 0}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA Ø2,30", "peso": 878.8800000000001, "prodMes": 0}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA Ø2,75", "peso": 1334.4, "prodMes": 0}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA Ø3,30", "peso": 1881.6000000000001, "prodMes": 0}, {"nome": "LAJE PRÉ FABRICADA p/ TAMPA Ø3,85", "peso": 2524.8, "prodMes": 0}, {"nome": "PILARETE DE CONCRETO PRÉ FABRICADO 12x12x30", "peso": 10.4, "prodMes": 0}], "Caixas": [{"nome": "CAIXA DE CONCRETO 0,40x0,40x0,40", "peso": 60, "prodMes": 0}, {"nome": "CAIXA DE CONCRETO 0,60x0,60x0,60", "peso": 145, "prodMes": 0}, {"nome": "CAIXA DE CONCRETO 1x1x0,80", "peso": 620, "prodMes": 0}, {"nome": "CAIXA DE CONCRETO 1x1x1", "peso": 790, "prodMes": 0}, {"nome": "CAIXA DE CONCRETO 1x1x1,2", "peso": 940, "prodMes": 0}, {"nome": "CAIXA DE CONCRETO C/ FUNDO 0,40x0,40x0,40", "peso": 75, "prodMes": 0}, {"nome": "CAIXA DE CONCRETO C/ FUNDO 0,60x0,60x0,60", "peso": 175, "prodMes": 0}, {"nome": "CAIXA DE CONCRETO C/ FUNDO 1x1x0,80", "peso": 810, "prodMes": 0}, {"nome": "CAIXA DE CONCRETO C/ FUNDO 1x1x1", "peso": 950, "prodMes": 0}, {"nome": "CAIXA DE CONCRETO C/ FUNDO 1x1x1,2", "peso": 1100, "prodMes": 0}, {"nome": "CAIXA DE CONCRETO Ø0,85 x0,75", "peso": 390, "prodMes": 0}, {"nome": "CAIXA DE CONCRETO Ø1,10 x1,00", "peso": 587.72, "prodMes": 0}, {"nome": "CAIXA DE CONCRETO Ø1,10 x1,20", "peso": 666.768, "prodMes": 0}], "Tubos Maquina Tuber": [], "Central dosadora 01": [], "Central dosadora 02 (nova)": []}, "categoriasGG": [{"cat": "Utilidades", "itens": ["Água (cura/limpeza)", "Gás", "Ar comprimido", "Energia áreas comuns"]}, {"cat": "Movimentação interna", "itens": ["Combustível empilhadeira", "Manutenção empilhadeira", "Pneus empilhadeira", "Lubrificantes/óleos"]}, {"cat": "Instalações fabris", "itens": ["Manutenção predial (galpão)", "Aluguel do galpão", "Manutenção do pátio", "Iluminação da fábrica"]}, {"cat": "Consumíveis gerais", "itens": ["Material de limpeza fabril", "Ferramentas compartilhadas", "Descarte de resíduos", "EPI de visitantes"]}, {"cat": "Segurança e apoio", "itens": ["Seguro das instalações", "Extintores/prevenção", "Vigilância da fábrica"]}], "diretos": {}, "hoje": "2026-07-13"};
+
+// ==================== MÓDULO CUSTO DE MÁQUINA ====================
+let DMaq = null;
+let maqReady = false;
+const MAQ_SECOES = ['deprec','depConfig','central','empilhadeiras','potencias','horasMes','energia','prodPorSetor','gg','ggCustom','diretos','pessoasSetor','config'];
+const _maqLastWriteSec = {};
+const _maqTimers = {};
+
+// ---- sanitização (idêntica ao padrão MO: chaves proibidas + undefined/NaN) ----
+function _maqSanitize(x){
+  if(Array.isArray(x)) return x.map(_maqSanitize).filter(v=>v!==undefined);
+  if(x && typeof x==='object'){
+    const o={};
+    for(const k in x){
+      const v=_maqSanitize(x[k]);
+      if(v===undefined) continue;
+      const nk=String(k).replace(/%/g,'%25').replace(/\./g,'%2E').replace(/#/g,'%23').replace(/\$/g,'%24').replace(/\//g,'%2F').replace(/\[/g,'%5B').replace(/\]/g,'%5D');
+      o[nk]=v;
+    }
+    return o;
+  }
+  if(typeof x==='number'){ return isFinite(x)? x : 0; }
+  if(typeof x==='function') return undefined;
+  return x;
+}
+function _maqDesanitize(x){
+  if(Array.isArray(x)) return x.map(_maqDesanitize);
+  if(x && typeof x==='object'){
+    // converte array-forma-objeto {0:..,1:..} de volta a array
+    const ks=Object.keys(x);
+    const isArr = ks.length>0 && ks.every(k=>/^\d+$/.test(k));
+    const o = isArr? [] : {};
+    for(const k in x){
+      const dk=String(k).replace(/%2E/g,'.').replace(/%23/g,'#').replace(/%24/g,'$').replace(/%2F/g,'/').replace(/%5B/g,'[').replace(/%5D/g,']').replace(/%25/g,'%');
+      if(isArr) o[+k]=_maqDesanitize(x[k]);
+      else o[dk]=_maqDesanitize(x[k]);
+    }
+    return o;
+  }
+  return x;
+}
+function _maqNormalizaSecao(sec, val){ return _maqDesanitize(val); }
+
+// ---- salvar por seção (render NUNCA chama isto; só handlers de edição) ----
+function salvarSecaoMaq(sec){
+  if(!DMaq) return;
+  try{
+    const dado = _maqSanitize(DMaq[sec]);
+    _maqLastWriteSec[sec] = JSON.stringify(dado);
+    if(_maqTimers[sec]) clearTimeout(_maqTimers[sec]);
+    _maqTimers[sec] = setTimeout(()=>{
+      try{
+        if(window.__MAQ_DEMO){
+          const blob = JSON.parse(localStorage.getItem('pedroni:custos/maq_bloco')||'{}');
+          blob[sec]=dado; localStorage.setItem('pedroni:custos/maq_bloco', JSON.stringify(blob));
+        } else if(fb && db){
+          fb.set(fb.ref(db,'custos/maq/'+sec), dado).catch(e=>{
+            alert('Erro ao salvar Custo de Máquina (seção '+sec+'): '+e.message);
+            console.error('maq save', sec, e);
+          });
+        }
+      }catch(e){ console.error('maq save inner', sec, e); }
+    }, 500);
+  }catch(e){ console.error('salvarSecaoMaq', sec, e); }
+}
+
+// ---- garante __moD e __mpD (produção ideal + pesos) sem precisar abrir as abas ----
+async function _maqGarantirDados(){
+  // M.O. (produção ideal por setor)
+  if(!window.__moD){
+    if(window.__MAQ_DEMO || !(typeof db!=='undefined' && db && typeof fb!=='undefined' && fb)){
+      try{
+        const blob=JSON.parse(localStorage.getItem('pedroni:custos/mo_bloco')||'null');
+        if(blob && typeof DMO_DEFAULT!=='undefined'){
+          const base=JSON.parse(JSON.stringify(DMO_DEFAULT));
+          Object.keys(blob).forEach(k=>{ if(blob[k]!==undefined) base[k]=blob[k]; });
+          window.__moD=base;
+        } else if(typeof DMO_DEFAULT!=='undefined'){ window.__moD=JSON.parse(JSON.stringify(DMO_DEFAULT)); }
+      }catch(e){}
+    } else {
+      try{
+        const base = JSON.parse(JSON.stringify(DMO_DEFAULT));
+        const MO_SECS=['pessoas','produtos','tipoLanc','jornada','diasIdeal','centrais'];
+        for(const s of MO_SECS){
+          try{
+            const snap=await new Promise((res,rej)=>fb.onValue(fb.ref(db,'custos/mo/'+s), res, rej, {onlyOnce:true}));
+            if(snap.exists() && typeof _moNormalizaSecao==='function') base[s]=_moNormalizaSecao(s, snap.val());
+            else if(snap.exists()) base[s]=snap.val();
+          }catch(e){}
+        }
+        window.__moD=base;
+      }catch(e){ if(typeof DMO_DEFAULT!=='undefined') window.__moD=JSON.parse(JSON.stringify(DMO_DEFAULT)); }
+    }
+  }
+  // Matéria-prima (pesos das peças) — se não carregada, tenta localStorage/DEFAULT
+  if(!window.__mpD){
+    try{
+      const blob=JSON.parse(localStorage.getItem('pedroni:custos/mp/produtos')||'null');
+      if(blob && typeof D_DEFAULT!=='undefined'){ const base=JSON.parse(JSON.stringify(D_DEFAULT)); base.produtos=blob; window.__mpD=base; }
+      else if(typeof D_DEFAULT!=='undefined'){ window.__mpD=JSON.parse(JSON.stringify(D_DEFAULT)); }
+    }catch(e){}
+  }
+}
+
+// ---- init: carrega por seção + onValue por seção ----
+async function initCustoMaquina(container){
+  if(!DMaq){
+    DMaq = JSON.parse(JSON.stringify(DMAQ_DEFAULT));
+    // demo (sandbox) ou Firebase?
+    window.__MAQ_DEMO = !(typeof db!=='undefined' && db && typeof fb!=='undefined' && fb);
+    if(window.__MAQ_DEMO){
+      try{
+        const blob=JSON.parse(localStorage.getItem('pedroni:custos/maq_bloco')||'null');
+        if(blob) MAQ_SECOES.forEach(s=>{ if(blob[s]!==undefined) DMaq[s]=_maqNormalizaSecao(s, blob[s]); });
+      }catch(e){}
+    } else {
+      for(const s of MAQ_SECOES){
+        try{
+          const snap=await new Promise((res,rej)=>fb.onValue(fb.ref(db,'custos/maq/'+s), res, rej, {onlyOnce:true}));
+          if(snap.exists()) DMaq[s]=_maqNormalizaSecao(s, snap.val());
+        }catch(e){}
+      }
+      // onValue ao vivo por seção
+      MAQ_SECOES.forEach(s=>{
+        fb.onValue(fb.ref(db,'custos/maq/'+s), snap=>{
+          if(!snap.exists()) return;
+          const raw=snap.val();
+          if(JSON.stringify(raw)===_maqLastWriteSec[s]) return; // eco da própria escrita
+          const ativo=document.activeElement;
+          if(ativo && (ativo.tagName==='INPUT'||ativo.tagName==='TEXTAREA')){
+            ativo.addEventListener('blur', ()=>{ DMaq[s]=_maqNormalizaSecao(s,raw); if(maqReady) renderMaq(); }, {once:true});
+            return;
+          }
+          DMaq[s]=_maqNormalizaSecao(s,raw);
+          if(maqReady) renderMaq();
+        });
+      });
+    }
+  }
+  window.__maqD = DMaq; // expõe para outros módulos
+  // Garante que a produção ideal da M.O. e os pesos da matéria-prima estejam disponíveis
+  // (o custo de máquina puxa prodDia da M.O. e peso da matéria-prima — sem digitação dupla)
+  await _maqGarantirDados();
+  maqReady = true;
+  runCustoMaquina(container);
+}
+
+// ---- helpers de cálculo (leem de DMaq) ----
+function _maqSet(){ return DMaq.setores || DMAQ_DEFAULT.setores; }
+function _maqEhCentral(s){ return /^central/i.test(s); }
+function maqPesoPeca(nome){
+  const MP = window.__mpD || (typeof D_DEFAULT!=='undefined'?D_DEFAULT:null);
+  if(!MP) return 0;
+  const prod=(MP.produtos||[]).find(p=>p.nome===nome);
+  return prod ? (prod.pesoPeca||prod.peso||0) : 0;
+}
+function deprecCentralVal(){
+  const c=DMaq.central||{};
+  if(c.modo==='reposicao' && c.repo>0 && c.vida>0) return c.repo/(c.vida*12);
+  return DMaq.depCentral||0;
+}
+function deprecEmpilhadeiras(){
+  return (DMaq.empilhadeiras||[]).reduce((s,e)=>s+((e.repo>0&&e.vida>0)? e.repo/(e.vida*12):0),0);
+}
+function deprecSetor(s){
+  const cfg=(DMaq.depConfig||{})[s]||{};
+  if(cfg.modo==='reposicao' && cfg.repo>0 && cfg.vida>0) return cfg.repo/(cfg.vida*12);
+  return (DMaq.deprec||{})[s]||0;
+}
+function kgSetorMaq(s){
+  // Produção IDEAL puxada da M.O.: prodDia × peso × diasIdeal (mesma lógica do rateio de centrais)
+  // NÃO é digitado no custo de máquina — vem da M.O. e da matéria-prima, sempre em sincronia.
+  const MO = window.__moD;
+  if(MO && MO.produtos){
+    const dias = MO.diasIdeal || 22;
+    const prods = MO.produtos[s] || [];
+    let kg = 0;
+    prods.forEach(p=>{ kg += (p.prodDia||0) * (maqPesoPeca(p.nome)||0) * dias; });
+    if(kg>0) return kg;
+  }
+  // fallback: se a M.O. ainda não foi carregada, usa prodPorSetor local (se houver)
+  return ((DMaq.prodPorSetor||{})[s]||[]).reduce((t,p)=>t+(p.prodMes||0)*(p.peso||maqPesoPeca(p.nome)||0),0);
+}
+function tonSetorMaq(s){ return kgSetorMaq(s)/1000; }
+function diretoSetorMaq(s){
+  const arr=(DMaq.diretos||{})[s]||[];
+  if(!arr.length) return 0;
+  const meses={};
+  arr.forEach(g=>{ const m=(g.data||'').slice(0,7); meses[m]=(meses[m]||0)+(g.valor||0); });
+  const ms=Object.keys(meses);
+  return ms.length ? ms.reduce((a,m)=>a+meses[m],0)/ms.length : 0;
+}
+function totalGGMaq(){
+  let t=0; const gg=DMaq.gg||{};
+  Object.values(gg).forEach(g=>t+=g.valor||0);
+  (DMaq.ggCustom||[]).forEach(g=>t+=g.valor||0);
+  return t;
+}
+function ggParaSetorMaq(setor){
+  let total=0;
+  const SET=_maqSet();
+  const horas=DMaq.horasMes||{};
+  const pessoasSetor=DMaq.pessoasSetor||{};
+  const somaHoras=SET.reduce((a,x)=>a+(horas[x]||0),0);
+  const somaPessoas=SET.reduce((a,x)=>a+(pessoasSetor[x]||0),0);
+  const aplica=(g)=>{
+    if(!g.valor) return 0;
+    if(g.rateio==='horas') return somaHoras>0 ? g.valor*(horas[setor]||0)/somaHoras : 0;
+    if(g.rateio==='pessoas') return somaPessoas>0 ? g.valor*(pessoasSetor[setor]||0)/somaPessoas : 0;
+    return g.rateio===setor ? g.valor : 0;
+  };
+  Object.values(DMaq.gg||{}).forEach(g=>total+=aplica(g));
+  (DMaq.ggCustom||[]).forEach(g=>total+=aplica(g));
+  return total;
+}
+function calcMaq(){
+  const SET=_maqSet();
+  const pot=DMaq.potencias||{}, horas=DMaq.horasMes||{};
+  const cfg=DMaq.config||{};
+  const contaLuz=(DMaq.energia&&DMaq.energia.valorPago)||0;
+  const fracDemanda=(cfg.fracDemanda!=null?cfg.fracDemanda:0.42);
+  const somaKwh=SET.reduce((s,x)=>s+(pot[x]||0)*(horas[x]||0),0);
+  const somaPot=SET.reduce((s,x)=>s+(pot[x]||0),0);
+  const valorDemanda=contaLuz*fracDemanda, valorConsumo=contaLuz*(1-fracDemanda);
+  const kgTotal=SET.reduce((a,x)=>a+kgSetorMaq(x),0);
+  const res={};
+  SET.forEach(s=>{
+    const kwhSetor=(pot[s]||0)*(horas[s]||0);
+    const eConsumo=somaKwh>0 ? (kwhSetor/somaKwh)*valorConsumo : 0;
+    const eDemanda=somaPot>0 ? ((pot[s]||0)/somaPot)*valorDemanda : 0;
+    const energia=eConsumo+eDemanda;
+    const fracKg=kgTotal>0 ? kgSetorMaq(s)/kgTotal : 0;
+    const depComum=(deprecCentralVal()+deprecEmpilhadeiras())*fracKg;
+    const dep=deprecSetor(s)+depComum;
+    const dir=diretoSetorMaq(s);
+    const ger=ggParaSetorMaq(s);
+    const total=energia+dep+dir+ger;
+    const ton=tonSetorMaq(s);
+    res[s]={energia,eConsumo,eDemanda,deprec:dep,diretos:dir,gerais:ger,total,porTon: ton>0?total/ton:0, ton};
+  });
+  return res;
+}
+
+// ---- UI ----
+function runCustoMaquina(container){
+  renderMaq(container);
+}
+function _maqFmt(n){ n=Number(n)||0; return n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function _maqNum(n){ n=Number(n)||0; return n.toLocaleString('pt-BR',{maximumFractionDigits:0}); }
+
+let _maqContainer=null;
+function renderMaq(container){
+  if(container) _maqContainer=container;
+  const c=_maqContainer; if(!c) return;
+  const res=calcMaq();
+  const SET=_maqSet().filter(s=>!_maqEhCentral(s));
+  let h='<div id="maq-container" class="module-view">';
+  h+='<div class="maq-abas">';
+  h+='<button class="maq-aba on" data-aba="resumo">Resumo</button>';
+  h+='<button class="maq-aba" data-aba="energia">Energia</button>';
+  h+='<button class="maq-aba" data-aba="deprec">Depreciação</button>';
+  h+='<button class="maq-aba" data-aba="diretos">Gastos diretos</button>';
+  h+='<button class="maq-aba" data-aba="gerais">Gastos gerais</button>';
+  h+='</div>';
+  h+='<div id="maq-corpo"></div></div>';
+  c.innerHTML=h;
+  c.querySelectorAll('.maq-aba').forEach(b=>{
+    b.onclick=()=>{ c.querySelectorAll('.maq-aba').forEach(x=>x.classList.remove('on')); b.classList.add('on'); _maqRenderAba(b.dataset.aba, res); };
+  });
+  _maqRenderAba('resumo', res);
+}
+
+function _maqRenderAba(aba, res){
+  const box=document.getElementById('maq-corpo'); if(!box) return;
+  if(aba==='resumo') return _maqAbaResumo(box, res);
+  if(aba==='energia') return _maqAbaEnergia(box);
+  if(aba==='deprec') return _maqAbaDeprec(box);
+  if(aba==='diretos') return _maqAbaDiretos(box);
+  if(aba==='gerais') return _maqAbaGerais(box);
+}
+
+// RESUMO: custo/mês e custo/ton por setor
+function _maqAbaResumo(box, res){
+  const SET=_maqSet().filter(s=>!_maqEhCentral(s));
+  let h='<div class="maq-intro">Custo de máquina por setor = energia + depreciação + gastos diretos + gastos gerais. Dividido pela produção (toneladas) dá o custo por tonelada.<br><b>A produção (capacidade ideal) vem da M.O.</b> — prodDia × peso × dias. Não precisa digitar aqui.</div>';
+  SET.forEach(s=>{
+    const r=res[s]||{}; 
+    h+='<div class="maq-card"><div class="maq-card-cab"><span>'+s+'</span><span class="maq-ton">R$ '+_maqFmt(r.porTon||0)+'/t</span></div>';
+    h+='<div class="maq-linhas">';
+    h+='<div><span>Energia</span><b>R$ '+_maqFmt(r.energia||0)+'</b></div>';
+    h+='<div><span>Depreciação</span><b>R$ '+_maqFmt(r.deprec||0)+'</b></div>';
+    h+='<div><span>Gastos diretos</span><b>R$ '+_maqFmt(r.diretos||0)+'</b></div>';
+    h+='<div><span>Gastos gerais</span><b>R$ '+_maqFmt(r.gerais||0)+'</b></div>';
+    h+='<div class="maq-tot"><span>Total/mês</span><b>R$ '+_maqFmt(r.total||0)+'</b></div>';
+    h+='<div class="maq-tot"><span>Produção ideal (M.O.)</span><b>'+_maqNum(r.ton||0)+' t</b></div>';
+    h+='</div></div>';
+  });
+  box.innerHTML=h;
+}
+
+// ENERGIA: conta paga + fração demanda
+function _maqAbaEnergia(box){
+  const e=DMaq.energia||{}; const cfg=DMaq.config||{};
+  let h='<div class="maq-intro">A conta de luz é rateada: parte por demanda (potência instalada) e parte por consumo (potência × horas).</div>';
+  h+='<div class="maq-field"><label>Conta de luz paga (média mensal, R$)</label>';
+  h+='<input type="number" id="maq-conta" value="'+((e.valorPago!=null?e.valorPago:0))+'"></div>';
+  h+='<div class="maq-field"><label>% da conta que é demanda (fixa): <b id="maq-fd-lbl">'+Math.round((cfg.fracDemanda!=null?cfg.fracDemanda:0.42)*100)+'%</b></label>';
+  h+='<input type="range" id="maq-fd" min="0" max="100" value="'+Math.round((cfg.fracDemanda!=null?cfg.fracDemanda:0.42)*100)+'"></div>';
+  h+='<div class="maq-sub">Potência instalada por setor (kW)</div>';
+  _maqSet().forEach(s=>{
+    h+='<div class="maq-row"><span>'+s+'</span><input type="number" class="maq-pot" data-s="'+s+'" value="'+((DMaq.potencias||{})[s]||0)+'"></div>';
+  });
+  h+='<div class="maq-sub">Horas de operação por mês</div>';
+  _maqSet().forEach(s=>{
+    h+='<div class="maq-row"><span>'+s+'</span><input type="number" class="maq-hrs" data-s="'+s+'" value="'+((DMaq.horasMes||{})[s]||0)+'"></div>';
+  });
+  box.innerHTML=h;
+  box.querySelector('#maq-conta').oninput=(ev)=>{ if(!DMaq.energia)DMaq.energia={}; DMaq.energia.valorPago=parseFloat(ev.target.value)||0; salvarSecaoMaq('energia'); };
+  const fd=box.querySelector('#maq-fd');
+  fd.oninput=(ev)=>{ if(!DMaq.config)DMaq.config={}; DMaq.config.fracDemanda=(parseFloat(ev.target.value)||0)/100; box.querySelector('#maq-fd-lbl').textContent=ev.target.value+'%'; salvarSecaoMaq('config'); };
+  box.querySelectorAll('.maq-pot').forEach(i=>{ i.oninput=()=>{ if(!DMaq.potencias)DMaq.potencias={}; DMaq.potencias[i.dataset.s]=parseFloat(i.value)||0; salvarSecaoMaq('potencias'); }; });
+  box.querySelectorAll('.maq-hrs').forEach(i=>{ i.oninput=()=>{ if(!DMaq.horasMes)DMaq.horasMes={}; DMaq.horasMes[i.dataset.s]=parseFloat(i.value)||0; salvarSecaoMaq('horasMes'); }; });
+}
+
+// DEPRECIAÇÃO: por setor (planilha/reposição) + central + empilhadeiras
+function _maqAbaDeprec(box){
+  let h='<div class="maq-intro">Depreciação = valor de reposição ÷ vida útil (meses). Mesmo máquina velha deprecia pelo custo de repor. Central e empilhadeiras são rateadas por KG.</div>';
+  h+='<div class="maq-sub">Por setor</div>';
+  _maqSet().forEach(s=>{
+    const cfg=(DMaq.depConfig||{})[s]||{};
+    const modo=cfg.modo||'planilha';
+    h+='<div class="maq-dep"><div class="maq-dep-cab">'+s+'</div>';
+    h+='<select class="maq-dep-modo" data-s="'+s+'"><option value="planilha"'+(modo==='planilha'?' selected':'')+'>Valor fixo</option><option value="reposicao"'+(modo==='reposicao'?' selected':'')+'>Por reposição</option></select>';
+    if(modo==='reposicao'){
+      h+='<div class="maq-row2"><input type="number" class="maq-dep-repo" data-s="'+s+'" placeholder="valor de reposição" value="'+(cfg.repo||'')+'"><input type="number" class="maq-dep-vida" data-s="'+s+'" placeholder="vida (anos)" value="'+(cfg.vida||'')+'"></div>';
+    } else {
+      h+='<input type="number" class="maq-dep-val" data-s="'+s+'" placeholder="R$/mês" value="'+((DMaq.deprec||{})[s]||'')+'">';
+    }
+    h+='<div class="maq-dep-res">R$ '+_maqFmt(deprecSetor(s))+'/mês</div></div>';
+  });
+  // central
+  const cen=DMaq.central||{};
+  h+='<div class="maq-sub">Central dosadora (rateada por KG)</div>';
+  h+='<div class="maq-dep"><select class="maq-cen-modo"><option value="planilha"'+((cen.modo||'planilha')==='planilha'?' selected':'')+'>Valor fixo</option><option value="reposicao"'+(cen.modo==='reposicao'?' selected':'')+'>Por reposição</option></select>';
+  if(cen.modo==='reposicao'){
+    h+='<div class="maq-row2"><input type="number" id="maq-cen-repo" placeholder="reposição" value="'+(cen.repo||'')+'"><input type="number" id="maq-cen-vida" placeholder="vida (anos)" value="'+(cen.vida||'')+'"></div>';
+  } else {
+    h+='<input type="number" id="maq-cen-val" placeholder="R$/mês" value="'+(DMaq.depCentral||'')+'">';
+  }
+  h+='<div class="maq-dep-res">R$ '+_maqFmt(deprecCentralVal())+'/mês</div></div>';
+  // empilhadeiras
+  h+='<div class="maq-sub">Empilhadeiras (rateadas por KG) <button id="maq-add-emp" class="maq-mini">+ add</button></div>';
+  (DMaq.empilhadeiras||[]).forEach((e,idx)=>{
+    h+='<div class="maq-dep"><div class="maq-row2"><input type="number" class="maq-emp-repo" data-i="'+idx+'" placeholder="reposição" value="'+(e.repo||'')+'"><input type="number" class="maq-emp-vida" data-i="'+idx+'" placeholder="vida (anos)" value="'+(e.vida||'')+'"></div>';
+    h+='<button class="maq-del" data-i="'+idx+'">remover</button></div>';
+  });
+  h+='<div class="maq-dep-res">Total empilhadeiras: R$ '+_maqFmt(deprecEmpilhadeiras())+'/mês</div>';
+  box.innerHTML=h;
+  // handlers setor
+  box.querySelectorAll('.maq-dep-modo').forEach(sel=>{ sel.onchange=()=>{ if(!DMaq.depConfig)DMaq.depConfig={}; if(!DMaq.depConfig[sel.dataset.s])DMaq.depConfig[sel.dataset.s]={}; DMaq.depConfig[sel.dataset.s].modo=sel.value; salvarSecaoMaq('depConfig'); _maqAbaDeprec(box); }; });
+  box.querySelectorAll('.maq-dep-val').forEach(i=>{ i.oninput=()=>{ if(!DMaq.deprec)DMaq.deprec={}; DMaq.deprec[i.dataset.s]=parseFloat(i.value)||0; salvarSecaoMaq('deprec'); }; });
+  box.querySelectorAll('.maq-dep-repo').forEach(i=>{ i.oninput=()=>{ DMaq.depConfig[i.dataset.s].repo=parseFloat(i.value)||0; salvarSecaoMaq('depConfig'); }; });
+  box.querySelectorAll('.maq-dep-vida').forEach(i=>{ i.oninput=()=>{ DMaq.depConfig[i.dataset.s].vida=parseFloat(i.value)||0; salvarSecaoMaq('depConfig'); }; });
+  // central
+  box.querySelector('.maq-cen-modo').onchange=(ev)=>{ if(!DMaq.central)DMaq.central={}; DMaq.central.modo=ev.target.value; salvarSecaoMaq('central'); _maqAbaDeprec(box); };
+  const cv=box.querySelector('#maq-cen-val'); if(cv) cv.oninput=()=>{ DMaq.depCentral=parseFloat(cv.value)||0; salvarSecaoMaq('central'); };
+  const cr=box.querySelector('#maq-cen-repo'); if(cr) cr.oninput=()=>{ DMaq.central.repo=parseFloat(cr.value)||0; salvarSecaoMaq('central'); };
+  const cvi=box.querySelector('#maq-cen-vida'); if(cvi) cvi.oninput=()=>{ DMaq.central.vida=parseFloat(cvi.value)||0; salvarSecaoMaq('central'); };
+  // empilhadeiras
+  box.querySelector('#maq-add-emp').onclick=()=>{ if(!DMaq.empilhadeiras)DMaq.empilhadeiras=[]; DMaq.empilhadeiras.push({repo:0,vida:10}); salvarSecaoMaq('empilhadeiras'); _maqAbaDeprec(box); };
+  box.querySelectorAll('.maq-emp-repo').forEach(i=>{ i.oninput=()=>{ DMaq.empilhadeiras[i.dataset.i].repo=parseFloat(i.value)||0; salvarSecaoMaq('empilhadeiras'); }; });
+  box.querySelectorAll('.maq-emp-vida').forEach(i=>{ i.oninput=()=>{ DMaq.empilhadeiras[i.dataset.i].vida=parseFloat(i.value)||0; salvarSecaoMaq('empilhadeiras'); }; });
+  box.querySelectorAll('.maq-del').forEach(btn=>{ btn.onclick=()=>{ DMaq.empilhadeiras.splice(+btn.dataset.i,1); salvarSecaoMaq('empilhadeiras'); _maqAbaDeprec(box); }; });
+}
+
+// GASTOS DIRETOS: por setor, por evento com data (média mensal)
+function _maqAbaDiretos(box){
+  let h='<div class="maq-intro">Gastos diretos de cada equipamento, lançados por evento com data. O app faz a média mensal (um molde de R$12.000 em 3 meses não estoura um mês só).</div>';
+  _maqSet().forEach(s=>{
+    const arr=(DMaq.diretos||{})[s]||[];
+    h+='<div class="maq-dep"><div class="maq-dep-cab">'+s+' <span class="maq-med">média R$ '+_maqFmt(diretoSetorMaq(s))+'/mês</span></div>';
+    arr.forEach((g,idx)=>{
+      h+='<div class="maq-gd"><input type="date" class="maq-gd-data" data-s="'+s+'" data-i="'+idx+'" value="'+(g.data||'')+'"><input type="text" class="maq-gd-desc" data-s="'+s+'" data-i="'+idx+'" placeholder="descrição" value="'+(g.desc||'')+'"><input type="number" class="maq-gd-val" data-s="'+s+'" data-i="'+idx+'" placeholder="R$" value="'+(g.valor||'')+'"><button class="maq-del" data-s="'+s+'" data-i="'+idx+'">×</button></div>';
+    });
+    h+='<button class="maq-mini maq-add-gd" data-s="'+s+'">+ lançar gasto</button></div>';
+  });
+  box.innerHTML=h;
+  box.querySelectorAll('.maq-add-gd').forEach(b=>{ b.onclick=()=>{ const s=b.dataset.s; if(!DMaq.diretos)DMaq.diretos={}; if(!DMaq.diretos[s])DMaq.diretos[s]=[]; DMaq.diretos[s].push({data:DMaq.hoje||new Date().toISOString().slice(0,10),desc:'',valor:0}); salvarSecaoMaq('diretos'); _maqAbaDiretos(box); }; });
+  box.querySelectorAll('.maq-gd-data').forEach(i=>{ i.onchange=()=>{ DMaq.diretos[i.dataset.s][i.dataset.i].data=i.value; salvarSecaoMaq('diretos'); _maqAbaDiretos(box); }; });
+  box.querySelectorAll('.maq-gd-desc').forEach(i=>{ i.oninput=()=>{ DMaq.diretos[i.dataset.s][i.dataset.i].desc=i.value; salvarSecaoMaq('diretos'); }; });
+  box.querySelectorAll('.maq-gd-val').forEach(i=>{ i.oninput=()=>{ DMaq.diretos[i.dataset.s][i.dataset.i].valor=parseFloat(i.value)||0; salvarSecaoMaq('diretos'); _maqAbaDiretos(box); }; });
+  box.querySelectorAll('.maq-del').forEach(b=>{ b.onclick=()=>{ DMaq.diretos[b.dataset.s].splice(+b.dataset.i,1); salvarSecaoMaq('diretos'); _maqAbaDiretos(box); }; });
+}
+
+// GASTOS GERAIS: itens com rateio (horas/pessoas/setor direto)
+function _maqAbaGerais(box){
+  let h='<div class="maq-intro">Gastos gerais da fábrica, cada um com seu critério de rateio: por horas, por pessoas, ou direto para um setor.</div>';
+  h+='<div class="maq-tot-gg">Total: R$ '+_maqFmt(totalGGMaq())+'/mês</div>';
+  const gg=DMaq.gg||{};
+  const chaves=Object.keys(gg);
+  chaves.forEach(k=>{
+    const g=gg[k];
+    h+=_maqGGRow(k, g, false);
+  });
+  (DMaq.ggCustom||[]).forEach((g,idx)=>{ h+=_maqGGRow(idx, g, true); });
+  h+='<button class="maq-mini" id="maq-add-gg">+ item personalizado</button>';
+  box.innerHTML=h;
+  // handlers
+  box.querySelectorAll('.maq-gg-val').forEach(i=>{ i.oninput=()=>{ const k=i.dataset.k, cust=i.dataset.cust==='1'; if(cust){ DMaq.ggCustom[+k].valor=parseFloat(i.value)||0; } else { if(!DMaq.gg[k])DMaq.gg[k]={}; DMaq.gg[k].valor=parseFloat(i.value)||0; } salvarSecaoMaq(cust?'ggCustom':'gg'); _maqTotGGRefresh(box); }; });
+  box.querySelectorAll('.maq-gg-rat').forEach(sel=>{ sel.onchange=()=>{ const k=sel.dataset.k, cust=sel.dataset.cust==='1'; if(cust){ DMaq.ggCustom[+k].rateio=sel.value; } else { if(!DMaq.gg[k])DMaq.gg[k]={}; DMaq.gg[k].rateio=sel.value; } salvarSecaoMaq(cust?'ggCustom':'gg'); }; });
+  box.querySelectorAll('.maq-gg-nome').forEach(i=>{ i.oninput=()=>{ DMaq.ggCustom[+i.dataset.k].nome=i.value; salvarSecaoMaq('ggCustom'); }; });
+  box.querySelectorAll('.maq-gg-del').forEach(b=>{ b.onclick=()=>{ DMaq.ggCustom.splice(+b.dataset.k,1); salvarSecaoMaq('ggCustom'); _maqAbaGerais(box); }; });
+  box.querySelector('#maq-add-gg').onclick=()=>{ if(!DMaq.ggCustom)DMaq.ggCustom=[]; DMaq.ggCustom.push({nome:'',valor:0,rateio:'horas'}); salvarSecaoMaq('ggCustom'); _maqAbaGerais(box); };
+}
+function _maqGGRow(k, g, cust){
+  const SET=_maqSet().filter(s=>!_maqEhCentral(s));
+  const rat=g.rateio||'horas';
+  let h='<div class="maq-gg">';
+  if(cust) h+='<input type="text" class="maq-gg-nome" data-k="'+k+'" placeholder="nome" value="'+(g.nome||'')+'">';
+  else h+='<span class="maq-gg-lbl">'+(g.nome||k)+'</span>';
+  h+='<input type="number" class="maq-gg-val" data-k="'+k+'" data-cust="'+(cust?1:0)+'" placeholder="R$" value="'+(g.valor||'')+'">';
+  h+='<select class="maq-gg-rat" data-k="'+k+'" data-cust="'+(cust?1:0)+'"><option value="horas"'+(rat==='horas'?' selected':'')+'>por horas</option><option value="pessoas"'+(rat==='pessoas'?' selected':'')+'>por pessoas</option>';
+  SET.forEach(s=>{ h+='<option value="'+s+'"'+(rat===s?' selected':'')+'>→ '+s+'</option>'; });
+  h+='</select>';
+  if(cust) h+='<button class="maq-gg-del" data-k="'+k+'">×</button>';
+  h+='</div>';
+  return h;
+}
+function _maqTotGGRefresh(box){ const t=box.querySelector('.maq-tot-gg'); if(t) t.textContent='Total: R$ '+_maqFmt(totalGGMaq())+'/mês'; }
+
+
 function renderNav(){
   if(currentNav === "home") renderHome();
   else renderModule(currentNav);
@@ -1895,6 +2366,11 @@ function renderModule(key){
   if(key === "mo"){
     $("app-main").innerHTML = '<div id="mo-container" class="module-view"></div>';
     initMaoDeObra($("mo-container"));
+    return;
+  }
+  if(key === "maq"){
+    $("app-main").innerHTML = '<div id="maq-container" class="module-view"></div>';
+    initCustoMaquina($("maq-container"));
     return;
   }
   if(key === "relatorios"){
@@ -3106,7 +3582,7 @@ function salvarMO(){
 }
 async function initMaoDeObra(container){
   moReady = false;
-  const SECOES=['pessoas','produtos','tipoLanc','jornada','diasIdeal','indiretos','epis','familias','centrais','prodReal'];
+  const SECOES=['pessoas','produtos','tipoLanc','jornada','diasIdeal','indiretos','epis','familias','centrais','prodReal','consumo'];
   // carrega cada seção de custos/mo/<secao>; se não existir, tenta o bloco antigo (migração); senão DEFAULT
   Dmo = JSON.parse(JSON.stringify(DMO_DEFAULT));
   if(DEMO || !db){
@@ -3297,12 +3773,14 @@ const setorOpen = {}; FAM.forEach(f=>setorOpen[f]=false);
 let epiAba='cons', epiMes=new Date().toISOString().slice(0,7);
 const epiOpen={}, precOpen={}, ncOpen={};
 // consumo: {mes: {epiId: {setor: qtde}}}
-const consumo={};
-function getCons(mes,id,setor){ return consumo[mes]?.[id]?.[setor] || 0; }
+function _consRoot(){ if(!Dmo.consumo) Dmo.consumo={}; return Dmo.consumo; }
+function getCons(mes,id,setor){ const c=Dmo.consumo; return c?.[mes]?.[id]?.[setor] || 0; }
 function setCons(mes,id,setor,q){
+  const consumo=_consRoot();
   if(!consumo[mes]) consumo[mes]={};
   if(!consumo[mes][id]) consumo[mes][id]={};
   consumo[mes][id][setor]=q;
+  salvarSecaoMO && salvarSecaoMO('consumo');
 }
 // ===== ESTOQUE =====
 // saldo = total comprado - total entregue (em todos os meses)
@@ -3311,7 +3789,7 @@ function totalComprado(e){
 }
 function totalEntregue(e){
   let t=0;
-  Object.keys(consumo).forEach(mes=>{
+  Object.keys(Dmo.consumo||{}).forEach(mes=>{
     FAM.forEach(f=>{ t += getCons(mes,e.id,f); });
   });
   return t;
@@ -3319,7 +3797,7 @@ function totalEntregue(e){
 function saldoEstoque(e){ return totalComprado(e)-totalEntregue(e); }
 // consumo médio mensal (dos meses que têm lançamento)
 function consumoMedio(e){
-  const mesesComDado=Object.keys(consumo).filter(m=>{
+  const mesesComDado=Object.keys(Dmo.consumo||{}).filter(m=>{
     return FAM.some(f=>getCons(m,e.id,f)>0);
   });
   if(!mesesComDado.length) return 0;
