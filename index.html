@@ -792,7 +792,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v65 diag</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v66</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -2653,31 +2653,14 @@ function salvarMP(){
 }
 // salva SÓ um traço (edição de traço) — direto, como a FROTA
 const _salvarTracoTimers = {};
-// ===== DIAGNÓSTICO (temporário) =====
-window.__diagLog = window.__diagLog || [];
-function _diag(msg){
-  const ts=new Date().toLocaleTimeString();
-  window.__diagLog.unshift(ts+' '+msg);
-  if(window.__diagLog.length>12) window.__diagLog.pop();
-  let box=document.getElementById('diag-box');
-  if(!box){
-    box=document.createElement('div'); box.id='diag-box';
-    box.style.cssText='position:fixed;bottom:70px;left:8px;right:8px;max-height:200px;overflow:auto;background:#000;color:#0f0;font:10px monospace;padding:8px;border:1px solid #0f0;border-radius:6px;z-index:99999;white-space:pre-wrap';
-    document.body.appendChild(box);
-    const x=document.createElement('button'); x.textContent='fechar diagnóstico'; x.style.cssText='position:fixed;bottom:8px;left:8px;z-index:100000;background:#0f0;color:#000;border:none;padding:6px 12px;border-radius:6px;font-size:11px';
-    x.onclick=()=>{ box.remove(); x.remove(); };
-    document.body.appendChild(x);
-  }
-  box.textContent = window.__diagLog.join('\n');
-}
+
 function salvarTraco(t){
   if(!D || !mpReady || !t) return;
-  if(DEMO || !db){ if(window.__mpEco) window.__mpEco.tracos = Date.now(); salvarMP(); return; }
+  if(DEMO || !db){ salvarMP(); return; }
   // debounce por traço: só grava 500ms após a última edição (evita 1 save por tecla)
   if(_salvarTracoTimers[t.id]) clearTimeout(_salvarTracoTimers[t.id]);
   _salvarTracoTimers[t.id] = setTimeout(()=>{
-    if(window.__mpEco) window.__mpEco.tracos = Date.now(); // marca eco no momento REAL da escrita
-    const _tSan = (typeof _sanitizeKeys==='function') ? _sanitizeKeys(t) : t; _diag('SALVANDO traco id='+t.id+' cimento='+(t.materiais&&t.materiais.cimento)+' peso='+t.pesoTraco); try{ fb.set(fb.ref(db,'custos/mp/tracos/'+t.id), _tSan).then(()=>_diag('  ✓ salvou id='+t.id)).catch(e=>{ _diag('  ✗ ERRO: '+e.message); alert('Erro ao salvar traço: '+e.message); }); }
+    const _tSan = (typeof _sanitizeKeys==='function') ? _sanitizeKeys(t) : t; try{ fb.set(fb.ref(db,'custos/mp/tracos/'+t.id), _tSan).catch(e=>{ alert('Erro ao salvar traço: '+e.message); }); }
     catch(e){ alert('Erro ao salvar traço: '+e.message); console.warn(e.message); }
   }, 500);
 }
@@ -2747,19 +2730,14 @@ async function initMateriaPrima(container){
       if(digitando){ f.addEventListener('blur', ()=>{ if(document.getElementById('mp-container')) renderAll(); }, {once:true}); return; }
       renderAll();
     };
-    // guard de eco: ignora o retorno da própria escrita (evita reverter edição recém-feita)
-    const _mpEco = { tracos:0, produtos:0 };
-    const _ecoRecente = (col)=> (Date.now() - (_mpEco[col]||0)) < 4000;
-    window.__mpEco = _mpEco;
     // um listener por coleção — igual à FROTA (frota={}, abasts={}, ...)
-    fb.onValue(R('tracos'),    s=>{ const v=s.val(); window.__rcTr=(window.__rcTr||0)+1; if(v){ const t13=v[13]||(Array.isArray(v)?v.find(x=>x&&x.id===13):null); _diag('RECEBEU#'+window.__rcTr+' traco13 cimento='+(t13&&t13.materiais&&t13.materiais.cimento)+' peso='+(t13&&t13.pesoTraco)+(_ecoRecente('tracos')?' [IGNORADO]':' [APLICA]')); if(!_ecoRecente('tracos')){ D.tracos=listaDe(v); reRender(); } } });
-    fb.onValue(R('produtos'),  s=>{ const v=s.val(); if(v && !_ecoRecente('produtos')){ D.produtos=listaDe(v); reRender(); } });
+    fb.onValue(R('tracos'),    s=>{ const v=s.val(); if(v){ D.tracos=listaDe(v); reRender(); } });
+    fb.onValue(R('produtos'),  s=>{ const v=s.val(); if(v){ D.produtos=listaDe(v); reRender(); } });
     fb.onValue(R('agregados'), s=>{ const v=s.val(); if(v){ D.agregados=v; reRender(); } });
     fb.onValue(R('aco'),       s=>{ const v=s.val(); if(v){ D.aco=listaDe(v); reRender(); } });
     fb.onValue(R('embalagem'), s=>{ const v=s.val(); if(v){ D.embalagem=listaDe(v); reRender(); } });
     fb.onValue(R('compras'),   s=>{ const v=s.val(); if(v){ D.compras=v; reRender(); } });
     fb.onValue(R('precosAco'), s=>{ const v=s.val(); if(v){ D.precosAco=v; reRender(); } });
-    (function(){ try{ if(typeof db!=='undefined' && db && fb){ fb.onValue(fb.ref(db,'.info/connected'), s=>{ if(typeof _diag==='function') _diag(s.val()? '🟢 CONECTADO ao Firebase' : '🔴 DESCONECTADO do Firebase'); }); } }catch(e){} })();
     fb.onValue(R('precosEmb'), s=>{ const v=s.val(); if(v){ D.precosEmb=v; reRender(); } });
   }
 }
