@@ -792,7 +792,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v64 diag</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v65 diag</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -2677,7 +2677,7 @@ function salvarTraco(t){
   if(_salvarTracoTimers[t.id]) clearTimeout(_salvarTracoTimers[t.id]);
   _salvarTracoTimers[t.id] = setTimeout(()=>{
     if(window.__mpEco) window.__mpEco.tracos = Date.now(); // marca eco no momento REAL da escrita
-    _diag('SALVANDO traco id='+t.id+' cimento='+(t.materiais&&t.materiais.cimento)+' peso='+t.pesoTraco); try{ fb.set(fb.ref(db,'custos/mp/tracos/'+t.id), t).then(()=>_diag('  ✓ salvou id='+t.id)).catch(e=>{ _diag('  ✗ ERRO: '+e.message); alert('Erro ao salvar traço: '+e.message); }); }
+    const _tSan = (typeof _sanitizeKeys==='function') ? _sanitizeKeys(t) : t; _diag('SALVANDO traco id='+t.id+' cimento='+(t.materiais&&t.materiais.cimento)+' peso='+t.pesoTraco); try{ fb.set(fb.ref(db,'custos/mp/tracos/'+t.id), _tSan).then(()=>_diag('  ✓ salvou id='+t.id)).catch(e=>{ _diag('  ✗ ERRO: '+e.message); alert('Erro ao salvar traço: '+e.message); }); }
     catch(e){ alert('Erro ao salvar traço: '+e.message); console.warn(e.message); }
   }, 500);
 }
@@ -2752,13 +2752,14 @@ async function initMateriaPrima(container){
     const _ecoRecente = (col)=> (Date.now() - (_mpEco[col]||0)) < 4000;
     window.__mpEco = _mpEco;
     // um listener por coleção — igual à FROTA (frota={}, abasts={}, ...)
-    fb.onValue(R('tracos'),    s=>{ const v=s.val(); if(v){ const t13=v[13]||(Array.isArray(v)?v.find(x=>x&&x.id===13):null); if(t13) _diag('RECEBEU do Firebase: traco13 cimento='+(t13.materiais&&t13.materiais.cimento)+' peso='+t13.pesoTraco+(_ecoRecente('tracos')?' [IGNORADO-eco]':' [APLICADO]')); if(!_ecoRecente('tracos')){ D.tracos=listaDe(v); reRender(); } } });
+    fb.onValue(R('tracos'),    s=>{ const v=s.val(); window.__rcTr=(window.__rcTr||0)+1; if(v){ const t13=v[13]||(Array.isArray(v)?v.find(x=>x&&x.id===13):null); _diag('RECEBEU#'+window.__rcTr+' traco13 cimento='+(t13&&t13.materiais&&t13.materiais.cimento)+' peso='+(t13&&t13.pesoTraco)+(_ecoRecente('tracos')?' [IGNORADO]':' [APLICA]')); if(!_ecoRecente('tracos')){ D.tracos=listaDe(v); reRender(); } } });
     fb.onValue(R('produtos'),  s=>{ const v=s.val(); if(v && !_ecoRecente('produtos')){ D.produtos=listaDe(v); reRender(); } });
     fb.onValue(R('agregados'), s=>{ const v=s.val(); if(v){ D.agregados=v; reRender(); } });
     fb.onValue(R('aco'),       s=>{ const v=s.val(); if(v){ D.aco=listaDe(v); reRender(); } });
     fb.onValue(R('embalagem'), s=>{ const v=s.val(); if(v){ D.embalagem=listaDe(v); reRender(); } });
     fb.onValue(R('compras'),   s=>{ const v=s.val(); if(v){ D.compras=v; reRender(); } });
     fb.onValue(R('precosAco'), s=>{ const v=s.val(); if(v){ D.precosAco=v; reRender(); } });
+    (function(){ try{ if(typeof db!=='undefined' && db && fb){ fb.onValue(fb.ref(db,'.info/connected'), s=>{ if(typeof _diag==='function') _diag(s.val()? '🟢 CONECTADO ao Firebase' : '🔴 DESCONECTADO do Firebase'); }); } }catch(e){} })();
     fb.onValue(R('precosEmb'), s=>{ const v=s.val(); if(v){ D.precosEmb=v; reRender(); } });
   }
 }
