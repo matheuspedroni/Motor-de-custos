@@ -792,7 +792,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v58</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v59</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -3293,10 +3293,10 @@ function custoProdutoEm(p,dataISO){
   // embalagem
   let emb=0;
   if(p.pecasPalete>0){
-    const cPal=custoUnitEm('emb_3',dataISO)*(D.embalagem[3].divisor||1); // palete (preço direto)
-    const cSel=custoUnitEm('emb_2',dataISO)*(D.embalagem[2].divisor||1);
-    const cFit=custoUnitEm('emb_1',dataISO)*(D.embalagem[1].divisor||1);
-    const cFil=custoUnitEm('emb_0',dataISO)*(D.embalagem[0].divisor||1);
+    const cPal=custoUnitEm('emb_3',dataISO); // custoUnitEm já retorna o custo por unidade (preço ÷ divisor)
+    const cSel=custoUnitEm('emb_2',dataISO);
+    const cFit=custoUnitEm('emb_1',dataISO);
+    const cFil=custoUnitEm('emb_0',dataISO);
     emb=(cPal + (p.qtdeSelo||0)*cSel + (p.qtdeFita||0)*cFit + (p.qtdeFilme||0)*cFil)/p.pecasPalete;
   }
   return mp+aco+emb;
