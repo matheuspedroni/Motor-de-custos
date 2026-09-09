@@ -744,6 +744,10 @@ main{padding:16px;max-width:680px;margin:0 auto}
 .maq-tot-gg{font-weight:800;color:var(--txt);text-align:right;margin-bottom:12px;font-size:1rem}
 .maq-mini{background:var(--rebar-dim);border:1px solid var(--rebar);color:var(--rebar2);border-radius:6px;padding:6px 12px;font-size:.78rem;cursor:pointer;margin-top:6px}
 .maq-del{background:transparent;border:1px solid var(--line);color:#e0603c;border-radius:5px;padding:5px 9px;font-size:.75rem;cursor:pointer}
+.maq-nota{font-size:.76rem;color:var(--txt3);background:var(--surf2);border:1px solid var(--line);border-radius:7px;padding:9px 11px;margin-bottom:10px;line-height:1.45}
+.maq-row-ro{background:var(--surf2)}
+.maq-ro-val{color:var(--rebar2);font-weight:700;font-variant-numeric:tabular-nums}
+
 
 </style>
 <meta id="nedeegdmhlnmboboahchfpkmdnnemapd"><meta id="dcngeagmmhegagicpcmpinaoklddcgon"></head>
@@ -788,7 +792,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v57</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v58</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -2115,21 +2119,60 @@ function ggParaSetorMaq(setor){
   _maqArr(DMaq.ggCustom).forEach(g=>total+=aplica(g));
   return total;
 }
+// Dias TÍPICOS que uma máquina roda por mês = média de dias distintos com produção real.
+// Se não houver produção real lançada ainda, usa diasIdeal (22) como padrão.
+function _maqDiasSetor(s){
+  const MO = window.__moD;
+  if(!MO || !MO.prodReal || !MO.prodReal[s]) return (MO && MO.diasIdeal) || 22;
+  // junta todos os dias (de todos os produtos do setor), agrupados por mês
+  const diasPorMes = {}; // {'2026-08': Set(dias)}
+  const prods = MO.prodReal[s];
+  Object.keys(prods).forEach(prod=>{
+    _maqArr(prods[prod]).forEach(l=>{
+      const dias = Array.isArray(l && l.dias) ? l.dias : (l && l.data ? [l.data] : []);
+      dias.forEach(d=>{
+        if(!d) return;
+        const mes = d.slice(0,7);
+        if(!diasPorMes[mes]) diasPorMes[mes] = new Set();
+        diasPorMes[mes].add(d);
+      });
+    });
+  });
+  const meses = Object.keys(diasPorMes);
+  if(!meses.length) return (MO.diasIdeal) || 22;
+  // média de dias distintos por mês
+  const totalDias = meses.reduce((a,m)=>a+diasPorMes[m].size, 0);
+  return totalDias / meses.length;
+}
+// Horas ideais/mês da máquina = dias típicos × jornada. Base do rateio de energia E demanda.
+function _maqHorasSetor(s){
+  const MO = window.__moD;
+  const jornada = (MO && MO.jornada) || (DMaq.jornada) || 8.8;
+  // se o usuário digitou horas manualmente (override), respeita; senão calcula dos dias
+  const manual = (DMaq.horasMes||{})[s];
+  if(manual && manual>0 && (DMaq.config&&DMaq.config.horasManual)) return manual;
+  return _maqDiasSetor(s) * jornada;
+}
+
 function calcMaq(){
   const SET=_maqSet();
-  const pot=DMaq.potencias||{}, horas=DMaq.horasMes||{};
+  const pot=DMaq.potencias||{};
   const cfg=DMaq.config||{};
   const contaLuz=(DMaq.energia&&DMaq.energia.valorPago)||0;
   const fracDemanda=(cfg.fracDemanda!=null?cfg.fracDemanda:0.42);
-  const somaKwh=SET.reduce((s,x)=>s+(pot[x]||0)*(horas[x]||0),0);
-  const somaPot=SET.reduce((s,x)=>s+(pot[x]||0),0);
+  // horas de cada máquina = dias típicos que ela roda (da produção real) × jornada
+  const horasDe={};
+  SET.forEach(s=>{ horasDe[s]=_maqHorasSetor(s); });
+  // kWh = potência × horas. Rateia CONSUMO e DEMANDA por kWh (máquina que roda menos paga menos das duas)
+  const somaKwh=SET.reduce((s,x)=>s+(pot[x]||0)*(horasDe[x]||0),0);
   const valorDemanda=contaLuz*fracDemanda, valorConsumo=contaLuz*(1-fracDemanda);
   const kgTotal=SET.reduce((a,x)=>a+kgSetorMaq(x),0);
   const res={};
   SET.forEach(s=>{
-    const kwhSetor=(pot[s]||0)*(horas[s]||0);
-    const eConsumo=somaKwh>0 ? (kwhSetor/somaKwh)*valorConsumo : 0;
-    const eDemanda=somaPot>0 ? ((pot[s]||0)/somaPot)*valorDemanda : 0;
+    const kwhSetor=(pot[s]||0)*(horasDe[s]||0);
+    const fracKwh=somaKwh>0 ? kwhSetor/somaKwh : 0;
+    const eConsumo=fracKwh*valorConsumo;
+    const eDemanda=fracKwh*valorDemanda; // demanda também por kWh — máquina parada não paga
     const energia=eConsumo+eDemanda;
     const fracKg=kgTotal>0 ? kgSetorMaq(s)/kgTotal : 0;
     const depComum=(deprecCentralVal()+deprecEmpilhadeiras())*fracKg;
@@ -2138,7 +2181,7 @@ function calcMaq(){
     const ger=ggParaSetorMaq(s);
     const total=energia+dep+dir+ger;
     const ton=tonSetorMaq(s);
-    res[s]={energia,eConsumo,eDemanda,deprec:dep,diretos:dir,gerais:ger,total,porTon: ton>0?total/ton:0, ton};
+    res[s]={energia,eConsumo,eDemanda,deprec:dep,diretos:dir,gerais:ger,total,porTon: ton>0?total/ton:0, ton, horas:horasDe[s]};
   });
   return res;
 }
@@ -2224,16 +2267,17 @@ function _maqAbaEnergia(box){
   _maqSet().forEach(s=>{
     h+='<div class="maq-row"><span>'+s+'</span><input type="number" class="maq-pot" data-s="'+s+'" value="'+((DMaq.potencias||{})[s]||0)+'"></div>';
   });
-  h+='<div class="maq-sub">Horas de operação por mês</div>';
+  h+='<div class="maq-sub">Horas de operação por mês <span class="help" onclick="abrirAjuda(&#39;maq_horas&#39;)">?</span></div>';
+  h+='<div class="maq-nota">Calculado da produção real (M.O.): dias que cada máquina roda no mês × jornada. Máquina sob demanda roda menos → paga menos energia e demanda. Você não digita.</div>';
   _maqSet().forEach(s=>{
-    h+='<div class="maq-row"><span>'+s+'</span><input type="number" class="maq-hrs" data-s="'+s+'" value="'+((DMaq.horasMes||{})[s]||0)+'"></div>';
+    const dias=_maqDiasSetor(s), hrs=_maqHorasSetor(s);
+    h+='<div class="maq-row maq-row-ro"><span>'+s+'</span><span class="maq-ro-val">'+dias.toFixed(1).replace(".",",")+' dias · '+Math.round(hrs)+' h</span></div>';
   });
   box.innerHTML=h;
   box.querySelector('#maq-conta').oninput=(ev)=>{ if(!DMaq.energia)DMaq.energia={}; DMaq.energia.valorPago=parseFloat(ev.target.value)||0; salvarSecaoMaq('energia'); };
   const fd=box.querySelector('#maq-fd');
   fd.oninput=(ev)=>{ if(!DMaq.config)DMaq.config={}; DMaq.config.fracDemanda=(parseFloat(ev.target.value)||0)/100; box.querySelector('#maq-fd-lbl').textContent=ev.target.value+'%'; salvarSecaoMaq('config'); };
   box.querySelectorAll('.maq-pot').forEach(i=>{ i.oninput=()=>{ if(!DMaq.potencias)DMaq.potencias={}; DMaq.potencias[i.dataset.s]=parseFloat(i.value)||0; salvarSecaoMaq('potencias'); }; });
-  box.querySelectorAll('.maq-hrs').forEach(i=>{ i.oninput=()=>{ if(!DMaq.horasMes)DMaq.horasMes={}; DMaq.horasMes[i.dataset.s]=parseFloat(i.value)||0; salvarSecaoMaq('horasMes'); }; });
 }
 
 // DEPRECIAÇÃO: por setor (planilha/reposição) + central + empilhadeiras
