@@ -563,7 +563,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
 #mo-container .rs-t{font-size:.57rem;color:var(--rebar2);text-transform:uppercase;letter-spacing:.04em;font-weight:700;margin-bottom:8px}
 #mo-container .rs-r{display:flex;justify-content:space-between;font-size:.7rem;padding:4px 0;color:var(--txt2)}
 #mo-container .rs-r .v{font-weight:700;color:var(--txt)}
-#mo-container .cat{margin-bottom:7px;
+#mo-container .cat{margin-bottom:7px}
 .cat{margin-bottom:7px;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--surf)}
 #mo-container .cat-h{display:flex;align-items:center;gap:8px;padding:10px 12px;cursor:pointer}
 #mo-container .cat-h:active{background:var(--surf2)}
@@ -694,44 +694,57 @@ main{padding:16px;max-width:680px;margin:0 auto}
 .ef-ok{color:#4ccf7a} .ef-med{color:#e0a030} .ef-bad{color:#e0603c}
 .dash-card.dc-rel .dc-ico{background:rgba(90,140,255,.15)}
 
-/* ===== CUSTO DE MÁQUINA ===== */
-#maq-container{padding:12px}
+/* ===== CUSTO DE MÁQUINA — visual v55 ===== */
+.maq-head{display:flex;align-items:center;gap:8px;margin-bottom:2px}
+.maq-head-t{font-size:1.05rem;font-weight:800;color:var(--txt)}
+.maq-head-sub{font-size:.78rem;color:var(--txt3);margin-bottom:14px}
+.maq-card{background:var(--surf);border:1px solid var(--line);border-radius:11px;margin-bottom:11px;overflow:hidden}
+.maq-card-cab{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--surf2);border-bottom:1px solid var(--line)}
+.maq-card-nome{font-weight:700;color:var(--txt);font-size:.95rem}
+.maq-ton{color:var(--rebar2);font-weight:800;font-size:1.05rem;font-variant-numeric:tabular-nums}
+.maq-ton small{font-size:.7rem;font-weight:600;color:var(--txt3)}
+.maq-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line)}
+.maq-cel{background:var(--surf);padding:10px 14px;display:flex;flex-direction:column;gap:2px}
+.maq-cel span{font-size:.7rem;color:var(--txt3);text-transform:uppercase;letter-spacing:.02em}
+.maq-cel b{font-size:.9rem;color:var(--txt);font-variant-numeric:tabular-nums}
+.maq-card-rod{display:flex;justify-content:space-between;padding:11px 14px;border-top:2px solid var(--line);background:var(--surf2)}
+.maq-card-rod>div{display:flex;flex-direction:column;gap:2px}
+.maq-card-rod>div:last-child{text-align:right}
+.maq-card-rod span{font-size:.7rem;color:var(--txt3);text-transform:uppercase}
+.maq-card-rod b{font-size:1rem;color:var(--txt);font-weight:800;font-variant-numeric:tabular-nums}
+.maq-aviso{padding:9px 14px;background:rgba(224,96,60,.08);color:#e0906c;font-size:.76rem;border-top:1px solid var(--line)}
+/* abas energia/deprec/diretos/gerais */
 .maq-abas{display:flex;gap:5px;margin-bottom:14px;flex-wrap:wrap}
 .maq-aba{flex:1;min-width:70px;background:var(--surf2);border:1px solid var(--line);color:var(--txt3);padding:8px 4px;border-radius:8px;font-size:.78rem;cursor:pointer;font-weight:600}
 .maq-aba.on{background:var(--rebar-dim);color:var(--rebar2);border-color:var(--rebar)}
-.maq-intro{font-size:.8rem;color:var(--txt3);margin-bottom:12px;line-height:1.4}
-.maq-card{background:var(--surf2);border:1px solid var(--line);border-radius:10px;padding:12px;margin-bottom:10px}
-.maq-card-cab{display:flex;justify-content:space-between;font-weight:700;color:var(--txt);margin-bottom:8px}
-.maq-ton{color:var(--rebar2)}
-.maq-linhas>div{display:flex;justify-content:space-between;padding:3px 0;font-size:.85rem;color:var(--txt2)}
-.maq-linhas>div b{color:var(--txt);font-variant-numeric:tabular-nums}
-.maq-tot{border-top:1px solid var(--line);margin-top:4px;padding-top:6px!important;font-weight:700}
-.maq-sub{font-size:.78rem;font-weight:700;color:var(--rebar2);margin:14px 0 8px;text-transform:uppercase;letter-spacing:.03em}
-.maq-field{margin-bottom:12px}
-.maq-field label{display:block;font-size:.8rem;color:var(--txt3);margin-bottom:4px}
-.maq-field input{width:100%;background:var(--surf);color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:8px}
-.maq-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 0;font-size:.85rem;color:var(--txt2)}
-.maq-row input{width:120px;background:var(--surf);color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:6px}
+.maq-sub{font-size:.78rem;font-weight:700;color:var(--rebar2);margin:16px 0 8px;text-transform:uppercase;letter-spacing:.03em}
+.maq-field{margin-bottom:14px}
+.maq-field label{display:block;font-size:.82rem;color:var(--txt2);margin-bottom:5px}
+.maq-field input{width:100%;background:var(--surf);color:var(--txt);border:1px solid var(--line);border-radius:7px;padding:9px;font-size:.9rem}
+.maq-field input[type=range]{padding:0}
+.maq-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 10px;font-size:.85rem;color:var(--txt2);background:var(--surf);border:1px solid var(--line);border-radius:7px;margin-bottom:6px}
+.maq-row input{width:110px;background:var(--surf2);color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:7px}
 .maq-row2{display:flex;gap:6px;margin:6px 0}
-.maq-row2 input{flex:1;background:var(--surf);color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:6px}
-.maq-dep{background:var(--surf2);border:1px solid var(--line);border-radius:8px;padding:10px;margin-bottom:8px}
-.maq-dep-cab{font-weight:700;color:var(--txt);margin-bottom:6px;font-size:.9rem}
-.maq-dep select,.maq-dep input{background:var(--surf);color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:6px;width:100%;margin-bottom:4px}
-.maq-dep-res{font-size:.8rem;color:var(--rebar2);text-align:right;font-weight:600}
+.maq-row2 input{flex:1;background:var(--surf2);color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:7px}
+.maq-dep{background:var(--surf);border:1px solid var(--line);border-radius:9px;padding:12px;margin-bottom:9px}
+.maq-dep-cab{font-weight:700;color:var(--txt);margin-bottom:8px;font-size:.9rem}
+.maq-dep select,.maq-dep input{background:var(--surf2);color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:8px;width:100%;margin-bottom:6px;font-size:.88rem}
+.maq-dep-res{font-size:.82rem;color:var(--rebar2);text-align:right;font-weight:700;margin-top:2px}
 .maq-med{font-size:.72rem;color:var(--txt3);font-weight:400}
-.maq-gd{display:flex;gap:5px;margin-bottom:5px;align-items:center}
+.maq-gd{display:flex;gap:5px;margin-bottom:6px;align-items:center}
 .maq-gd input[type=date]{width:120px}
 .maq-gd input[type=text]{flex:1}
 .maq-gd input[type=number]{width:80px}
-.maq-gd input{background:var(--surf);color:var(--txt);border:1px solid var(--line);border-radius:5px;padding:5px;font-size:.8rem}
-.maq-gg{display:flex;gap:5px;margin-bottom:5px;align-items:center}
+.maq-gd input{background:var(--surf2);color:var(--txt);border:1px solid var(--line);border-radius:5px;padding:6px;font-size:.8rem}
+.maq-gg{display:flex;gap:5px;margin-bottom:6px;align-items:center}
 .maq-gg-lbl{flex:1;font-size:.82rem;color:var(--txt2)}
-.maq-gg-nome{flex:1;background:var(--surf);color:var(--txt);border:1px solid var(--line);border-radius:5px;padding:5px;font-size:.8rem}
-.maq-gg-val{width:80px;background:var(--surf);color:var(--txt);border:1px solid var(--line);border-radius:5px;padding:5px}
-.maq-gg-rat{background:var(--surf);color:var(--txt);border:1px solid var(--line);border-radius:5px;padding:5px;font-size:.75rem;max-width:120px}
-.maq-tot-gg{font-weight:700;color:var(--txt);text-align:right;margin-bottom:10px}
-.maq-mini{background:var(--rebar-dim);border:1px solid var(--rebar);color:var(--rebar2);border-radius:6px;padding:5px 10px;font-size:.75rem;cursor:pointer;margin-top:4px}
-.maq-del{background:transparent;border:1px solid var(--line);color:#e0603c;border-radius:5px;padding:4px 8px;font-size:.75rem;cursor:pointer}
+.maq-gg-nome{flex:1;background:var(--surf2);color:var(--txt);border:1px solid var(--line);border-radius:5px;padding:6px;font-size:.8rem}
+.maq-gg-val{width:80px;background:var(--surf2);color:var(--txt);border:1px solid var(--line);border-radius:5px;padding:6px}
+.maq-gg-rat{background:var(--surf2);color:var(--txt);border:1px solid var(--line);border-radius:5px;padding:6px;font-size:.75rem;max-width:130px}
+.maq-tot-gg{font-weight:800;color:var(--txt);text-align:right;margin-bottom:12px;font-size:1rem}
+.maq-mini{background:var(--rebar-dim);border:1px solid var(--rebar);color:var(--rebar2);border-radius:6px;padding:6px 12px;font-size:.78rem;cursor:pointer;margin-top:6px}
+.maq-del{background:transparent;border:1px solid var(--line);color:#e0603c;border-radius:5px;padding:5px 9px;font-size:.75rem;cursor:pointer}
+
 </style>
 <meta id="nedeegdmhlnmboboahchfpkmdnnemapd"><meta id="dcngeagmmhegagicpcmpinaoklddcgon"></head>
 <body>
@@ -775,7 +788,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v54</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v55</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -1961,7 +1974,19 @@ async function _maqGarantirDados(){
 }
 
 // ---- init: carrega por seção + onValue por seção ----
+function _maqRegistrarAjudas(){
+  if(!window.AJUDAS_ALL) window.AJUDAS_ALL={};
+  Object.assign(window.AJUDAS_ALL, {
+  maq_resumo:{t:'Custo de máquina por setor', c:'<p>Cada máquina tem um custo mensal formado por 4 partes: <b>energia</b>, <b>depreciação</b>, <b>gastos diretos</b> e <b>gastos gerais</b>.</p><p>Esse total é dividido pela produção do setor (em toneladas) para dar o <b>custo por tonelada</b> — que depois entra no preço de cada peça conforme o peso dela.</p><p>A produção usada é a <b>capacidade ideal</b>, que vem da M.O. (prodDia × peso × dias). Assim o custo/tonelada fica estável e não oscila com a sazonalidade.</p>'},
+  maq_energia:{t:'Energia', c:'<p>A conta de luz é dividida entre os setores em duas partes:</p><p><b>Demanda</b> (a parte fixa que você paga pela potência contratada) é rateada pela <b>potência instalada</b> de cada máquina.</p><p><b>Consumo</b> (a energia efetivamente usada) é rateado por <b>potência × horas</b> de operação.</p><p>Informe a conta média paga, o % que é demanda, e a potência (kW) e horas/mês de cada máquina.</p>'},
+  maq_deprec:{t:'Depreciação', c:'<p>É a reserva mensal para repor a máquina no futuro. Mesmo uma máquina velha e quitada continua depreciando pelo <b>valor de reposição</b> — assim você junta o dinheiro para trocá-la quando precisar.</p><p><b>Valor fixo:</b> você informa direto o R$/mês.</p><p><b>Por reposição:</b> informe quanto custaria repor a máquina hoje e a vida útil em anos; o app calcula o R$/mês (reposição ÷ vida ÷ 12).</p><p>Central e empilhadeiras servem todas as máquinas, então são rateadas por KG produzido.</p>'},
+  maq_diretos:{t:'Gastos diretos', c:'<p>Gastos específicos de uma máquina: moldes, correias, discos, reparos daquele equipamento.</p><p>Lance cada gasto com a <b>data</b> em que aconteceu. O app faz a <b>média mensal</b> — assim um molde de R$ 12.000 comprado uma vez não estoura o custo de um único mês, ele se dilui.</p>'},
+  maq_gerais:{t:'Gastos gerais', c:'<p>Custos da fábrica que não são de uma máquina só: água, gás, ar comprimido, movimentação interna, instalações.</p><p>Cada item tem um <b>critério de rateio</b>: por horas de operação, por número de pessoas, ou direto para um setor específico.</p>'},
+});
+}
+
 async function initCustoMaquina(container){
+  _maqRegistrarAjudas();
   if(!DMaq){
     DMaq = JSON.parse(JSON.stringify(DMAQ_DEFAULT));
     // demo (sandbox) ou Firebase?
@@ -2140,18 +2165,23 @@ function _maqRenderAba(aba, res){
 // RESUMO: custo/mês e custo/ton por setor
 function _maqAbaResumo(box, res){
   const SET=_maqSet().filter(s=>!_maqEhCentral(s));
-  let h='<div class="maq-intro">Custo de máquina por setor = energia + depreciação + gastos diretos + gastos gerais. Dividido pela produção (toneladas) dá o custo por tonelada.<br><b>A produção (capacidade ideal) vem da M.O.</b> — prodDia × peso × dias. Não precisa digitar aqui.</div>';
+  let h='<div class="maq-head"><div class="maq-head-t">Resumo por máquina</div><span class="help" onclick="abrirAjuda(\'maq_resumo\')">?</span></div>';
+  h+='<div class="maq-head-sub">A produção (capacidade ideal) vem da M.O. — você não digita aqui.</div>';
   SET.forEach(s=>{
-    const r=res[s]||{}; 
-    h+='<div class="maq-card"><div class="maq-card-cab"><span>'+s+'</span><span class="maq-ton">R$ '+_maqFmt(r.porTon||0)+'/t</span></div>';
-    h+='<div class="maq-linhas">';
-    h+='<div><span>Energia</span><b>R$ '+_maqFmt(r.energia||0)+'</b></div>';
-    h+='<div><span>Depreciação</span><b>R$ '+_maqFmt(r.deprec||0)+'</b></div>';
-    h+='<div><span>Gastos diretos</span><b>R$ '+_maqFmt(r.diretos||0)+'</b></div>';
-    h+='<div><span>Gastos gerais</span><b>R$ '+_maqFmt(r.gerais||0)+'</b></div>';
-    h+='<div class="maq-tot"><span>Total/mês</span><b>R$ '+_maqFmt(r.total||0)+'</b></div>';
-    h+='<div class="maq-tot"><span>Produção ideal (M.O.)</span><b>'+_maqNum(r.ton||0)+' t</b></div>';
-    h+='</div></div>';
+    const r=res[s]||{};
+    const semProd = !(r.ton>0);
+    h+='<div class="maq-card">';
+    h+='<div class="maq-card-cab"><span class="maq-card-nome">'+s+'</span><span class="maq-ton">R$ '+_maqFmt(r.porTon||0)+'<small>/t</small></span></div>';
+    h+='<div class="maq-grid">';
+    h+='<div class="maq-cel"><span>Energia</span><b>R$ '+_maqFmt(r.energia||0)+'</b></div>';
+    h+='<div class="maq-cel"><span>Depreciação</span><b>R$ '+_maqFmt(r.deprec||0)+'</b></div>';
+    h+='<div class="maq-cel"><span>Gastos diretos</span><b>R$ '+_maqFmt(r.diretos||0)+'</b></div>';
+    h+='<div class="maq-cel"><span>Gastos gerais</span><b>R$ '+_maqFmt(r.gerais||0)+'</b></div>';
+    h+='</div>';
+    h+='<div class="maq-card-rod"><div><span>Total/mês</span><b>R$ '+_maqFmt(r.total||0)+'</b></div>';
+    h+='<div><span>Produção ideal</span><b>'+_maqNum(r.ton||0)+' t</b></div></div>';
+    if(semProd) h+='<div class="maq-aviso">Sem produção ideal na M.O. — preencha a produção/dia deste setor na aba M. obra.</div>';
+    h+='</div>';
   });
   box.innerHTML=h;
 }
@@ -2159,7 +2189,7 @@ function _maqAbaResumo(box, res){
 // ENERGIA: conta paga + fração demanda
 function _maqAbaEnergia(box){
   const e=DMaq.energia||{}; const cfg=DMaq.config||{};
-  let h='<div class="maq-intro">A conta de luz é rateada: parte por demanda (potência instalada) e parte por consumo (potência × horas).</div>';
+  let h='<div class="maq-head"><div class="maq-head-t">Energia</div><span class="help" onclick="abrirAjuda(&#39;maq_energia&#39;)">?</span></div>';
   h+='<div class="maq-field"><label>Conta de luz paga (média mensal, R$)</label>';
   h+='<input type="number" id="maq-conta" value="'+((e.valorPago!=null?e.valorPago:0))+'"></div>';
   h+='<div class="maq-field"><label>% da conta que é demanda (fixa): <b id="maq-fd-lbl">'+Math.round((cfg.fracDemanda!=null?cfg.fracDemanda:0.42)*100)+'%</b></label>';
@@ -2182,7 +2212,7 @@ function _maqAbaEnergia(box){
 
 // DEPRECIAÇÃO: por setor (planilha/reposição) + central + empilhadeiras
 function _maqAbaDeprec(box){
-  let h='<div class="maq-intro">Depreciação = valor de reposição ÷ vida útil (meses). Mesmo máquina velha deprecia pelo custo de repor. Central e empilhadeiras são rateadas por KG.</div>';
+  let h='<div class="maq-head"><div class="maq-head-t">Depreciação</div><span class="help" onclick="abrirAjuda(&#39;maq_deprec&#39;)">?</span></div>';
   h+='<div class="maq-sub">Por setor</div>';
   _maqSet().forEach(s=>{
     const cfg=(DMaq.depConfig||{})[s]||{};
@@ -2233,7 +2263,7 @@ function _maqAbaDeprec(box){
 
 // GASTOS DIRETOS: por setor, por evento com data (média mensal)
 function _maqAbaDiretos(box){
-  let h='<div class="maq-intro">Gastos diretos de cada equipamento, lançados por evento com data. O app faz a média mensal (um molde de R$12.000 em 3 meses não estoura um mês só).</div>';
+  let h='<div class="maq-head"><div class="maq-head-t">Gastos diretos</div><span class="help" onclick="abrirAjuda(&#39;maq_diretos&#39;)">?</span></div>';
   _maqSet().forEach(s=>{
     const arr=(DMaq.diretos||{})[s]||[];
     h+='<div class="maq-dep"><div class="maq-dep-cab">'+s+' <span class="maq-med">média R$ '+_maqFmt(diretoSetorMaq(s))+'/mês</span></div>';
@@ -2252,7 +2282,7 @@ function _maqAbaDiretos(box){
 
 // GASTOS GERAIS: itens com rateio (horas/pessoas/setor direto)
 function _maqAbaGerais(box){
-  let h='<div class="maq-intro">Gastos gerais da fábrica, cada um com seu critério de rateio: por horas, por pessoas, ou direto para um setor.</div>';
+  let h='<div class="maq-head"><div class="maq-head-t">Gastos gerais</div><span class="help" onclick="abrirAjuda(&#39;maq_gerais&#39;)">?</span></div>';
   h+='<div class="maq-tot-gg">Total: R$ '+_maqFmt(totalGGMaq())+'/mês</div>';
   const gg=DMaq.gg||{};
   const chaves=Object.keys(gg);
