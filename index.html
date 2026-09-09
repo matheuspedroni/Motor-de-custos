@@ -788,7 +788,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v55</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v57</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -1989,52 +1989,71 @@ async function initCustoMaquina(container){
   _maqRegistrarAjudas();
   if(!DMaq){
     DMaq = JSON.parse(JSON.stringify(DMAQ_DEFAULT));
-    // demo (sandbox) ou Firebase?
     window.__MAQ_DEMO = !(typeof db!=='undefined' && db && typeof fb!=='undefined' && fb);
-    if(window.__MAQ_DEMO){
-      try{
-        const blob=JSON.parse(localStorage.getItem('pedroni:custos/maq_bloco')||'null');
-        if(blob) MAQ_SECOES.forEach(s=>{ if(blob[s]!==undefined) DMaq[s]=_maqNormalizaSecao(s, blob[s]); });
-      }catch(e){}
-    } else {
+  }
+  window.__maqD = DMaq;
+  // RENDERIZA JÁ com os dados disponíveis (defaults ou o que já estiver em memória).
+  // As leituras do Firebase/M.O. atualizam a tela quando chegarem — a tela NUNCA fica em branco.
+  maqReady = true;
+  try{ runCustoMaquina(container); }catch(e){ console.error('maq render inicial', e); }
+  // Carrega dados em segundo plano (sem travar a tela)
+  _maqCarregarDadosAssincrono(container);
+}
+
+// Carrega Firebase + M.O. em background; quando pronto, re-renderiza
+async function _maqCarregarDadosAssincrono(container){
+  try{
+    if(!window.__MAQ_DEMO && !DMaq._carregado){
       for(const s of MAQ_SECOES){
         try{
-          const snap=await new Promise((res,rej)=>fb.onValue(fb.ref(db,'custos/maq/'+s), res, rej, {onlyOnce:true}));
-          if(snap.exists()) DMaq[s]=_maqNormalizaSecao(s, snap.val());
+          const snap=await new Promise((res,rej)=>{ try{ fb.onValue(fb.ref(db,'custos/maq/'+s), res, rej, {onlyOnce:true}); }catch(err){ rej(err); } });
+          if(snap && snap.exists()) DMaq[s]=_maqNormalizaSecao(s, snap.val());
         }catch(e){}
       }
       // onValue ao vivo por seção
       MAQ_SECOES.forEach(s=>{
-        fb.onValue(fb.ref(db,'custos/maq/'+s), snap=>{
-          if(!snap.exists()) return;
-          const raw=snap.val();
-          if(JSON.stringify(raw)===_maqLastWriteSec[s]) return; // eco da própria escrita
-          const ativo=document.activeElement;
-          if(ativo && (ativo.tagName==='INPUT'||ativo.tagName==='TEXTAREA')){
-            ativo.addEventListener('blur', ()=>{ DMaq[s]=_maqNormalizaSecao(s,raw); if(maqReady) renderMaq(); }, {once:true});
-            return;
-          }
-          DMaq[s]=_maqNormalizaSecao(s,raw);
-          if(maqReady) renderMaq();
-        });
+        try{
+          fb.onValue(fb.ref(db,'custos/maq/'+s), snap=>{
+            if(!snap || !snap.exists()) return;
+            const raw=snap.val();
+            if(JSON.stringify(raw)===_maqLastWriteSec[s]) return;
+            const ativo=document.activeElement;
+            if(ativo && (ativo.tagName==='INPUT'||ativo.tagName==='TEXTAREA')){
+              ativo.addEventListener('blur', ()=>{ DMaq[s]=_maqNormalizaSecao(s,raw); if(maqReady) renderMaq(); }, {once:true});
+              return;
+            }
+            DMaq[s]=_maqNormalizaSecao(s,raw);
+            if(maqReady) renderMaq();
+          });
+        }catch(e){}
       });
+    }else if(window.__MAQ_DEMO && !DMaq._carregado){
+      try{
+        const blob=JSON.parse(localStorage.getItem('pedroni:custos/maq_bloco')||'null');
+        if(blob) MAQ_SECOES.forEach(s=>{ if(blob[s]!==undefined) DMaq[s]=_maqNormalizaSecao(s, blob[s]); });
+      }catch(e){}
     }
-  }
-  window.__maqD = DMaq; // expõe para outros módulos
-  // Garante que a produção ideal da M.O. e os pesos da matéria-prima estejam disponíveis
-  // (o custo de máquina puxa prodDia da M.O. e peso da matéria-prima — sem digitação dupla)
-  await _maqGarantirDados();
-  maqReady = true;
-  runCustoMaquina(container);
+    Object.defineProperty(DMaq,'_carregado',{value:true,enumerable:false,configurable:true});
+    // garante produção da M.O. e pesos
+    await _maqGarantirDados();
+    window.__maqD = DMaq;
+    if(maqReady && container) { try{ runCustoMaquina(container); }catch(e){ console.error('maq re-render', e); } }
+  }catch(e){ console.error('maq carga assíncrona', e); }
 }
 
 // ---- helpers de cálculo (leem de DMaq) ----
 function _maqSet(){ return DMaq.setores || DMAQ_DEFAULT.setores; }
 function _maqEhCentral(s){ return /^central/i.test(s); }
+function _maqArr(x){
+  // Firebase Realtime devolve arrays como objeto {0:..,1:..}; normaliza pra array de verdade
+  if(Array.isArray(x)) return x;
+  if(x && typeof x==='object') return Object.values(x);
+  return [];
+}
 function maqPesoPeca(nome){
   const MP = window.__mpD || (typeof D_DEFAULT!=='undefined'?D_DEFAULT:null);
   if(!MP) return 0;
-  const prod=(MP.produtos||[]).find(p=>p.nome===nome);
+  const prod=_maqArr(MP.produtos).find(p=>p && p.nome===nome);
   return prod ? (prod.pesoPeca||prod.peso||0) : 0;
 }
 function deprecCentralVal(){
@@ -2043,7 +2062,7 @@ function deprecCentralVal(){
   return DMaq.depCentral||0;
 }
 function deprecEmpilhadeiras(){
-  return (DMaq.empilhadeiras||[]).reduce((s,e)=>s+((e.repo>0&&e.vida>0)? e.repo/(e.vida*12):0),0);
+  return _maqArr(DMaq.empilhadeiras).reduce((s,e)=>s+((e.repo>0&&e.vida>0)? e.repo/(e.vida*12):0),0);
 }
 function deprecSetor(s){
   const cfg=(DMaq.depConfig||{})[s]||{};
@@ -2056,17 +2075,17 @@ function kgSetorMaq(s){
   const MO = window.__moD;
   if(MO && MO.produtos){
     const dias = MO.diasIdeal || 22;
-    const prods = MO.produtos[s] || [];
+    const prods = _maqArr(MO.produtos[s]);
     let kg = 0;
-    prods.forEach(p=>{ kg += (p.prodDia||0) * (maqPesoPeca(p.nome)||0) * dias; });
+    prods.forEach(p=>{ if(p) kg += (p.prodDia||0) * (maqPesoPeca(p.nome)||0) * dias; });
     if(kg>0) return kg;
   }
   // fallback: se a M.O. ainda não foi carregada, usa prodPorSetor local (se houver)
-  return ((DMaq.prodPorSetor||{})[s]||[]).reduce((t,p)=>t+(p.prodMes||0)*(p.peso||maqPesoPeca(p.nome)||0),0);
+  return _maqArr((DMaq.prodPorSetor||{})[s]).reduce((t,p)=>t+(p.prodMes||0)*(p.peso||maqPesoPeca(p.nome)||0),0);
 }
 function tonSetorMaq(s){ return kgSetorMaq(s)/1000; }
 function diretoSetorMaq(s){
-  const arr=(DMaq.diretos||{})[s]||[];
+  const arr=_maqArr((DMaq.diretos||{})[s]);
   if(!arr.length) return 0;
   const meses={};
   arr.forEach(g=>{ const m=(g.data||'').slice(0,7); meses[m]=(meses[m]||0)+(g.valor||0); });
@@ -2076,7 +2095,7 @@ function diretoSetorMaq(s){
 function totalGGMaq(){
   let t=0; const gg=DMaq.gg||{};
   Object.values(gg).forEach(g=>t+=g.valor||0);
-  (DMaq.ggCustom||[]).forEach(g=>t+=g.valor||0);
+  _maqArr(DMaq.ggCustom).forEach(g=>t+=g.valor||0);
   return t;
 }
 function ggParaSetorMaq(setor){
@@ -2093,7 +2112,7 @@ function ggParaSetorMaq(setor){
     return g.rateio===setor ? g.valor : 0;
   };
   Object.values(DMaq.gg||{}).forEach(g=>total+=aplica(g));
-  (DMaq.ggCustom||[]).forEach(g=>total+=aplica(g));
+  _maqArr(DMaq.ggCustom).forEach(g=>total+=aplica(g));
   return total;
 }
 function calcMaq(){
@@ -2133,6 +2152,7 @@ function _maqNum(n){ n=Number(n)||0; return n.toLocaleString('pt-BR',{maximumFra
 
 let _maqContainer=null;
 function renderMaq(container){
+  try{
   if(container) _maqContainer=container;
   const c=_maqContainer; if(!c) return;
   const res=calcMaq();
@@ -2151,6 +2171,12 @@ function renderMaq(container){
     b.onclick=()=>{ c.querySelectorAll('.maq-aba').forEach(x=>x.classList.remove('on')); b.classList.add('on'); _maqRenderAba(b.dataset.aba, res); };
   });
   _maqRenderAba('resumo', res);
+
+  }catch(err){
+    console.error('renderMaq erro:', err);
+    const c=container||_maqContainer;
+    if(c) c.innerHTML='<div style="padding:20px;color:var(--txt2)">Não foi possível montar o custo de máquina agora. Tente reabrir a aba.<br><small style="color:var(--txt3)">'+(err&&err.message||'')+'</small></div>';
+  }
 }
 
 function _maqRenderAba(aba, res){
@@ -2238,7 +2264,7 @@ function _maqAbaDeprec(box){
   h+='<div class="maq-dep-res">R$ '+_maqFmt(deprecCentralVal())+'/mês</div></div>';
   // empilhadeiras
   h+='<div class="maq-sub">Empilhadeiras (rateadas por KG) <button id="maq-add-emp" class="maq-mini">+ add</button></div>';
-  (DMaq.empilhadeiras||[]).forEach((e,idx)=>{
+  _maqArr(DMaq.empilhadeiras).forEach((e,idx)=>{
     h+='<div class="maq-dep"><div class="maq-row2"><input type="number" class="maq-emp-repo" data-i="'+idx+'" placeholder="reposição" value="'+(e.repo||'')+'"><input type="number" class="maq-emp-vida" data-i="'+idx+'" placeholder="vida (anos)" value="'+(e.vida||'')+'"></div>';
     h+='<button class="maq-del" data-i="'+idx+'">remover</button></div>';
   });
@@ -2265,7 +2291,7 @@ function _maqAbaDeprec(box){
 function _maqAbaDiretos(box){
   let h='<div class="maq-head"><div class="maq-head-t">Gastos diretos</div><span class="help" onclick="abrirAjuda(&#39;maq_diretos&#39;)">?</span></div>';
   _maqSet().forEach(s=>{
-    const arr=(DMaq.diretos||{})[s]||[];
+    const arr=_maqArr((DMaq.diretos||{})[s]);
     h+='<div class="maq-dep"><div class="maq-dep-cab">'+s+' <span class="maq-med">média R$ '+_maqFmt(diretoSetorMaq(s))+'/mês</span></div>';
     arr.forEach((g,idx)=>{
       h+='<div class="maq-gd"><input type="date" class="maq-gd-data" data-s="'+s+'" data-i="'+idx+'" value="'+(g.data||'')+'"><input type="text" class="maq-gd-desc" data-s="'+s+'" data-i="'+idx+'" placeholder="descrição" value="'+(g.desc||'')+'"><input type="number" class="maq-gd-val" data-s="'+s+'" data-i="'+idx+'" placeholder="R$" value="'+(g.valor||'')+'"><button class="maq-del" data-s="'+s+'" data-i="'+idx+'">×</button></div>';
@@ -2290,7 +2316,7 @@ function _maqAbaGerais(box){
     const g=gg[k];
     h+=_maqGGRow(k, g, false);
   });
-  (DMaq.ggCustom||[]).forEach((g,idx)=>{ h+=_maqGGRow(idx, g, true); });
+  _maqArr(DMaq.ggCustom).forEach((g,idx)=>{ h+=_maqGGRow(idx, g, true); });
   h+='<button class="maq-mini" id="maq-add-gg">+ item personalizado</button>';
   box.innerHTML=h;
   // handlers
