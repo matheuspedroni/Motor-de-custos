@@ -792,7 +792,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v61</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v63</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -2652,10 +2652,17 @@ function salvarMP(){
   }catch(e){ console.warn('salvarMP falhou:', e.message); }
 }
 // salva SÓ um traço (edição de traço) — direto, como a FROTA
+const _salvarTracoTimers = {};
 function salvarTraco(t){
   if(!D || !mpReady || !t) return;
-  if(DEMO || !db){ salvarMP(); return; }
-  try{ fb.set(fb.ref(db,'custos/mp/tracos/'+t.id), t); }catch(e){ console.warn(e.message); }
+  if(DEMO || !db){ if(window.__mpEco) window.__mpEco.tracos = Date.now(); salvarMP(); return; }
+  // debounce por traço: só grava 500ms após a última edição (evita 1 save por tecla)
+  if(_salvarTracoTimers[t.id]) clearTimeout(_salvarTracoTimers[t.id]);
+  _salvarTracoTimers[t.id] = setTimeout(()=>{
+    if(window.__mpEco) window.__mpEco.tracos = Date.now(); // marca eco no momento REAL da escrita
+    try{ fb.set(fb.ref(db,'custos/mp/tracos/'+t.id), t).catch(e=>{ alert('Erro ao salvar traço: '+e.message); }); }
+    catch(e){ alert('Erro ao salvar traço: '+e.message); console.warn(e.message); }
+  }, 500);
 }
 // salva SÓ um material agregado — direto
 function salvarMaterial(chave){
@@ -2665,6 +2672,7 @@ function salvarMaterial(chave){
 }
 // salva SÓ um produto (edição de aço/embalagem/peso do produto)
 function salvarProduto(p){
+  if(window.__mpEco) window.__mpEco.produtos = Date.now();
   if(!D || !mpReady || !p) return;
   if(DEMO || !db){ salvarMP(); return; }
   try{ fb.set(fb.ref(db,'custos/mp/produtos/'+p.id), p); }catch(e){ console.warn(e.message); }
@@ -2722,9 +2730,13 @@ async function initMateriaPrima(container){
       if(digitando){ f.addEventListener('blur', ()=>{ if(document.getElementById('mp-container')) renderAll(); }, {once:true}); return; }
       renderAll();
     };
+    // guard de eco: ignora o retorno da própria escrita (evita reverter edição recém-feita)
+    const _mpEco = { tracos:0, produtos:0 };
+    const _ecoRecente = (col)=> (Date.now() - (_mpEco[col]||0)) < 4000;
+    window.__mpEco = _mpEco;
     // um listener por coleção — igual à FROTA (frota={}, abasts={}, ...)
-    fb.onValue(R('tracos'),    s=>{ const v=s.val(); if(v){ D.tracos=listaDe(v); reRender(); } });
-    fb.onValue(R('produtos'),  s=>{ const v=s.val(); if(v){ D.produtos=listaDe(v); reRender(); } });
+    fb.onValue(R('tracos'),    s=>{ const v=s.val(); if(v && !_ecoRecente('tracos')){ D.tracos=listaDe(v); reRender(); } });
+    fb.onValue(R('produtos'),  s=>{ const v=s.val(); if(v && !_ecoRecente('produtos')){ D.produtos=listaDe(v); reRender(); } });
     fb.onValue(R('agregados'), s=>{ const v=s.val(); if(v){ D.agregados=v; reRender(); } });
     fb.onValue(R('aco'),       s=>{ const v=s.val(); if(v){ D.aco=listaDe(v); reRender(); } });
     fb.onValue(R('embalagem'), s=>{ const v=s.val(); if(v){ D.embalagem=listaDe(v); reRender(); } });
