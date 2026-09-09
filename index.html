@@ -792,7 +792,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v59</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v60</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -1519,23 +1519,50 @@ function toggleUserMenu(){
   // sincronização manual
   const bPush = $("menu-push"), bPull = $("menu-pull");
   const bExport = $("menu-export");
-  if(bExport) bExport.addEventListener("click", ()=>{
+  if(bExport) bExport.addEventListener("click", async ()=>{
     closeUserMenu();
-    if(!confirm("Para o backup ficar completo, abra as abas Material e M. obra pelo menos uma vez nesta sessão (assim os dados da nuvem carregam).\n\nBaixar o arquivo de backup agora?")) return;
+    if(!confirm("Baixar o arquivo de backup agora? Os dados serão lidos direto da nuvem, então não precisa abrir nenhuma aba antes.")) return;
     try{
-      // junta todos os dados: M.O., matéria-prima e blobs do localStorage
-      const backup = { versao:"v50", geradoEm:new Date().toISOString() };
-      try{ backup.mo = window.__moD || JSON.parse(localStorage.getItem('pedroni:custos/mo_bloco')||'null'); }catch(e){}
-      try{ backup.mp = window.__mpD || JSON.parse(localStorage.getItem('pedroni:custos/mp_bloco')||'null'); }catch(e){}
-      // inclui todos os blobs custos/* do localStorage (garante pegar tudo)
-      backup.localStorage = {};
-      for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k&&k.indexOf('pedroni:')===0){ try{ backup.localStorage[k]=JSON.parse(localStorage.getItem(k)); }catch(e){ backup.localStorage[k]=localStorage.getItem(k); } } }
-      const blob = new Blob([JSON.stringify(backup,null,2)], {type:'application/json'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = 'pedroni_backup_'+new Date().toISOString().slice(0,10)+'.json';
+      const backup = { versao:"v60", geradoEm:new Date().toISOString(), mp:{}, mo:{} };
+      // LÊ DIRETO DO FIREBASE (fonte da verdade). Fallback pra localStorage se estiver em demo.
+      const lerNuvem = async (path)=>{
+        try{
+          if(typeof db!=='undefined' && db && typeof fb!=='undefined' && fb){
+            const snap = await new Promise((res,rej)=>{ try{ fb.onValue(fb.ref(db,path), res, rej, {onlyOnce:true}); }catch(e){ rej(e); } });
+            return snap && snap.exists() ? snap.val() : null;
+          }
+        }catch(e){}
+        return undefined; // sinaliza que a nuvem não respondeu
+      };
+      // Matéria-prima: cada coleção em custos/mp/<colecao>
+      const mpCols=['produtos','tracos','agregados','aco','embalagem','compras','precosAco','precosEmb'];
+      for(const c of mpCols){
+        let v = await lerNuvem('custos/mp/'+c);
+        if(v===undefined){ try{ v=JSON.parse(localStorage.getItem('pedroni:custos/mp/'+c)||'null'); }catch(e){} }
+        if(v!=null) backup.mp[c]=v;
+      }
+      // M.O.: cada seção em custos/mo/<secao>
+      const moSecs=['pessoas','produtos','tipoLanc','jornada','diasIdeal','indiretos','epis','familias','centrais','prodReal','consumo'];
+      for(const s of moSecs){
+        let v = await lerNuvem('custos/mo/'+s);
+        if(v===undefined){
+          try{ const blob=JSON.parse(localStorage.getItem('pedroni:custos/mo_bloco')||'null'); if(blob && blob[s]!==undefined) v=blob[s]; }catch(e){}
+        }
+        if(v!=null) backup.mo[s]=v;
+      }
+      // Custo de máquina: custos/maq/<secao>
+      const maqSecs=['deprec','depConfig','central','empilhadeiras','potencias','horasMes','energia','prodPorSetor','gg','ggCustom','diretos','pessoasSetor','config'];
+      backup.maq={};
+      for(const s of maqSecs){
+        let v = await lerNuvem('custos/maq/'+s);
+        if(v===undefined){ try{ const blob=JSON.parse(localStorage.getItem('pedroni:custos/maq_bloco')||'null'); if(blob && blob[s]!==undefined) v=blob[s]; }catch(e){} }
+        if(v!=null) backup.maq[s]=v;
+      }
+      const blob=new Blob([JSON.stringify(backup,null,2)],{type:'application/json'});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a'); a.href=url; a.download='pedroni_backup_'+new Date().toISOString().slice(0,10)+'.json';
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      setTimeout(()=>URL.revokeObjectURL(url), 1000);
+      setTimeout(()=>URL.revokeObjectURL(url),1000);
     }catch(e){ alert("Erro ao exportar: "+e.message); }
   });
   if(bPush) bPush.addEventListener("click", async ()=>{
