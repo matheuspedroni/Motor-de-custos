@@ -792,7 +792,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v60</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v61</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -3071,10 +3071,11 @@ function renderTracos(){
     grupos[g].forEach(t=>montaCard(t));
   });
 }
-function refreshTraco(div,t){ salvarTraco(t);
+function refreshTraco(div,t){
   const ct=custoTraco(t);
   const pb=pesoBatida(t);
-  t.pesoTraco=pb;  // mantém sincronizado
+  t.pesoTraco=pb;  // mantém sincronizado ANTES de salvar (senão salva o peso antigo)
+  salvarTraco(t);  // salva com materiais E pesoTraco já atualizados
   div.querySelector('.ct-out').textContent='R$ '+fmt(ct);
   const ctt=div.querySelector('.ct-total'); if(ctt) ctt.textContent='R$ '+fmt(ct);
   const pt=div.querySelector('.pt-out'); if(pt) pt.textContent=fmt0(pb);
