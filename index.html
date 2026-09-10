@@ -792,7 +792,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v68</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v69 diag</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -2727,7 +2727,7 @@ async function initMateriaPrima(container){
     // um listener por coleção — igual à FROTA (frota={}, abasts={}, ...)
     fb.onValue(R('tracos'),    s=>{ const v=s.val(); if(v){ D.tracos=listaDe(v); reRender(); } });
     fb.onValue(R('produtos'),  s=>{ const v=s.val(); if(v){ D.produtos=listaDe(v); reRender(); } });
-    fb.onValue(R('agregados'), s=>{ const v=s.val(); if(v){ D.agregados=v; reRender(); } });
+    fb.onValue(R('agregados'), s=>{ const v=s.val(); if(v){ D.agregados=v; reRender(); try{ const c=(v.cimento&&(v.cimento.precoCompra||v.cimento.preco)); const el=document.getElementById('diag-line')||(()=>{const d=document.createElement('div');d.id='diag-line';d.style.cssText='position:fixed;bottom:60px;left:6px;right:6px;background:#000;color:#0f0;font:11px monospace;padding:6px;z-index:99999;border:1px solid #0f0';document.body.appendChild(d);return d;})(); el.textContent='FIREBASE mandou: cimento precoCompra='+c+' | '+new Date().toLocaleTimeString(); }catch(e){} } });
     fb.onValue(R('aco'),       s=>{ const v=s.val(); if(v){ D.aco=listaDe(v); reRender(); } });
     fb.onValue(R('embalagem'), s=>{ const v=s.val(); if(v){ D.embalagem=listaDe(v); reRender(); } });
     fb.onValue(R('compras'),   s=>{ const v=s.val(); if(v){ D.compras=v; reRender(); } });
