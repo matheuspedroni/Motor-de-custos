@@ -792,7 +792,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v70</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v71</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -2713,15 +2713,40 @@ async function initMateriaPrima(container){
     return;
   }
 
+  const R = (p)=> fb.ref(db, 'custos/mp/'+p);
+  const listaDe = (mapa)=> mapa ? Object.keys(mapa).sort((a,b)=>(+a)-(+b)).map(k=>mapa[k]) : null;
+
+  // BUSCA GARANTIDA: lê os dados atuais do Firebase AGORA e renderiza (não espera o onValue).
+  // Assim, ao abrir a aba ou recarregar, os valores certos aparecem na hora — sem precisar clicar.
+  (async ()=>{
+    try{
+      const cols=['agregados','aco','embalagem','tracos','produtos','compras','precosAco','precosEmb'];
+      for(const c of cols){
+        try{
+          const snap = await fb.get(R(c));
+          if(snap && snap.exists()){
+            const v = snap.val();
+            if(c==='agregados'||c==='compras'||c==='precosAco'||c==='precosEmb') D[c]=v;
+            else D[c]=listaDe(v);
+          }
+        }catch(e){}
+      }
+      if(document.getElementById('mp-container')) renderAll();
+    }catch(e){}
+  })();
+
   if(!mpWatching){
     mpWatching = true;
-    const R = (p)=> fb.ref(db, 'custos/mp/'+p);
-    const listaDe = (mapa)=> mapa ? Object.keys(mapa).sort((a,b)=>(+a)-(+b)).map(k=>mapa[k]) : null;
     const reRender = ()=>{
       if(!document.getElementById('mp-container')) return;
       const f=document.activeElement;
-      const digitando = f && (f.tagName==='INPUT'||f.tagName==='SELECT'||f.tagName==='TEXTAREA') && document.getElementById('mp-container').contains(f);
-      if(digitando){ f.addEventListener('blur', ()=>{ if(document.getElementById('mp-container')) renderAll(); }, {once:true}); return; }
+      // Só adia o redesenho se o usuário está DIGITANDO num campo AGORA (pra não apagar o que ele digita).
+      // Assim que ele sai do campo, redesenha com os dados novos.
+      const digitando = f && f.tagName==='INPUT' && document.getElementById('mp-container').contains(f);
+      if(digitando){
+        f.addEventListener('blur', ()=>{ if(document.getElementById('mp-container')) renderAll(); }, {once:true});
+        return;
+      }
       renderAll();
     };
     // um listener por coleção — igual à FROTA (frota={}, abasts={}, ...)
@@ -4875,8 +4900,7 @@ window.forcarBaixarMP = async function(){
   if(!window.__mpD || DEMO || !db) return;
   const D = window.__mpD;
   const R=(p)=>fb.ref(db,'custos/mp/'+p);
-  const listaDe=(mapa)=> mapa ? Object.keys(mapa).sort((a,b)=>(+a)-(+b)).map(k=>mapa[k]) : null;
-  const get=async(p)=>{ try{ const s=await fb.get(R(p)); return s.exists()?s.val():null; }catch(e){ return null; } };
+    const get=async(p)=>{ try{ const s=await fb.get(R(p)); return s.exists()?s.val():null; }catch(e){ return null; } };
   const [agg,aco,emb,tr,pr,pA,pE,comp]=await Promise.all([
     get('agregados'),get('aco'),get('embalagem'),get('tracos'),get('produtos'),get('precosAco'),get('precosEmb'),get('compras')
   ]);
