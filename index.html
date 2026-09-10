@@ -792,7 +792,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v67</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v68</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -2693,10 +2693,11 @@ function salvarAgregados(){
 
 async function initMateriaPrima(container){
   mpReady = false;
-  // começa com os defaults; o Firebase (onValue) sobrescreve com os dados reais
-  D = JSON.parse(JSON.stringify(D_DEFAULT));
+  // Só usa os defaults na PRIMEIRA abertura. Ao reabrir a aba, mantém D com os dados reais
+  // já carregados do Firebase (senão o reset apagaria tudo, pois os onValue não re-disparam).
+  if(!D) D = JSON.parse(JSON.stringify(D_DEFAULT));
 
-  // injeta HTML e roda a lógica ANTES dos listeners (pra renderizar já com defaults)
+  // injeta HTML e roda a lógica
   container.innerHTML = MP_HTML;
   runMateriaPrima();
   mpReady = true;
