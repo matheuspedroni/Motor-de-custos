@@ -792,7 +792,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v72</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v73</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -2721,7 +2721,14 @@ async function initMateriaPrima(container){
       if(!document.getElementById('mp-container')) return;
       const f=document.activeElement;
       const digitando = f && (f.tagName==='INPUT'||f.tagName==='SELECT'||f.tagName==='TEXTAREA') && document.getElementById('mp-container').contains(f);
-      if(digitando){ f.addEventListener('blur', ()=>{ if(document.getElementById('mp-container')) renderAll(); }, {once:true}); return; }
+      if(digitando){
+        // está digitando: agenda o render pra quando sair do campo OU em 1,5s (o que vier primeiro)
+        // — assim a tela SEMPRE atualiza, mesmo que o foco fique preso no campo
+        f.addEventListener('blur', ()=>{ if(document.getElementById('mp-container')) renderAll(); }, {once:true});
+        clearTimeout(window.__mpReTimer);
+        window.__mpReTimer = setTimeout(()=>{ if(document.getElementById('mp-container')) renderAll(); }, 1500);
+        return;
+      }
       renderAll();
     };
     // um listener por coleção — igual à FROTA (frota={}, abasts={}, ...)
