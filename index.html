@@ -792,7 +792,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v71</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v72</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -2713,40 +2713,15 @@ async function initMateriaPrima(container){
     return;
   }
 
-  const R = (p)=> fb.ref(db, 'custos/mp/'+p);
-  const listaDe = (mapa)=> mapa ? Object.keys(mapa).sort((a,b)=>(+a)-(+b)).map(k=>mapa[k]) : null;
-
-  // BUSCA GARANTIDA: lê os dados atuais do Firebase AGORA e renderiza (não espera o onValue).
-  // Assim, ao abrir a aba ou recarregar, os valores certos aparecem na hora — sem precisar clicar.
-  (async ()=>{
-    try{
-      const cols=['agregados','aco','embalagem','tracos','produtos','compras','precosAco','precosEmb'];
-      for(const c of cols){
-        try{
-          const snap = await fb.get(R(c));
-          if(snap && snap.exists()){
-            const v = snap.val();
-            if(c==='agregados'||c==='compras'||c==='precosAco'||c==='precosEmb') D[c]=v;
-            else D[c]=listaDe(v);
-          }
-        }catch(e){}
-      }
-      if(document.getElementById('mp-container')) renderAll();
-    }catch(e){}
-  })();
-
   if(!mpWatching){
     mpWatching = true;
+    const R = (p)=> fb.ref(db, 'custos/mp/'+p);
+    const listaDe = (mapa)=> mapa ? Object.keys(mapa).sort((a,b)=>(+a)-(+b)).map(k=>mapa[k]) : null;
     const reRender = ()=>{
       if(!document.getElementById('mp-container')) return;
       const f=document.activeElement;
-      // Só adia o redesenho se o usuário está DIGITANDO num campo AGORA (pra não apagar o que ele digita).
-      // Assim que ele sai do campo, redesenha com os dados novos.
-      const digitando = f && f.tagName==='INPUT' && document.getElementById('mp-container').contains(f);
-      if(digitando){
-        f.addEventListener('blur', ()=>{ if(document.getElementById('mp-container')) renderAll(); }, {once:true});
-        return;
-      }
+      const digitando = f && (f.tagName==='INPUT'||f.tagName==='SELECT'||f.tagName==='TEXTAREA') && document.getElementById('mp-container').contains(f);
+      if(digitando){ f.addEventListener('blur', ()=>{ if(document.getElementById('mp-container')) renderAll(); }, {once:true}); return; }
       renderAll();
     };
     // um listener por coleção — igual à FROTA (frota={}, abasts={}, ...)
@@ -2866,7 +2841,7 @@ function custoUnit(m){
 // ---- render materiais ----
 function renderMat(lista, containerId, prefix){
   sincronizarPrecos();  // preço sempre vem da última compra
-  const wrap=document.getElementById(containerId); wrap.innerHTML='';
+  const wrap=document.getElementById(containerId); if(!wrap) return; wrap.innerHTML='';
   lista.forEach((m,i)=>{
     const id=prefix+i;
     const cu=custoUnit(m);
@@ -2982,7 +2957,7 @@ function custoPeca(t,pesoPeca){
   return pb>0 ? (ct/pb)*pesoPeca : 0;
 }
 function renderTracos(){
-  const wrap=document.getElementById('tracos'); wrap.innerHTML='';
+  const wrap=document.getElementById('tracos'); if(!wrap) return; wrap.innerHTML='';
 
   const montaCard = (t)=>{
     const ct=custoTraco(t);
@@ -3156,7 +3131,7 @@ function custoEmb(p){
 }
 function renderAcoEmb(){
   sincronizarPrecos(); // garante que precosEmb reflita as últimas compras
-  const wrap=document.getElementById('acoemb'); wrap.innerHTML='';
+  const wrap=document.getElementById('acoemb'); if(!wrap) return; wrap.innerHTML='';
   const lista = aeFiltro==='aco'
     ? D.produtos.filter(p=>p.aco && Object.keys(p.aco).length)
     : D.produtos.filter(p=>p.pecasPalete>0);
@@ -3623,12 +3598,13 @@ document.querySelectorAll('.h-sel button').forEach(b=>b.onclick=()=>{
 });
 
 function renderAll(){
-  sincronizarPrecos(); // garante que TODOS os custos usem a última compra
-  renderMat(KEYS.map(k=>D.agregados[k]),'agregados','ag');
-  renderMat(D.aco,'aco','ac');
-  renderMat(D.embalagem,'embalagem','em');
-  renderTracos();
-  renderAcoEmb();
+  try{ sincronizarPrecos(); }catch(e){ console.warn('sincronizarPrecos', e.message); }
+  // cada render protegido: se um falhar, os outros ainda rodam (a tela sempre atualiza)
+  try{ renderMat(KEYS.map(k=>D.agregados[k]),'agregados','ag'); }catch(e){ console.warn('renderMat ag', e.message); }
+  try{ renderMat(D.aco,'aco','ac'); }catch(e){ console.warn('renderMat aco', e.message); }
+  try{ renderMat(D.embalagem,'embalagem','em'); }catch(e){ console.warn('renderMat emb', e.message); }
+  try{ renderTracos(); }catch(e){ console.warn('renderTracos', e.message); }
+  try{ renderAcoEmb(); }catch(e){ console.warn('renderAcoEmb', e.message); }
 }
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
   document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
@@ -4900,7 +4876,8 @@ window.forcarBaixarMP = async function(){
   if(!window.__mpD || DEMO || !db) return;
   const D = window.__mpD;
   const R=(p)=>fb.ref(db,'custos/mp/'+p);
-    const get=async(p)=>{ try{ const s=await fb.get(R(p)); return s.exists()?s.val():null; }catch(e){ return null; } };
+  const listaDe=(mapa)=> mapa ? Object.keys(mapa).sort((a,b)=>(+a)-(+b)).map(k=>mapa[k]) : null;
+  const get=async(p)=>{ try{ const s=await fb.get(R(p)); return s.exists()?s.val():null; }catch(e){ return null; } };
   const [agg,aco,emb,tr,pr,pA,pE,comp]=await Promise.all([
     get('agregados'),get('aco'),get('embalagem'),get('tracos'),get('produtos'),get('precosAco'),get('precosEmb'),get('compras')
   ]);
