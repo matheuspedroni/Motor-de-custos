@@ -461,6 +461,8 @@ main{padding:16px;max-width:680px;margin:0 auto}
 #mo-container .pr-lanc span:first-child{min-width:74px}
 #mo-container .pr-lanc span:nth-child(2){flex:1;color:#e8eaed}
 #mo-container .pr-del{background:none;border:none;color:#e0603c;font-size:16px;cursor:pointer;line-height:1;padding:0 4px}
+#mo-container .pr-lanc-outro{opacity:.72}
+#mo-container .pr-lanc-mes{display:inline-block;background:rgba(90,140,255,.18);color:#8ab4ff;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;margin-right:4px}
 #mo-container .pr-add{display:flex;gap:6px;align-items:center;margin-top:4px}
 #mo-container .pr-data{flex:1;background:#1a1f26;color:#e8eaed;border:1px solid #333;border-radius:5px;padding:5px;font-size:12px}
 #mo-container .pr-qtd{width:70px;background:#1a1f26;color:#e8eaed;border:1px solid #333;border-radius:5px;padding:5px;font-size:12px}
@@ -802,7 +804,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v80</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v81</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -4368,20 +4370,29 @@ function painelProducaoReal(setor, mesRef){
       +(base>0?' · <b class="'+(efic>=0.85?'ef-ok':(efic>=0.6?'ef-med':'ef-bad'))+'">'+(efic*100).toFixed(0)+'%</b>':'')
       +'</span>';
     bloco.appendChild(cab);
-    // lançamentos existentes do mês
+    // lançamentos existentes — TODOS os meses (pra nunca ficar preso com lançamento no mês errado)
     const todos=((Dmo.prodReal&&Dmo.prodReal[setor]&&Dmo.prodReal[setor][p.nome])||[]);
-    const lancs=todos.map((l,idx)=>({l,idx})).filter(o=>lancNoMes(o.l,mesRef));
-    if(lancs.length){
+    const lancsTodos=todos.map((l,idx)=>({l,idx}))
+      .filter(o=>diasDoLanc(o.l).length>0)
+      .sort((a,b)=>{ const da=(diasDoLanc(a.l)[0]||''); const db=(diasDoLanc(b.l)[0]||''); return da<db?-1:(da>db?1:0); });
+    if(lancsTodos.length){
       const lista=document.createElement('div');lista.className='pr-lista';
-      lancs.forEach(o=>{
+      lancsTodos.forEach(o=>{
         const li=document.createElement('div');li.className='pr-lanc';
         const nd=diasDoLanc(o.l).length;
+        const mesLanc=(diasDoLanc(o.l)[0]||'').slice(0,7);
+        const doMesAtual=mesLanc===mesRef;
         const desc = modo==='periodo'
           ? (nd+' dia'+(nd>1?'s':'')+' ('+resumoDias(o.l)+')')
           : fmtData(o.l.data||(diasDoLanc(o.l)[0]));
-        li.innerHTML='<span>'+desc+'</span><span>'+fmtNum(o.l.qtd)+' pç</span>';
-        const del=document.createElement('button');del.className='pr-del';del.textContent='×';
-        del.onclick=()=>{ Dmo.prodReal[setor][p.nome].splice(o.idx,1); salvarSecaoMO('prodReal'); recalc(); };
+        const tagMes = doMesAtual ? '' : '<span class="pr-lanc-mes">'+mesRefLabel(mesLanc)+'</span> ';
+        li.innerHTML='<span>'+tagMes+desc+'</span><span>'+fmtNum(o.l.qtd)+' pç</span>';
+        if(!doMesAtual) li.classList.add('pr-lanc-outro');
+        const del=document.createElement('button');del.className='pr-del';del.textContent='×';del.title='Apagar este lançamento';
+        del.onclick=()=>{
+          if(!confirm('Apagar este lançamento de '+p.nome+' ('+desc+(doMesAtual?'':' · '+mesRefLabel(mesLanc))+', '+fmtNum(o.l.qtd)+' pç)?')) return;
+          Dmo.prodReal[setor][p.nome].splice(o.idx,1); salvarSecaoMO('prodReal'); recalc();
+        };
         li.appendChild(del); lista.appendChild(li);
       });
       bloco.appendChild(lista);
