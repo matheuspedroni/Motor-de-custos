@@ -802,7 +802,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v79</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v80</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -2271,10 +2271,10 @@ function ggParaSetorMaq(setor){
   return total;
 }
 // Dias TÍPICOS que uma máquina roda por mês = média de dias distintos com produção real.
-// Se não houver produção real lançada ainda, usa diasIdeal (22) como padrão.
+// SEM produção real lançada → 0 (a máquina não rodou, então não paga energia/demanda).
 function _maqDiasSetor(s){
   const MO = window.__moD;
-  if(!MO || !MO.prodReal || !MO.prodReal[s]) return (MO && MO.diasIdeal) || 22;
+  if(!MO || !MO.prodReal || !MO.prodReal[s]) return 0;
   // junta todos os dias (de todos os produtos do setor), agrupados por mês
   const diasPorMes = {}; // {'2026-08': Set(dias)}
   const prods = MO.prodReal[s];
@@ -2290,7 +2290,7 @@ function _maqDiasSetor(s){
     });
   });
   const meses = Object.keys(diasPorMes);
-  if(!meses.length) return (MO.diasIdeal) || 22;
+  if(!meses.length) return 0;
   // média de dias distintos por mês
   const totalDias = meses.reduce((a,m)=>a+diasPorMes[m].size, 0);
   return totalDias / meses.length;
@@ -2396,10 +2396,12 @@ function _maqAbaResumo(box, res){
     h+='<div class="maq-card">';
     h+='<div class="maq-card-cab"><span class="maq-card-nome">'+s+'</span><span class="maq-ton">'+(semProd?'<small style="color:var(--txt3)">sem produção</small>':'R$ '+_maqFmt(r.porTon||0)+'<small>/t</small>')+'</span></div>';
     h+='<div class="maq-grid">';
-    h+='<div class="maq-cel"><span>Energia</span><b>R$ '+_maqFmt(r.energia||0)+'</b></div>';
+    h+='<div class="maq-cel"><span>Energia (consumo)</span><b>R$ '+_maqFmt(r.eConsumo||0)+'</b></div>';
+    h+='<div class="maq-cel"><span>Demanda</span><b>R$ '+_maqFmt(r.eDemanda||0)+'</b></div>';
     h+='<div class="maq-cel"><span>Depreciação</span><b>R$ '+_maqFmt(r.deprec||0)+'</b></div>';
     h+='<div class="maq-cel"><span>Gastos diretos</span><b>R$ '+_maqFmt(r.diretos||0)+'</b></div>';
     h+='<div class="maq-cel"><span>Gastos gerais</span><b>R$ '+_maqFmt(r.gerais||0)+'</b></div>';
+    h+='<div class="maq-cel" style="opacity:.75"><span>Energia total</span><b>R$ '+_maqFmt(r.energia||0)+'</b></div>';
     h+='</div>';
     h+='<div class="maq-card-rod"><div><span>Total/mês</span><b>R$ '+_maqFmt(r.total||0)+'</b></div>';
     h+='<div><span>Produção real (média'+(nMeses>0?' de '+nMeses+' '+(nMeses===1?'mês':'meses'):'')+')</span><b>'+_maqNum(r.ton||0)+' t</b></div></div>';
