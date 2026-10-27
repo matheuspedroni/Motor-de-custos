@@ -792,7 +792,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v74</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v75</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -3032,6 +3032,7 @@ function renderTracos(){
       pesoInp.oninput=()=>{
         p.pesoPeca=parseFloat(pesoInp.value)||0;
         custoOut.textContent='R$ '+fmt3(custoPeca(t,p.pesoPeca));
+        salvarProduto(p); // >>> persiste o peso da peça no Firebase (faltava salvar)
       };
       pesoWrap.appendChild(pesoInp);pesoWrap.appendChild(pesoUn);
       it.appendChild(nome);it.appendChild(pesoWrap);it.appendChild(custoOut);
