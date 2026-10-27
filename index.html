@@ -792,7 +792,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v76</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v77</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -2075,6 +2075,10 @@ async function _maqCarregarDadosAssincrono(container){
 // ---- helpers de cálculo (leem de DMaq) ----
 function _maqSet(){ return DMaq.setores || DMAQ_DEFAULT.setores; }
 function _maqEhCentral(s){ return /^central/i.test(s); }
+const MAQ_LOGISTICA='Logística';
+function _maqEhLogistica(s){ return /log[íi]stica/i.test(s||''); }
+// destinos possíveis p/ alocar empilhadeira = setores de produção + Logística
+function _maqDestinosEmp(){ return _maqSet().filter(s=>!_maqEhCentral(s)).concat([MAQ_LOGISTICA]); }
 function _maqArr(x){
   // Firebase Realtime devolve arrays como objeto {0:..,1:..}; normaliza pra array de verdade
   if(Array.isArray(x)) return x;
@@ -2125,8 +2129,54 @@ function deprecCentraisParaSetor(s){
 }
 // total de depreciação de todas as centrais (para exibir)
 function deprecCentraisTotal(){ return _maqCentrais().reduce((t,c)=>t+deprecUmaCentral(c),0); }
+// valor R$/mês de UMA empilhadeira (valor fixo OU reposição/vida)
+function deprecUmaEmp(e){
+  if(!e) return 0;
+  if(e.modo==='reposicao' || (e.repo>0 && e.vida>0)){ return (e.repo>0&&e.vida>0)? e.repo/(e.vida*12) : (e.val||0); }
+  return e.val||0;
+}
 function deprecEmpilhadeiras(){
-  return _maqArr(DMaq.empilhadeiras).reduce((s,e)=>s+((e.repo>0&&e.vida>0)? e.repo/(e.vida*12):0),0);
+  return _maqArr(DMaq.empilhadeiras).reduce((s,e)=>s+deprecUmaEmp(e),0);
+}
+// Rateio de empilhadeiras por setor:
+// 1) o % que você digita por setor define quanto do custo da empilhadeira vai p/ cada "destino"
+//    (setores de produção + Logística);
+// 2) a parte de produção é rateada POR KG entre os setores de produção marcados, proporcional ao %×KG.
+// Aqui retorna a parcela que vai para o setor de PRODUÇÃO s.
+function deprecEmpParaSetor(s){
+  if(_maqEhLogistica(s)) return 0;
+  let total=0;
+  _maqArr(DMaq.empilhadeiras).forEach(e=>{
+    const dep=deprecUmaEmp(e); if(dep<=0) return;
+    const aloc=e.aloc||{};
+    // peso de cada setor de produção = %uso × KG do setor
+    let somaPesoProd=0; const pesos={};
+    Object.keys(aloc).forEach(set=>{
+      if(_maqEhLogistica(set)) return;
+      const pct=parseFloat(aloc[set])||0; if(pct<=0) return;
+      const peso=pct*(kgSetorMaq(set)||0);
+      pesos[set]=peso; somaPesoProd+=peso;
+    });
+    if(somaPesoProd<=0) return; // nada de produção marcado (ou sem KG) → nada entra na peça
+    if(pesos[s]!=null){
+      // fração do custo de produção que esta empilhadeira manda = soma dos % de produção
+      const pctProd=Object.keys(aloc).filter(k=>!_maqEhLogistica(k)).reduce((a,k)=>a+(parseFloat(aloc[k])||0),0)/100;
+      const depProd=dep*pctProd;
+      total += depProd*(pesos[s]/somaPesoProd);
+    }
+  });
+  return total;
+}
+// Parcela das empilhadeiras reservada para Logística (não entra na peça ainda)
+function deprecEmpLogistica(){
+  let total=0;
+  _maqArr(DMaq.empilhadeiras).forEach(e=>{
+    const dep=deprecUmaEmp(e); if(dep<=0) return;
+    const aloc=e.aloc||{};
+    const pctLog=Object.keys(aloc).filter(_maqEhLogistica).reduce((a,k)=>a+(parseFloat(aloc[k])||0),0)/100;
+    total+=dep*pctLog;
+  });
+  return total;
 }
 function deprecSetor(s){
   const cfg=(DMaq.depConfig||{})[s]||{};
@@ -2234,9 +2284,9 @@ function calcMaq(){
     const eConsumo=fracKwh*valorConsumo;
     const eDemanda=fracKwh*valorDemanda; // demanda também por kWh — máquina parada não paga
     const energia=eConsumo+eDemanda;
-    const fracKg=kgTotal>0 ? kgSetorMaq(s)/kgTotal : 0;
-    // empilhadeiras: rateadas por KG entre todas; centrais: cada uma só entre as máquinas que atende
-    const depEmp=deprecEmpilhadeiras()*fracKg;
+    // empilhadeiras: % de uso por setor × KG (parte de logística fica de fora da peça);
+    // centrais: cada uma só entre as máquinas que atende
+    const depEmp=deprecEmpParaSetor(s);
     const depCentrais=deprecCentraisParaSetor(s);
     const dep=deprecSetor(s)+depEmp+depCentrais;
     const dir=diretoSetorMaq(s);
@@ -2376,12 +2426,36 @@ function _maqAbaDeprec(box){
     h+='<div class="maq-dep-res">R$ '+_maqFmt(deprecUmaCentral(nome))+'/mês</div></div>';
   });
   // empilhadeiras
-  h+='<div class="maq-sub">Empilhadeiras (rateadas por KG) <button id="maq-add-emp" class="maq-mini">+ add</button></div>';
+  h+='<div class="maq-sub">Empilhadeiras <button id="maq-add-emp" class="maq-mini">+ add</button></div>';
+  h+='<div style="font-size:.62rem;color:var(--txt3);margin:-4px 0 8px">Digite o <b>% de uso</b> de cada empilhadeira por setor (inclua Logística). A parte de produção é rateada por KG entre os setores marcados; a parte de Logística fica reservada para o módulo de frete.</div>';
+  const destinos=_maqDestinosEmp();
   _maqArr(DMaq.empilhadeiras).forEach((e,idx)=>{
-    h+='<div class="maq-dep"><div class="maq-row2"><input type="number" class="maq-emp-repo" data-i="'+idx+'" placeholder="reposição" value="'+(e.repo||'')+'"><input type="number" class="maq-emp-vida" data-i="'+idx+'" placeholder="vida (anos)" value="'+(e.vida||'')+'"></div>';
-    h+='<button class="maq-del" data-i="'+idx+'">remover</button></div>';
+    const modo=e.modo||((e.repo>0||e.vida>0)?'reposicao':'planilha');
+    const aloc=e.aloc||{};
+    const somaPct=destinos.reduce((a,s)=>a+(parseFloat(aloc[s])||0),0);
+    h+='<div class="maq-dep"><div class="maq-dep-cab" style="display:flex;justify-content:space-between;align-items:center"><input type="text" class="maq-emp-nome" data-i="'+idx+'" placeholder="Empilhadeira '+(idx+1)+'" value="'+(e.nome||'')+'" style="flex:1;background:var(--surf2);border:1px solid var(--line);color:var(--txt);border-radius:6px;padding:4px 8px;font-size:.78rem;font-weight:700"><button class="maq-del" data-i="'+idx+'" style="margin-left:8px">remover</button></div>';
+    // valor
+    h+='<select class="maq-emp-modo" data-i="'+idx+'"><option value="planilha"'+(modo==='planilha'?' selected':'')+'>Valor fixo</option><option value="reposicao"'+(modo==='reposicao'?' selected':'')+'>Por reposição</option></select>';
+    if(modo==='reposicao'){
+      h+='<div class="maq-row2"><input type="number" class="maq-emp-repo" data-i="'+idx+'" placeholder="valor de reposição" value="'+(e.repo||'')+'"><input type="number" class="maq-emp-vida" data-i="'+idx+'" placeholder="vida (anos)" value="'+(e.vida||'')+'"></div>';
+    } else {
+      h+='<input type="number" class="maq-emp-val" data-i="'+idx+'" placeholder="R$/mês" value="'+(e.val||'')+'">';
+    }
+    // alocação % por destino
+    h+='<div style="font-size:.6rem;color:var(--txt3);margin:8px 0 4px;text-transform:uppercase;letter-spacing:.04em">% de uso por setor</div>';
+    h+='<div class="emp-aloc-grid" style="display:grid;grid-template-columns:1fr auto;gap:4px 8px;align-items:center">';
+    destinos.forEach(s=>{
+      const v=aloc[s]!=null?aloc[s]:'';
+      const cor=_maqEhLogistica(s)?'color:var(--rebar2);font-weight:600':'';
+      h+='<span style="font-size:.68rem;'+cor+'">'+s+'</span>';
+      h+='<input type="number" class="maq-emp-pct" data-i="'+idx+'" data-s="'+s+'" placeholder="0" value="'+v+'" style="width:64px;background:var(--surf);border:1px solid var(--line);color:var(--txt);border-radius:5px;padding:4px;font-size:.72rem;text-align:right">';
+    });
+    h+='</div>';
+    const corSoma=Math.abs(somaPct-100)<0.5?'var(--ok,#4caf50)':(somaPct>100?'#e57373':'var(--txt3)');
+    h+='<div class="maq-emp-soma" data-i="'+idx+'" style="font-size:.64rem;text-align:right;margin-top:4px;color:'+corSoma+'">Soma: '+_maqFmt(somaPct)+'% '+(Math.abs(somaPct-100)<0.5?'✓':(somaPct>100?'(passou de 100%)':'(falta '+_maqFmt(100-somaPct)+'%)'))+'</div>';
+    h+='<div class="maq-dep-res">R$ '+_maqFmt(deprecUmaEmp(e))+'/mês</div></div>';
   });
-  h+='<div class="maq-dep-res">Total empilhadeiras: R$ '+_maqFmt(deprecEmpilhadeiras())+'/mês</div>';
+  h+='<div class="maq-dep-res">Total empilhadeiras: R$ '+_maqFmt(deprecEmpilhadeiras())+'/mês · reservado p/ Logística: R$ '+_maqFmt(deprecEmpLogistica())+'/mês</div>';
   box.innerHTML=h;
   // handlers setor
   box.querySelectorAll('.maq-dep-modo').forEach(sel=>{ sel.onchange=()=>{ if(!DMaq.depConfig)DMaq.depConfig={}; if(!DMaq.depConfig[sel.dataset.s])DMaq.depConfig[sel.dataset.s]={}; DMaq.depConfig[sel.dataset.s].modo=sel.value; salvarSecaoMaq('depConfig'); _maqAbaDeprec(box); }; });
@@ -2395,9 +2469,21 @@ function _maqAbaDeprec(box){
   box.querySelectorAll('.maq-cend-repo').forEach(i=>{ i.oninput=()=>{ _cd(i.dataset.c).repo=parseFloat(i.value)||0; salvarSecaoMaq('centralDep'); }; });
   box.querySelectorAll('.maq-cend-vida').forEach(i=>{ i.oninput=()=>{ _cd(i.dataset.c).vida=parseFloat(i.value)||0; salvarSecaoMaq('centralDep'); }; });
   // empilhadeiras
-  box.querySelector('#maq-add-emp').onclick=()=>{ if(!DMaq.empilhadeiras)DMaq.empilhadeiras=[]; DMaq.empilhadeiras.push({repo:0,vida:10}); salvarSecaoMaq('empilhadeiras'); _maqAbaDeprec(box); };
-  box.querySelectorAll('.maq-emp-repo').forEach(i=>{ i.oninput=()=>{ DMaq.empilhadeiras[i.dataset.i].repo=parseFloat(i.value)||0; salvarSecaoMaq('empilhadeiras'); }; });
-  box.querySelectorAll('.maq-emp-vida').forEach(i=>{ i.oninput=()=>{ DMaq.empilhadeiras[i.dataset.i].vida=parseFloat(i.value)||0; salvarSecaoMaq('empilhadeiras'); }; });
+  const _emp=(i)=>{ if(!DMaq.empilhadeiras)DMaq.empilhadeiras=[]; if(!DMaq.empilhadeiras[i])DMaq.empilhadeiras[i]={}; if(!DMaq.empilhadeiras[i].aloc)DMaq.empilhadeiras[i].aloc={}; return DMaq.empilhadeiras[i]; };
+  box.querySelector('#maq-add-emp').onclick=()=>{ if(!DMaq.empilhadeiras)DMaq.empilhadeiras=[]; DMaq.empilhadeiras.push({nome:'',modo:'planilha',val:0,aloc:{}}); salvarSecaoMaq('empilhadeiras'); _maqAbaDeprec(box); };
+  box.querySelectorAll('.maq-emp-nome').forEach(i=>{ i.oninput=()=>{ _emp(+i.dataset.i).nome=i.value; salvarSecaoMaq('empilhadeiras'); }; });
+  box.querySelectorAll('.maq-emp-modo').forEach(sel=>{ sel.onchange=()=>{ _emp(+sel.dataset.i).modo=sel.value; salvarSecaoMaq('empilhadeiras'); _maqAbaDeprec(box); }; });
+  box.querySelectorAll('.maq-emp-val').forEach(i=>{ i.oninput=()=>{ _emp(+i.dataset.i).val=parseFloat(i.value)||0; salvarSecaoMaq('empilhadeiras'); }; });
+  box.querySelectorAll('.maq-emp-repo').forEach(i=>{ i.oninput=()=>{ _emp(+i.dataset.i).repo=parseFloat(i.value)||0; salvarSecaoMaq('empilhadeiras'); }; });
+  box.querySelectorAll('.maq-emp-vida').forEach(i=>{ i.oninput=()=>{ _emp(+i.dataset.i).vida=parseFloat(i.value)||0; salvarSecaoMaq('empilhadeiras'); }; });
+  box.querySelectorAll('.maq-emp-pct').forEach(inp=>{ inp.oninput=()=>{
+      const e=_emp(+inp.dataset.i); e.aloc[inp.dataset.s]=parseFloat(inp.value)||0; salvarSecaoMaq('empilhadeiras');
+      // atualiza só a linha "Soma" sem re-renderizar tudo (não perde o foco do campo)
+      const destinos=_maqDestinosEmp();
+      const soma=destinos.reduce((a,s)=>a+(parseFloat(e.aloc[s])||0),0);
+      const el=box.querySelector('.maq-emp-soma[data-i="'+inp.dataset.i+'"]');
+      if(el){ const ok=Math.abs(soma-100)<0.5; el.style.color=ok?'var(--ok,#4caf50)':(soma>100?'#e57373':'var(--txt3)'); el.textContent='Soma: '+_maqFmt(soma)+'% '+(ok?'✓':(soma>100?'(passou de 100%)':'(falta '+_maqFmt(100-soma)+'%)')); }
+    }; });
   box.querySelectorAll('.maq-del').forEach(btn=>{ btn.onclick=()=>{ DMaq.empilhadeiras.splice(+btn.dataset.i,1); salvarSecaoMaq('empilhadeiras'); _maqAbaDeprec(box); }; });
 }
 
