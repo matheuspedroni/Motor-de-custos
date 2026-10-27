@@ -792,7 +792,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v77</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v78</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -2008,7 +2008,7 @@ async function _maqGarantirDados(){
 function _maqRegistrarAjudas(){
   if(!window.AJUDAS_ALL) window.AJUDAS_ALL={};
   Object.assign(window.AJUDAS_ALL, {
-  maq_resumo:{t:'Custo de máquina por setor', c:'<p>Cada máquina tem um custo mensal formado por 4 partes: <b>energia</b>, <b>depreciação</b>, <b>gastos diretos</b> e <b>gastos gerais</b>.</p><p>Esse total é dividido pela produção do setor (em toneladas) para dar o <b>custo por tonelada</b> — que depois entra no preço de cada peça conforme o peso dela.</p><p>A produção usada é a <b>capacidade ideal</b>, que vem da M.O. (prodDia × peso × dias). Assim o custo/tonelada fica estável e não oscila com a sazonalidade.</p>'},
+  maq_resumo:{t:'Custo de máquina por setor', c:'<p>Cada máquina tem um custo mensal formado por 4 partes: <b>energia</b>, <b>depreciação</b>, <b>gastos diretos</b> e <b>gastos gerais</b>.</p><p>Esse total é dividido pela produção do setor (em toneladas) para dar o <b>custo por tonelada</b> — que depois entra no preço de cada peça conforme o peso dela.</p><p>A produção usada é a <b>MÉDIA da produção real</b> lançada na M.O. (como a máquina faz um produto por vez, não somamos capacidades em paralelo). Quanto mais meses lançados, mais estável fica a média. Setor sem produção lançada não calcula custo/tonelada até você cadastrar.</p>'},
   maq_energia:{t:'Energia', c:'<p>A conta de luz é dividida entre os setores em duas partes:</p><p><b>Demanda</b> (a parte fixa que você paga pela potência contratada) é rateada pela <b>potência instalada</b> de cada máquina.</p><p><b>Consumo</b> (a energia efetivamente usada) é rateado por <b>potência × horas</b> de operação.</p><p>Informe a conta média paga, o % que é demanda, e a potência (kW) e horas/mês de cada máquina.</p>'},
   maq_deprec:{t:'Depreciação', c:'<p>É a reserva mensal para repor a máquina no futuro. Mesmo uma máquina velha e quitada continua depreciando pelo <b>valor de reposição</b> — assim você junta o dinheiro para trocá-la quando precisar.</p><p><b>Valor fixo:</b> você informa direto o R$/mês.</p><p><b>Por reposição:</b> informe quanto custaria repor a máquina hoje e a vida útil em anos; o app calcula o R$/mês (reposição ÷ vida ÷ 12).</p><p>As empilhadeiras servem todas as máquinas, então são rateadas por KG entre todas. Cada central é rateada por KG só entre as máquinas que ela abastece (a lista vem da aba Mão de obra → "esta central abastece quais máquinas").</p>'},
   maq_diretos:{t:'Gastos diretos', c:'<p>Gastos específicos de uma máquina: moldes, correias, discos, reparos daquele equipamento.</p><p>Lance cada gasto com a <b>data</b> em que aconteceu. O app faz a <b>média mensal</b> — assim um molde de R$ 12.000 comprado uma vez não estoura o custo de um único mês, ele se dilui.</p>'},
@@ -2183,21 +2183,52 @@ function deprecSetor(s){
   if(cfg.modo==='reposicao' && cfg.repo>0 && cfg.vida>0) return cfg.repo/(cfg.vida*12);
   return (DMaq.deprec||{})[s]||0;
 }
+// KG/mês do setor = MÉDIA da produção REAL dos meses lançados.
+// A máquina produz um produto por vez, então NÃO somamos capacidades em paralelo —
+// usamos o que foi realmente produzido: Σ(qtd × peso) por mês, e tiramos a média dos meses.
 function kgSetorMaq(s){
-  // Produção IDEAL puxada da M.O.: prodDia × peso × diasIdeal (mesma lógica do rateio de centrais)
-  // NÃO é digitado no custo de máquina — vem da M.O. e da matéria-prima, sempre em sincronia.
   const MO = window.__moD;
-  if(MO && MO.produtos){
-    const dias = MO.diasIdeal || 22;
-    const prods = _maqArr(MO.produtos[s]);
-    let kg = 0;
-    prods.forEach(p=>{ if(p) kg += (p.prodDia||0) * (maqPesoPeca(p.nome)||0) * dias; });
-    if(kg>0) return kg;
+  if(MO && MO.prodReal && MO.prodReal[s]){
+    const kgPorMes = {}; // {'2026-08': kg}
+    const prods = MO.prodReal[s];
+    Object.keys(prods).forEach(prod=>{
+      const peso = maqPesoPeca(prod) || 0;
+      _maqArr(prods[prod]).forEach(l=>{
+        if(!l) return;
+        // mês do lançamento = mês do primeiro dia marcado (período) ou da data (diário)
+        const dias = Array.isArray(l.dias) ? l.dias : (l.data ? [l.data] : []);
+        const d0 = dias.find(d=>!!d);
+        if(!d0) return;
+        const mes = d0.slice(0,7);
+        const qtd = parseFloat(l.qtd)||0;
+        kgPorMes[mes] = (kgPorMes[mes]||0) + qtd*peso;
+      });
+    });
+    const meses = Object.keys(kgPorMes);
+    if(meses.length){
+      const soma = meses.reduce((a,m)=>a+kgPorMes[m], 0);
+      return soma / meses.length; // média mensal
+    }
   }
-  // fallback: se a M.O. ainda não foi carregada, usa prodPorSetor local (se houver)
-  return _maqArr((DMaq.prodPorSetor||{})[s]).reduce((t,p)=>t+(p.prodMes||0)*(p.peso||maqPesoPeca(p.nome)||0),0);
+  // sem produção real lançada: 0 (a tela mostra "sem produção lançada")
+  return 0;
 }
 function tonSetorMaq(s){ return kgSetorMaq(s)/1000; }
+// quantos meses distintos têm produção lançada neste setor (para aviso na tela)
+function _maqMesesComProd(s){
+  const MO = window.__moD;
+  if(!MO || !MO.prodReal || !MO.prodReal[s]) return 0;
+  const meses = new Set();
+  const prods = MO.prodReal[s];
+  Object.keys(prods).forEach(prod=>{
+    _maqArr(prods[prod]).forEach(l=>{
+      const dias = Array.isArray(l&&l.dias) ? l.dias : (l&&l.data?[l.data]:[]);
+      const d0 = dias.find(d=>!!d);
+      if(d0) meses.add(d0.slice(0,7));
+    });
+  });
+  return meses.size;
+}
 function diretoSetorMaq(s){
   const arr=_maqArr((DMaq.diretos||{})[s]);
   if(!arr.length) return 0;
@@ -2347,12 +2378,13 @@ function _maqRenderAba(aba, res){
 function _maqAbaResumo(box, res){
   const SET=_maqSet().filter(s=>!_maqEhCentral(s));
   let h='<div class="maq-head"><div class="maq-head-t">Resumo por máquina</div><span class="help" onclick="abrirAjuda(\'maq_resumo\')">?</span></div>';
-  h+='<div class="maq-head-sub">A produção (capacidade ideal) vem da M.O. — você não digita aqui.</div>';
+  h+='<div class="maq-head-sub">A produção é a MÉDIA da produção real lançada na M.O. (a máquina faz um produto por vez). O custo/tonelada só aparece quando há produção lançada.</div>';
   SET.forEach(s=>{
     const r=res[s]||{};
-    const semProd = !(r.ton>0);
+    const nMeses=_maqMesesComProd(s);
+    const semProd = !(r.ton>0) || nMeses===0;
     h+='<div class="maq-card">';
-    h+='<div class="maq-card-cab"><span class="maq-card-nome">'+s+'</span><span class="maq-ton">R$ '+_maqFmt(r.porTon||0)+'<small>/t</small></span></div>';
+    h+='<div class="maq-card-cab"><span class="maq-card-nome">'+s+'</span><span class="maq-ton">'+(semProd?'<small style="color:var(--txt3)">sem produção</small>':'R$ '+_maqFmt(r.porTon||0)+'<small>/t</small>')+'</span></div>';
     h+='<div class="maq-grid">';
     h+='<div class="maq-cel"><span>Energia</span><b>R$ '+_maqFmt(r.energia||0)+'</b></div>';
     h+='<div class="maq-cel"><span>Depreciação</span><b>R$ '+_maqFmt(r.deprec||0)+'</b></div>';
@@ -2360,8 +2392,8 @@ function _maqAbaResumo(box, res){
     h+='<div class="maq-cel"><span>Gastos gerais</span><b>R$ '+_maqFmt(r.gerais||0)+'</b></div>';
     h+='</div>';
     h+='<div class="maq-card-rod"><div><span>Total/mês</span><b>R$ '+_maqFmt(r.total||0)+'</b></div>';
-    h+='<div><span>Produção ideal</span><b>'+_maqNum(r.ton||0)+' t</b></div></div>';
-    if(semProd) h+='<div class="maq-aviso">Sem produção ideal na M.O. — preencha a produção/dia deste setor na aba M. obra.</div>';
+    h+='<div><span>Produção real (média'+(nMeses>0?' de '+nMeses+' '+(nMeses===1?'mês':'meses'):'')+')</span><b>'+_maqNum(r.ton||0)+' t</b></div></div>';
+    if(semProd) h+='<div class="maq-aviso">Sem produção lançada — cadastre a produção deste setor na aba M. obra (Produção real) para o custo/tonelada ser calculado.</div>';
     h+='</div>';
   });
   box.innerHTML=h;
@@ -4164,6 +4196,25 @@ function pesoPecaDe(nome){
   }catch(e){ return 0; }
 }
 function kgSetor(setor){
+  // KG/mês = MÉDIA da produção REAL dos meses lançados (a máquina faz um produto por vez,
+  // então não somamos capacidades em paralelo). Sem produção real, cai no ideal como fallback.
+  if(Dmo.prodReal && Dmo.prodReal[setor]){
+    const kgPorMes={};
+    const prods=Dmo.prodReal[setor];
+    Object.keys(prods).forEach(prod=>{
+      const peso=pesoPecaDe(prod)||0;
+      (Array.isArray(prods[prod])?prods[prod]:Object.values(prods[prod]||{})).forEach(l=>{
+        if(!l) return;
+        const dias=Array.isArray(l.dias)?l.dias:(l.data?[l.data]:[]);
+        const d0=dias.find(d=>!!d); if(!d0) return;
+        const mes=d0.slice(0,7);
+        kgPorMes[mes]=(kgPorMes[mes]||0)+(parseFloat(l.qtd)||0)*peso;
+      });
+    });
+    const meses=Object.keys(kgPorMes);
+    if(meses.length) return meses.reduce((a,m)=>a+kgPorMes[m],0)/meses.length;
+  }
+  // fallback: ideal (prodDia × peso × diasIdeal) somado — usado só enquanto não há produção real
   let kg=0;
   (Dmo.produtos[setor]||[]).forEach(p=>{ kg += (p.prodDia||0) * pesoPecaDe(p.nome) * diasIdeal; });
   return kg;
