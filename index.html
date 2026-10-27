@@ -792,7 +792,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v75</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v76</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -1551,7 +1551,7 @@ function toggleUserMenu(){
         if(v!=null) backup.mo[s]=v;
       }
       // Custo de máquina: custos/maq/<secao>
-      const maqSecs=['deprec','depConfig','central','empilhadeiras','potencias','horasMes','energia','prodPorSetor','gg','ggCustom','diretos','pessoasSetor','config'];
+      const maqSecs=['deprec','depConfig','central','centralDep','empilhadeiras','potencias','horasMes','energia','prodPorSetor','gg','ggCustom','diretos','pessoasSetor','config'];
       backup.maq={};
       for(const s of maqSecs){
         let v = await lerNuvem('custos/maq/'+s);
@@ -1904,7 +1904,7 @@ const DMAQ_DEFAULT = {"setores": ["Blocos maquina PWR", "Blocos maquina Gervasi"
 // ==================== MÓDULO CUSTO DE MÁQUINA ====================
 let DMaq = null;
 let maqReady = false;
-const MAQ_SECOES = ['deprec','depConfig','central','empilhadeiras','potencias','horasMes','energia','prodPorSetor','gg','ggCustom','diretos','pessoasSetor','config'];
+const MAQ_SECOES = ['deprec','depConfig','central','centralDep','empilhadeiras','potencias','horasMes','energia','prodPorSetor','gg','ggCustom','diretos','pessoasSetor','config'];
 const _maqLastWriteSec = {};
 const _maqTimers = {};
 
@@ -2010,7 +2010,7 @@ function _maqRegistrarAjudas(){
   Object.assign(window.AJUDAS_ALL, {
   maq_resumo:{t:'Custo de máquina por setor', c:'<p>Cada máquina tem um custo mensal formado por 4 partes: <b>energia</b>, <b>depreciação</b>, <b>gastos diretos</b> e <b>gastos gerais</b>.</p><p>Esse total é dividido pela produção do setor (em toneladas) para dar o <b>custo por tonelada</b> — que depois entra no preço de cada peça conforme o peso dela.</p><p>A produção usada é a <b>capacidade ideal</b>, que vem da M.O. (prodDia × peso × dias). Assim o custo/tonelada fica estável e não oscila com a sazonalidade.</p>'},
   maq_energia:{t:'Energia', c:'<p>A conta de luz é dividida entre os setores em duas partes:</p><p><b>Demanda</b> (a parte fixa que você paga pela potência contratada) é rateada pela <b>potência instalada</b> de cada máquina.</p><p><b>Consumo</b> (a energia efetivamente usada) é rateado por <b>potência × horas</b> de operação.</p><p>Informe a conta média paga, o % que é demanda, e a potência (kW) e horas/mês de cada máquina.</p>'},
-  maq_deprec:{t:'Depreciação', c:'<p>É a reserva mensal para repor a máquina no futuro. Mesmo uma máquina velha e quitada continua depreciando pelo <b>valor de reposição</b> — assim você junta o dinheiro para trocá-la quando precisar.</p><p><b>Valor fixo:</b> você informa direto o R$/mês.</p><p><b>Por reposição:</b> informe quanto custaria repor a máquina hoje e a vida útil em anos; o app calcula o R$/mês (reposição ÷ vida ÷ 12).</p><p>Central e empilhadeiras servem todas as máquinas, então são rateadas por KG produzido.</p>'},
+  maq_deprec:{t:'Depreciação', c:'<p>É a reserva mensal para repor a máquina no futuro. Mesmo uma máquina velha e quitada continua depreciando pelo <b>valor de reposição</b> — assim você junta o dinheiro para trocá-la quando precisar.</p><p><b>Valor fixo:</b> você informa direto o R$/mês.</p><p><b>Por reposição:</b> informe quanto custaria repor a máquina hoje e a vida útil em anos; o app calcula o R$/mês (reposição ÷ vida ÷ 12).</p><p>As empilhadeiras servem todas as máquinas, então são rateadas por KG entre todas. Cada central é rateada por KG só entre as máquinas que ela abastece (a lista vem da aba Mão de obra → "esta central abastece quais máquinas").</p>'},
   maq_diretos:{t:'Gastos diretos', c:'<p>Gastos específicos de uma máquina: moldes, correias, discos, reparos daquele equipamento.</p><p>Lance cada gasto com a <b>data</b> em que aconteceu. O app faz a <b>média mensal</b> — assim um molde de R$ 12.000 comprado uma vez não estoura o custo de um único mês, ele se dilui.</p>'},
   maq_gerais:{t:'Gastos gerais', c:'<p>Custos da fábrica que não são de uma máquina só: água, gás, ar comprimido, movimentação interna, instalações.</p><p>Cada item tem um <b>critério de rateio</b>: por horas de operação, por número de pessoas, ou direto para um setor específico.</p>'},
 });
@@ -2092,6 +2092,39 @@ function deprecCentralVal(){
   if(c.modo==='reposicao' && c.repo>0 && c.vida>0) return c.repo/(c.vida*12);
   return DMaq.depCentral||0;
 }
+// --- Depreciação das centrais (uma entrada por central, rateada por KG só entre as máquinas que ela atende) ---
+// Nomes das centrais vêm da lista de setores
+function _maqCentrais(){ return _maqSet().filter(_maqEhCentral); }
+// valor R$/mês de depreciação de UMA central (modo valor fixo ou por reposição)
+function deprecUmaCentral(nome){
+  const cd=(DMaq.centralDep||{})[nome]||{};
+  if(cd.modo==='reposicao' && cd.repo>0 && cd.vida>0) return cd.repo/(cd.vida*12);
+  return cd.val||0;
+}
+// quais máquinas uma central atende — puxado da M.O. (Dmo.centrais[nome].atende)
+function _maqCentralAtende(nome){
+  const MO = window.__moD;
+  const cfg = (MO && MO.centrais && MO.centrais[nome]) || {atende:[]};
+  return (cfg.atende||[]).filter(m=>!_maqEhCentral(m));
+}
+// soma, para um setor de produção s, a parcela de depreciação que cada central joga nele (por KG)
+function deprecCentraisParaSetor(s){
+  let total=0;
+  _maqCentrais().forEach(central=>{
+    const dep=deprecUmaCentral(central);
+    if(dep<=0) return;
+    const atende=_maqCentralAtende(central);
+    if(!atende.length) return;
+    if(!atende.includes(s)) return; // esta central não abastece este setor
+    const kgs={}; let kgTot=0;
+    atende.forEach(m=>{ const k=kgSetorMaq(m); kgs[m]=k; kgTot+=k; });
+    if(kgTot<=0){ total += dep/atende.length; }
+    else { total += dep*(kgs[s]/kgTot); }
+  });
+  return total;
+}
+// total de depreciação de todas as centrais (para exibir)
+function deprecCentraisTotal(){ return _maqCentrais().reduce((t,c)=>t+deprecUmaCentral(c),0); }
 function deprecEmpilhadeiras(){
   return _maqArr(DMaq.empilhadeiras).reduce((s,e)=>s+((e.repo>0&&e.vida>0)? e.repo/(e.vida*12):0),0);
 }
@@ -2202,8 +2235,10 @@ function calcMaq(){
     const eDemanda=fracKwh*valorDemanda; // demanda também por kWh — máquina parada não paga
     const energia=eConsumo+eDemanda;
     const fracKg=kgTotal>0 ? kgSetorMaq(s)/kgTotal : 0;
-    const depComum=(deprecCentralVal()+deprecEmpilhadeiras())*fracKg;
-    const dep=deprecSetor(s)+depComum;
+    // empilhadeiras: rateadas por KG entre todas; centrais: cada uma só entre as máquinas que atende
+    const depEmp=deprecEmpilhadeiras()*fracKg;
+    const depCentrais=deprecCentraisParaSetor(s);
+    const dep=deprecSetor(s)+depEmp+depCentrais;
     const dir=diretoSetorMaq(s);
     const ger=ggParaSetorMaq(s);
     const total=energia+dep+dir+ger;
@@ -2311,7 +2346,7 @@ function _maqAbaEnergia(box){
 function _maqAbaDeprec(box){
   let h='<div class="maq-head"><div class="maq-head-t">Depreciação</div><span class="help" onclick="abrirAjuda(&#39;maq_deprec&#39;)">?</span></div>';
   h+='<div class="maq-sub">Por setor</div>';
-  _maqSet().forEach(s=>{
+  _maqSet().filter(s=>!_maqEhCentral(s)).forEach(s=>{
     const cfg=(DMaq.depConfig||{})[s]||{};
     const modo=cfg.modo||'planilha';
     h+='<div class="maq-dep"><div class="maq-dep-cab">'+s+'</div>';
@@ -2323,16 +2358,23 @@ function _maqAbaDeprec(box){
     }
     h+='<div class="maq-dep-res">R$ '+_maqFmt(deprecSetor(s))+'/mês</div></div>';
   });
-  // central
-  const cen=DMaq.central||{};
-  h+='<div class="maq-sub">Central dosadora (rateada por KG)</div>';
-  h+='<div class="maq-dep"><select class="maq-cen-modo"><option value="planilha"'+((cen.modo||'planilha')==='planilha'?' selected':'')+'>Valor fixo</option><option value="reposicao"'+(cen.modo==='reposicao'?' selected':'')+'>Por reposição</option></select>';
-  if(cen.modo==='reposicao'){
-    h+='<div class="maq-row2"><input type="number" id="maq-cen-repo" placeholder="reposição" value="'+(cen.repo||'')+'"><input type="number" id="maq-cen-vida" placeholder="vida (anos)" value="'+(cen.vida||'')+'"></div>';
-  } else {
-    h+='<input type="number" id="maq-cen-val" placeholder="R$/mês" value="'+(DMaq.depCentral||'')+'">';
-  }
-  h+='<div class="maq-dep-res">R$ '+_maqFmt(deprecCentralVal())+'/mês</div></div>';
+  // centrais — uma por central, rateada por KG só entre as máquinas que ela atende (config vem da M.O.)
+  h+='<div class="maq-sub">Centrais dosadoras (rateadas por KG entre as máquinas que cada uma atende)</div>';
+  if(!DMaq.centralDep) DMaq.centralDep={};
+  _maqCentrais().forEach(nome=>{
+    const cd=DMaq.centralDep[nome]||{};
+    const atende=_maqCentralAtende(nome);
+    const atendeTxt = atende.length ? atende.join(', ') : '⚠ nenhuma máquina marcada na M.O. (configure em Mão de obra → esta central abastece quais máquinas)';
+    h+='<div class="maq-dep"><div class="maq-dep-cab">'+nome+'</div>';
+    h+='<div style="font-size:.62rem;color:var(--txt3);margin:-2px 0 6px">Atende: '+atendeTxt+'</div>';
+    h+='<select class="maq-cend-modo" data-c="'+nome+'"><option value="planilha"'+((cd.modo||'planilha')==='planilha'?' selected':'')+'>Valor fixo</option><option value="reposicao"'+(cd.modo==='reposicao'?' selected':'')+'>Por reposição</option></select>';
+    if(cd.modo==='reposicao'){
+      h+='<div class="maq-row2"><input type="number" class="maq-cend-repo" data-c="'+nome+'" placeholder="valor de reposição" value="'+(cd.repo||'')+'"><input type="number" class="maq-cend-vida" data-c="'+nome+'" placeholder="vida (anos)" value="'+(cd.vida||'')+'"></div>';
+    } else {
+      h+='<input type="number" class="maq-cend-val" data-c="'+nome+'" placeholder="R$/mês" value="'+(cd.val||'')+'">';
+    }
+    h+='<div class="maq-dep-res">R$ '+_maqFmt(deprecUmaCentral(nome))+'/mês</div></div>';
+  });
   // empilhadeiras
   h+='<div class="maq-sub">Empilhadeiras (rateadas por KG) <button id="maq-add-emp" class="maq-mini">+ add</button></div>';
   _maqArr(DMaq.empilhadeiras).forEach((e,idx)=>{
@@ -2346,11 +2388,12 @@ function _maqAbaDeprec(box){
   box.querySelectorAll('.maq-dep-val').forEach(i=>{ i.oninput=()=>{ if(!DMaq.deprec)DMaq.deprec={}; DMaq.deprec[i.dataset.s]=parseFloat(i.value)||0; salvarSecaoMaq('deprec'); }; });
   box.querySelectorAll('.maq-dep-repo').forEach(i=>{ i.oninput=()=>{ DMaq.depConfig[i.dataset.s].repo=parseFloat(i.value)||0; salvarSecaoMaq('depConfig'); }; });
   box.querySelectorAll('.maq-dep-vida').forEach(i=>{ i.oninput=()=>{ DMaq.depConfig[i.dataset.s].vida=parseFloat(i.value)||0; salvarSecaoMaq('depConfig'); }; });
-  // central
-  box.querySelector('.maq-cen-modo').onchange=(ev)=>{ if(!DMaq.central)DMaq.central={}; DMaq.central.modo=ev.target.value; salvarSecaoMaq('central'); _maqAbaDeprec(box); };
-  const cv=box.querySelector('#maq-cen-val'); if(cv) cv.oninput=()=>{ DMaq.depCentral=parseFloat(cv.value)||0; salvarSecaoMaq('central'); };
-  const cr=box.querySelector('#maq-cen-repo'); if(cr) cr.oninput=()=>{ DMaq.central.repo=parseFloat(cr.value)||0; salvarSecaoMaq('central'); };
-  const cvi=box.querySelector('#maq-cen-vida'); if(cvi) cvi.oninput=()=>{ DMaq.central.vida=parseFloat(cvi.value)||0; salvarSecaoMaq('central'); };
+  // centrais (uma por central)
+  const _cd=(nome)=>{ if(!DMaq.centralDep)DMaq.centralDep={}; if(!DMaq.centralDep[nome])DMaq.centralDep[nome]={}; return DMaq.centralDep[nome]; };
+  box.querySelectorAll('.maq-cend-modo').forEach(sel=>{ sel.onchange=()=>{ _cd(sel.dataset.c).modo=sel.value; salvarSecaoMaq('centralDep'); _maqAbaDeprec(box); }; });
+  box.querySelectorAll('.maq-cend-val').forEach(i=>{ i.oninput=()=>{ _cd(i.dataset.c).val=parseFloat(i.value)||0; salvarSecaoMaq('centralDep'); }; });
+  box.querySelectorAll('.maq-cend-repo').forEach(i=>{ i.oninput=()=>{ _cd(i.dataset.c).repo=parseFloat(i.value)||0; salvarSecaoMaq('centralDep'); }; });
+  box.querySelectorAll('.maq-cend-vida').forEach(i=>{ i.oninput=()=>{ _cd(i.dataset.c).vida=parseFloat(i.value)||0; salvarSecaoMaq('centralDep'); }; });
   // empilhadeiras
   box.querySelector('#maq-add-emp').onclick=()=>{ if(!DMaq.empilhadeiras)DMaq.empilhadeiras=[]; DMaq.empilhadeiras.push({repo:0,vida:10}); salvarSecaoMaq('empilhadeiras'); _maqAbaDeprec(box); };
   box.querySelectorAll('.maq-emp-repo').forEach(i=>{ i.oninput=()=>{ DMaq.empilhadeiras[i.dataset.i].repo=parseFloat(i.value)||0; salvarSecaoMaq('empilhadeiras'); }; });
