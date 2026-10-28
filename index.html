@@ -207,6 +207,11 @@ main{padding:16px;max-width:680px;margin:0 auto}
 .tr-mat-in{width:100%;background:var(--surf);border:1px solid var(--line);color:var(--txt);border-radius:5px;padding:6px;font-size:.75rem;text-align:center;font-weight:600}
 .tr-mat-in:focus{border-color:var(--rebar);outline:none}
 .tr-mat-custo{text-align:right;font-size:.72rem;font-weight:600;color:var(--txt2);white-space:nowrap}
+.tr-subhdr{font-size:.58rem;color:var(--rebar2);background:rgba(217,118,66,.08);border-radius:5px;padding:4px 8px;margin:2px 0 6px}
+.tr-mat-peca{display:grid;grid-template-columns:1fr auto auto;gap:9px;align-items:center;padding:0 0 7px 0;margin-top:-2px;border-bottom:1px solid rgba(255,255,255,.04);font-size:.62rem}
+.tr-mat-peca .tmp-q{color:var(--txt3)}
+.tr-mat-peca .tmp-r{color:var(--rebar2);font-weight:600;text-align:right;white-space:nowrap}
+.tr-mat-peca .tmp-p{color:var(--txt2);font-weight:700;text-align:right;min-width:44px}
 .tr-hdr{display:grid;grid-template-columns:1fr 76px 74px;gap:9px;font-size:.54rem;color:var(--txt3);text-transform:uppercase;letter-spacing:.04em;padding-bottom:5px;border-bottom:1px solid var(--line);margin-bottom:4px}
 .tr-hdr span:nth-child(2),.tr-hdr span:nth-child(3){text-align:center}
 .tr-hdr span:nth-child(3){text-align:right}
@@ -822,7 +827,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v84</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v85</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -3184,24 +3189,49 @@ function renderTracos(){
     const pb=document.createElement('span');pb.className='tr-peso-calc pb-out';
     pb.textContent=fmt(pesoBatida(t));
     pw.appendChild(pb);body.appendChild(pw);
+    // peça de referência pra calcular "por peça" = primeiro produto do traço
+    const pRef = prods[0] || null;
+    const pesoRef = pRef ? (pRef.pesoPeca||0) : 0;
+    const pbRef = pesoBatida(t);
+    const fatorPeca = pbRef>0 ? (pesoRef/pbRef) : 0; // quantas batidas cabem numa peça
+    const custoPecaRef = pRef ? custoPeca(t, pesoRef) : 0; // R$ de MP por peça (só materiais do traço)
     // header colunas
     const h=document.createElement('div');h.className='tr-hdr';
-    h.innerHTML='<span>Material</span><span>Qtde</span><span>Custo</span>';
+    h.innerHTML='<span>Material</span><span>Qtde</span><span>Custo batida</span>';
     body.appendChild(h);
+    // sub-cabeçalho explicando a base da peça
+    if(pRef){
+      const sh=document.createElement('div');sh.className='tr-subhdr';
+      sh.innerHTML=`Por peça = <b>${pRef.nome}</b> (${fmt0(pesoRef)} kg) · quanto cada material representa numa peça`;
+      body.appendChild(sh);
+    }
     // materiais
     KEYS.forEach(k=>{
       const m=D.agregados[k];
+      const qtd=t.materiais[k]||0;
+      const custoBatida=qtd*custoUnit(m);
       const row=document.createElement('div');row.className='tr-mat';
       const nome=document.createElement('span');nome.className='tr-mat-nome';
       nome.innerHTML=`${LBL[k]} <span style="font-size:.55rem;color:var(--txt3)">${m.um}</span>`;
       const inp=document.createElement('input');inp.className='tr-mat-in';inp.type='number';inp.step='1';
-      inp.value=t.materiais[k]||0;
+      inp.value=qtd;
       inp.oninput=()=>{t.materiais[k]=parseFloat(inp.value)||0;refreshTraco(div,t);};
       const custo=document.createElement('span');custo.className='tr-mat-custo';
       custo.dataset.mat=k;
-      custo.textContent='R$ '+fmt((t.materiais[k]||0)*custoUnit(m));
+      custo.textContent='R$ '+fmt(custoBatida);
       row.appendChild(nome);row.appendChild(inp);row.appendChild(custo);
       body.appendChild(row);
+      // sub-linha "por peça": kg(ou ml)/peça · R$/peça · % do custo da peça
+      if(pRef){
+        const kgPeca = qtd*fatorPeca;
+        const rsPeca = custoBatida*fatorPeca;
+        const pctPeca = custoPecaRef>0 ? (rsPeca/custoPecaRef*100) : 0;
+        const sub=document.createElement('div');sub.className='tr-mat-peca';sub.dataset.mat=k;
+        sub.innerHTML = qtd>0
+          ? `<span class="tmp-q">${fmt(kgPeca)} ${m.um.toLowerCase()}/peça</span><span class="tmp-r">R$ ${fmt3(rsPeca)}</span><span class="tmp-p">${pctPeca.toFixed(1)}%</span>`
+          : `<span class="tmp-q" style="color:var(--txt3)">—</span><span></span><span></span>`;
+        body.appendChild(sub);
+      }
     });
     // total
     const tot=document.createElement('div');tot.className='tr-total';
@@ -3290,6 +3320,25 @@ function refreshTraco(div,t){
   div.querySelectorAll('.tr-mat-custo').forEach(el=>{
     const k=el.dataset.mat;
     el.textContent='R$ '+fmt((t.materiais[k]||0)*custoUnit(D.agregados[k]));
+  });
+  // sub-linha "por peça" (kg/peça · R$/peça · %) — recalcula ao editar
+  const prodsR=D.produtos.filter(p=>p.traco===t.id);
+  const pRef2=prodsR[0]||null;
+  const pesoRef2=pRef2?(pRef2.pesoPeca||0):0;
+  const fator2=pb>0?(pesoRef2/pb):0;
+  const custoPecaRef2=pRef2?custoPeca(t,pesoRef2):0;
+  div.querySelectorAll('.tr-mat-peca').forEach(sub=>{
+    const k=sub.dataset.mat; const m=D.agregados[k];
+    const qtd=t.materiais[k]||0;
+    const custoBatida=qtd*custoUnit(m);
+    if(!pRef2){ sub.innerHTML=''; return; }
+    if(qtd>0){
+      const kgPeca=qtd*fator2, rsPeca=custoBatida*fator2;
+      const pctPeca=custoPecaRef2>0?(rsPeca/custoPecaRef2*100):0;
+      sub.innerHTML=`<span class="tmp-q">${fmt(kgPeca)} ${m.um.toLowerCase()}/peça</span><span class="tmp-r">R$ ${fmt3(rsPeca)}</span><span class="tmp-p">${pctPeca.toFixed(1)}%</span>`;
+    } else {
+      sub.innerHTML=`<span class="tmp-q" style="color:var(--txt3)">—</span><span></span><span></span>`;
+    }
   });
   // custo por produto (layout novo: peso editável + custo)
   const prodsDoTraco=D.produtos.filter(p=>p.traco===t.id);
