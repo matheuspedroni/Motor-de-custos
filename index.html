@@ -486,6 +486,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
 #mo-container .pr-del{background:none;border:none;color:#e0603c;font-size:16px;cursor:pointer;line-height:1;padding:0 4px}
 #mo-container .pr-lanc-outro{opacity:.72}
 #mo-container .pr-lanc-mes{display:inline-block;background:rgba(90,140,255,.18);color:#8ab4ff;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;margin-right:4px}
+#mo-container .pr-lanc-mes.atual{background:rgba(232,112,28,.2);color:#e8955f}
 #mo-container .pr-add{display:flex;gap:6px;align-items:center;margin-top:4px}
 #mo-container .pr-data{flex:1;background:#1a1f26;color:#e8eaed;border:1px solid #333;border-radius:5px;padding:5px;font-size:12px}
 #mo-container .pr-qtd{width:70px;background:#1a1f26;color:#e8eaed;border:1px solid #333;border-radius:5px;padding:5px;font-size:12px}
@@ -827,7 +828,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v85</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v86</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -4558,9 +4559,10 @@ function painelProducaoReal(setor, mesRef){
         const mesLanc=(diasDoLanc(o.l)[0]||'').slice(0,7);
         const doMesAtual=mesLanc===mesRef;
         const desc = modo==='periodo'
-          ? (nd+' dia'+(nd>1?'s':'')+' ('+resumoDias(o.l)+')')
+          ? (nd+' dia'+(nd>1?'s':'')+' (dia'+(nd>1?'s':'')+' '+resumoDias(o.l)+')')
           : fmtData(o.l.data||(diasDoLanc(o.l)[0]));
-        const tagMes = doMesAtual ? '' : '<span class="pr-lanc-mes">'+mesRefLabel(mesLanc)+'</span> ';
+        // mostra SEMPRE o mês de cada lançamento (não só dos outros meses) — evita ambiguidade
+        const tagMes = '<span class="pr-lanc-mes'+(doMesAtual?' atual':'')+'">'+mesRefLabel(mesLanc)+'</span> ';
         li.innerHTML='<span>'+tagMes+desc+'</span><span>'+fmtNum(o.l.qtd)+' pç</span>';
         if(!doMesAtual) li.classList.add('pr-lanc-outro');
         const del=document.createElement('button');del.className='pr-del';del.textContent='×';del.title='Apagar este lançamento';
