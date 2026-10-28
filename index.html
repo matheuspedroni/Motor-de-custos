@@ -822,7 +822,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v83</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v84</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -1998,8 +1998,10 @@ function salvarSecaoMaq(sec){
 
 // ---- garante __moD e __mpD (produção ideal + pesos) sem precisar abrir as abas ----
 async function _maqGarantirDados(){
-  // M.O. (produção ideal por setor)
-  if(!window.__moD){
+  // M.O. — precisa estar carregada COM prodReal (a aba Máquina calcula por produção real).
+  // Recarrega se __moD não existe OU se veio sem prodReal (ex: setado por outro módulo antes).
+  const _moIncompleto = window.__moD && !window.__moD.prodReal;
+  if(!window.__moD || _moIncompleto){
     if(window.__MAQ_DEMO || !(typeof db!=='undefined' && db && typeof fb!=='undefined' && fb)){
       try{
         const blob=JSON.parse(localStorage.getItem('pedroni:custos/mo_bloco')||'null');
@@ -2012,7 +2014,8 @@ async function _maqGarantirDados(){
     } else {
       try{
         const base = JSON.parse(JSON.stringify(DMO_DEFAULT));
-        const MO_SECS=['pessoas','produtos','tipoLanc','jornada','diasIdeal','centrais'];
+        // inclui prodReal (produção real) — a aba Máquina depende dela pro cálculo por KG/horas
+        const MO_SECS=['pessoas','produtos','tipoLanc','jornada','diasIdeal','centrais','prodReal','consumo'];
         for(const s of MO_SECS){
           try{
             const snap=await new Promise((res,rej)=>fb.onValue(fb.ref(db,'custos/mo/'+s), res, rej, {onlyOnce:true}));
