@@ -492,6 +492,13 @@ main{padding:16px;max-width:680px;margin:0 auto}
 #mo-container .pr-sobra-dica{color:#8a94a0;font-size:10.5px}
 #mo-container .pr-sobra-tag{display:inline-block;background:rgba(180,120,255,.18);color:#c4a0ff;border-radius:4px;padding:0 6px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.03em}
 #mo-container .pr-lanc-sobra{display:inline-block;background:rgba(180,120,255,.18);color:#c4a0ff;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;margin-right:4px}
+#mo-container .pr-lanc-frac{display:inline-block;background:rgba(90,200,160,.16);color:#5fd0a0;border-radius:4px;padding:1px 6px;font-size:10px;font-weight:700;letter-spacing:.02em;margin-right:4px}
+#mo-container .pr-frac{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-top:8px}
+#mo-container .pr-frac-lab{font-size:11px;color:#8a94a0}
+#mo-container .pr-frac-b{background:#222a33;border:1px solid #2e3640;color:#bcc;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer}
+#mo-container .pr-frac-b:hover{background:#2b3440}
+#mo-container .pr-frac-b.on{background:#e8701c;border-color:#e8701c;color:#fff;font-weight:700}
+#mo-container .pr-frac-in{width:60px;background:#1a1f26;color:#e8eaed;border:1px solid #333;border-radius:5px;padding:4px 6px;font-size:12px;text-align:center}
 #mo-container .pr-add{display:flex;gap:6px;align-items:center;margin-top:4px}
 #mo-container .pr-data{flex:1;background:#1a1f26;color:#e8eaed;border:1px solid #333;border-radius:5px;padding:5px;font-size:12px}
 #mo-container .pr-qtd{width:70px;background:#1a1f26;color:#e8eaed;border:1px solid #333;border-radius:5px;padding:5px;font-size:12px}
@@ -833,7 +840,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v87</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v88</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -4449,8 +4456,13 @@ function resumoDias(l){
 function baseEsperada(setor, produto, mesRef, prodDiaIdeal){
   const lancs=((Dmo.prodReal&&Dmo.prodReal[setor]&&Dmo.prodReal[setor][produto])||[]);
   let dias=0;
-  // lançamentos de SOBRA não contam dias (não foram dia dedicado), então não entram na base de eficiência
-  lancs.forEach(l=>{ if(l && l.sobra) return; dias += diasNoMes(l, mesRef); });
+  // SOBRA não conta dias. Cada lançamento conta pela FRAÇÃO do dia que ocupou (padrão 1 = dia inteiro),
+  // porque num mesmo dia podem ser produzidos vários tipos (ex: meio turno de cada).
+  lancs.forEach(l=>{
+    if(!l || l.sobra) return;
+    const frac=(l.frac!=null && l.frac>0)?l.frac:1;
+    dias += diasNoMes(l, mesRef) * frac;
+  });
   return dias>0 ? dias*prodDiaIdeal : 0;
 }
 // dias (ISO) que JÁ TÊM produção lançada para um setor|produto — para pintar de verde no calendário
@@ -4522,6 +4534,28 @@ function _mkSobraCheck(chave){
   lbl.appendChild(sp);
   return lbl;
 }
+// seletor de FRAÇÃO do dia (quanto do dia este produto ocupou) — p/ quando faz vários tipos no mesmo dia
+function _mkFracSelect(chave){
+  const wrap=document.createElement('div');wrap.className='pr-frac';
+  const lab=document.createElement('span');lab.className='pr-frac-lab';lab.textContent='Quanto do dia:';
+  wrap.appendChild(lab);
+  const opcoes=[{v:1,t:'Dia inteiro'},{v:0.5,t:'½ dia'},{v:1/3,t:'⅓'},{v:0.25,t:'¼'}];
+  const atual=(_prNovoLanc[chave]&&_prNovoLanc[chave].frac!=null)?_prNovoLanc[chave].frac:1;
+  opcoes.forEach(o=>{
+    const b=document.createElement('button');b.type='button';b.className='pr-frac-b'+(Math.abs(atual-o.v)<0.001?' on':'');
+    b.textContent=o.t; b.dataset.v=o.v;
+    b.onclick=()=>{ _prNovoLanc[chave]=_prNovoLanc[chave]||{}; _prNovoLanc[chave].frac=o.v;
+      wrap.querySelectorAll('.pr-frac-b').forEach(x=>x.classList.remove('on')); b.classList.add('on');
+      inp.value=''; };
+    wrap.appendChild(b);
+  });
+  // campo livre (ex: 0,4)
+  const inp=document.createElement('input');inp.type='number';inp.step='0.05';inp.min='0.05';inp.max='1';inp.className='pr-frac-in';inp.placeholder='outro';
+  if(!opcoes.some(o=>Math.abs(atual-o.v)<0.001)) inp.value=atual;
+  inp.oninput=()=>{ const v=parseFloat(inp.value); if(v>0&&v<=1){ _prNovoLanc[chave]=_prNovoLanc[chave]||{}; _prNovoLanc[chave].frac=v; wrap.querySelectorAll('.pr-frac-b').forEach(x=>x.classList.remove('on')); } };
+  wrap.appendChild(inp);
+  return wrap;
+}
 function painelProducaoReal(setor, mesRef){
   const wrap=document.createElement('div');wrap.className='pr-painel';
   const modo = tipoLancDe(setor); // 'diario' ou 'periodo'
@@ -4584,7 +4618,9 @@ function painelProducaoReal(setor, mesRef){
         // mostra SEMPRE o mês de cada lançamento (não só dos outros meses) — evita ambiguidade
         const tagMes = '<span class="pr-lanc-mes'+(doMesAtual?' atual':'')+'">'+mesRefLabel(mesLanc)+'</span> ';
         const tagSobra = (o.l && o.l.sobra) ? '<span class="pr-lanc-sobra">sobra</span> ' : '';
-        li.innerHTML='<span>'+tagMes+tagSobra+desc+'</span><span>'+fmtNum(o.l.qtd)+' pç</span>';
+        const fr=(o.l && o.l.frac!=null && o.l.frac>0 && o.l.frac!==1)?o.l.frac:null;
+        const fracTxt = fr ? '<span class="pr-lanc-frac">'+(Math.abs(fr-0.5)<0.001?'½ dia':(Math.abs(fr-1/3)<0.01?'⅓ dia':(Math.abs(fr-0.25)<0.001?'¼ dia':(fr).toLocaleString('pt-BR',{maximumFractionDigits:2})+' dia')))+'</span> ' : '';
+        li.innerHTML='<span>'+tagMes+tagSobra+fracTxt+desc+'</span><span>'+fmtNum(o.l.qtd)+' pç</span>';
         if(!doMesAtual) li.classList.add('pr-lanc-outro');
         const del=document.createElement('button');del.className='pr-del';del.textContent='×';del.title='Apagar este lançamento';
         del.onclick=()=>{
@@ -4639,16 +4675,21 @@ function painelProducaoReal(setor, mesRef){
       bAdd.onclick=()=>{
         const data=dData.value; const qtd=parseFloat(dQtd.value)||0;
         const sobra=!!(_prNovoLanc[chave]&&_prNovoLanc[chave].sobra);
+        const frac=(_prNovoLanc[chave]&&_prNovoLanc[chave].frac!=null)?_prNovoLanc[chave].frac:1;
         if(!data||qtd<=0){ alert('Informe a data e a quantidade produzida.'); return; }
         if(!Dmo.prodReal) Dmo.prodReal={};
         if(!Dmo.prodReal[setor]) Dmo.prodReal[setor]={};
         if(!Dmo.prodReal[setor][p.nome]) Dmo.prodReal[setor][p.nome]=[];
-        Dmo.prodReal[setor][p.nome].push(sobra?{data, qtd, sobra:true}:{data, qtd});
+        const lanc={data, qtd};
+        if(sobra) lanc.sobra=true;
+        if(frac && frac!==1) lanc.frac=frac; // só grava se não for dia inteiro
+        Dmo.prodReal[setor][p.nome].push(lanc);
         _prNovoLanc[chave]={};
         salvarSecaoMO('prodReal'); recalc();
       };
       add.appendChild(dData); add.appendChild(dQtd); add.appendChild(bAdd);
       bloco.appendChild(add);
+      bloco.appendChild(_mkFracSelect(chave));
       bloco.appendChild(_mkSobraCheck(chave));
       // tira verde: dias do mês de referência que já têm produção lançada deste produto
       (function(){
