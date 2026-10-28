@@ -840,7 +840,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v88</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v89</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -1702,24 +1702,34 @@ function _relDiasDoLanc(l){ if(!l) return []; if(Array.isArray(l.dias)) return l
 function _relDiasNoMes(l, mesRef){ return _relDiasDoLanc(l).filter(d=>d&&d.slice(0,7)===mesRef).length; }
 function _relLancNoMes(l, mesRef){ return _relDiasDoLanc(l).some(d=>d&&d.slice(0,7)===mesRef); }
 
-// produção real de um produto no mês
-function _relProdRealMes(setor, produto, mesRef){
+// produção real de um produto no mês. semSobra=true exclui lançamentos de sobra (p/ eficiência).
+function _relProdRealMes(setor, produto, mesRef, semSobra){
   const D=_relDmo(); if(!D||!D.prodReal) return 0;
   const lancs=(D.prodReal[setor]&&D.prodReal[setor][produto])||[];
-  return lancs.filter(l=>_relLancNoMes(l,mesRef)).reduce((s,l)=>s+(parseFloat(l.qtd)||0),0);
+  return lancs.filter(l=>_relLancNoMes(l,mesRef))
+              .filter(l=>!(semSobra && l && l.sobra))
+              .reduce((s,l)=>s+(parseFloat(l.qtd)||0),0);
 }
-// base esperada = dias trabalhados no produto × capacidade diária
+// base esperada = (dias × fração do dia) × capacidade diária; SOBRA não entra.
 function _relBaseEsperada(setor, produto, mesRef, prodDiaIdeal){
   const D=_relDmo(); if(!D||!D.prodReal) return 0;
   const lancs=(D.prodReal[setor]&&D.prodReal[setor][produto])||[];
-  let dias=0; lancs.forEach(l=>{ dias+=_relDiasNoMes(l,mesRef); });
+  let dias=0; lancs.forEach(l=>{
+    if(!l || l.sobra) return;
+    const frac=(l.frac!=null && l.frac>0)?l.frac:1;
+    dias+=_relDiasNoMes(l,mesRef)*frac;
+  });
   return dias>0 ? dias*prodDiaIdeal : 0;
 }
-// dias trabalhados de um produto no mês
+// dias trabalhados de um produto no mês (em frações de dia; SOBRA não conta)
 function _relDiasProduto(setor, produto, mesRef){
   const D=_relDmo(); if(!D||!D.prodReal) return 0;
   const lancs=(D.prodReal[setor]&&D.prodReal[setor][produto])||[];
-  let dias=0; lancs.forEach(l=>{ dias+=_relDiasNoMes(l,mesRef); });
+  let dias=0; lancs.forEach(l=>{
+    if(!l || l.sobra) return;
+    const frac=(l.frac!=null && l.frac>0)?l.frac:1;
+    dias+=_relDiasNoMes(l,mesRef)*frac;
+  });
   return dias;
 }
 
@@ -1758,19 +1768,20 @@ function _relDadosMes(mesRef){
   let totalReal=0;
   (D.familias||[]).filter(f=>!_relEhCentral(f)).forEach(f=>{
     const prods=[];
-    let realSetor=0, baseSetor=0;
+    let realSetor=0, baseSetor=0, realEfSetor=0;
     (D.produtos[f]||[]).forEach(p=>{
-      const real=_relProdRealMes(f,p.nome,mesRef);
+      const real=_relProdRealMes(f,p.nome,mesRef);         // total (com sobra) — exibição/produção
+      const realEf=_relProdRealMes(f,p.nome,mesRef,true);  // sem sobra — eficiência
       const base=_relBaseEsperada(f,p.nome,mesRef,p.prodDia||0);
       const diasP=_relDiasProduto(f,p.nome,mesRef);
       if(real>0||base>0){
-        prods.push({nome:p.nome, real, base, dias:diasP, prodDia:p.prodDia||0, efic: base>0?real/base:0});
-        realSetor+=real; baseSetor+=base;
+        prods.push({nome:p.nome, real, realEf, base, dias:diasP, prodDia:p.prodDia||0, efic: base>0?realEf/base:0});
+        realSetor+=real; baseSetor+=base; realEfSetor+=realEf;
       }
     });
     if(prods.length){
       const ch=chSetor[f]||{folha:0,horas:0,custoHora:0};
-      const efSetor = baseSetor>0 ? realSetor/baseSetor : 0;
+      const efSetor = baseSetor>0 ? realEfSetor/baseSetor : 0;
       const absorvido = ch.folha*Math.min(efSetor,1);
       const ocioso = Math.max(ch.folha-absorvido,0);
       setores.push({setor:f, prods, real:realSetor, base:baseSetor, efic:efSetor, folha:ch.folha, absorvido, ocioso});
