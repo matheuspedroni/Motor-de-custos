@@ -269,6 +269,15 @@ main{padding:16px;max-width:680px;margin:0 auto}
 .hl-val{text-align:right;font-weight:600}
 .hl-var{text-align:right;font-weight:700;font-size:.7rem}
 .hl-var.up{color:var(--bad)}.hl-var.dn{color:var(--good)}.hl-var.eq{color:var(--txt3)}
+.hl-q{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:rgba(217,118,66,.18);border:1px solid rgba(217,118,66,.5);color:#e8955f;font-size:.62rem;font-weight:800;cursor:pointer;margin-left:5px;vertical-align:middle;padding:0}
+.hl-q:hover{background:rgba(217,118,66,.35)}
+.hl-motivo{grid-column:1/-1;background:rgba(90,140,255,.06);border-left:2px solid rgba(217,118,66,.6);border-radius:0 6px 6px 0;padding:8px 10px;margin:2px 0 8px;font-size:.68rem;color:var(--txt2)}
+.hl-motivo .hm-tit{font-weight:700;color:var(--txt);margin-bottom:4px;font-size:.66rem;text-transform:uppercase;letter-spacing:.03em}
+.hl-motivo .hm-item{padding:2px 0;line-height:1.4}
+.hl-motivo .hm-item .up{color:var(--bad);font-weight:700}
+.hl-motivo .hm-item .dn{color:var(--good);font-weight:700}
+.hl-motivo .hm-val{color:var(--txt3);font-size:.64rem}
+.hl-motivo .hm-mais{color:var(--txt3);font-size:.64rem;margin-top:3px;font-style:italic}
 .chart{position:relative;height:150px;margin:6px 0 22px 34px}
 .ch-grid{position:absolute;left:0;right:0;border-top:1px dashed var(--line);opacity:.5}
 .ch-ylab{position:absolute;left:-34px;font-size:.53rem;color:var(--txt3);transform:translateY(-50%);width:30px;text-align:right}
@@ -813,7 +822,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v82</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v83</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -3523,6 +3532,66 @@ function custoProdutoEm(p,dataISO){
   }
   return mp+aco+emb;
 }
+// ---- EXPLICAÇÃO DA VARIAÇÃO (o "?" de cada data) ----
+// composição de custo por componente numa data, conforme o nível
+function _histComposicao(nivel, item, dataISO){
+  const comp={}; // {nomeComponente: custoR$}
+  if(nivel==='material'){
+    comp[matPorChave(item)?.nome||item]=custoUnitEm(item,dataISO);
+  } else if(nivel==='traco'){
+    const t=item;
+    KEYS.forEach(k=>{ const c=(t.materiais[k]||0)*custoUnitEm(k,dataISO); if(c>0) comp[matPorChave(k)?.nome||k]=c; });
+  } else { // produto
+    const p=item;
+    const t=D.tracos.find(x=>x.id===p.traco);
+    if(t && t.pesoTraco>0){
+      const fator=p.pesoPeca/t.pesoTraco;
+      KEYS.forEach(k=>{ const c=(t.materiais[k]||0)*custoUnitEm(k,dataISO)*fator; if(c>0) comp[matPorChave(k)?.nome||k]=c; });
+    }
+    if(p.aco) Object.keys(p.aco).forEach(tipo=>{
+      const idx=D.aco.findIndex(a=>a.nome===tipo);
+      if(idx>=0){ const c=(p.aco[tipo]||0)*custoUnitEm('aco_'+idx,dataISO); if(c>0) comp['Aço '+tipo]=c; }
+    });
+    if(p.pecasPalete>0){
+      const pp=p.pecasPalete;
+      const partes={'Palete':custoUnitEm('emb_3',dataISO),'Selo':(p.qtdeSelo||0)*custoUnitEm('emb_2',dataISO),'Fita':(p.qtdeFita||0)*custoUnitEm('emb_1',dataISO),'Filme':(p.qtdeFilme||0)*custoUnitEm('emb_0',dataISO)};
+      Object.keys(partes).forEach(nm=>{ const c=partes[nm]/pp; if(c>0) comp['Emb. '+nm]=c; });
+    }
+  }
+  return comp;
+}
+// texto explicando o que mudou entre a data anterior e a atual
+function _histMotivo(nivel, item, dataAtual, dataAnterior){
+  // nível material: mostra a compra que entrou nessa data
+  if(nivel==='material'){
+    const compra=(comprasDe(item)||[]).find(c=>c.data===dataAtual);
+    if(compra){
+      let txt='Nova compra registrada em '+fmtDataLonga(dataAtual)+': R$ '+fmt(compra.preco)+'/'+(matPorChave(item)?.unidCompra||'un');
+      if(compra.forn) txt+=' · '+compra.forn;
+      return txt;
+    }
+    return 'Preço alterado em '+fmtDataLonga(dataAtual)+'.';
+  }
+  // traço/produto: compara composição e aponta o(s) componente(s) que mais mexeram
+  const antes=_histComposicao(nivel,item,dataAnterior);
+  const agora=_histComposicao(nivel,item,dataAtual);
+  const nomes=new Set([...Object.keys(antes),...Object.keys(agora)]);
+  const difs=[];
+  nomes.forEach(nm=>{
+    const a=antes[nm]||0, b=agora[nm]||0, d=b-a;
+    if(Math.abs(d)>0.0001) difs.push({nm,a,b,d});
+  });
+  if(!difs.length) return 'Sem mudança nos componentes nesta data.';
+  difs.sort((x,y)=>Math.abs(y.d)-Math.abs(x.d));
+  const linhas=difs.slice(0,4).map(o=>{
+    const pct=o.a>0?((o.d/o.a)*100):100;
+    const dir=o.d>0?'subiu':'caiu';
+    const seta=o.d>0?'▲':'▼';
+    return '<div class="hm-item"><span class="'+(o.d>0?'up':'dn')+'">'+seta+'</span> <b>'+o.nm+'</b> '+dir+' '+(o.a>0?Math.abs(pct).toFixed(1)+'%':'(novo)')+' <span class="hm-val">(R$ '+fmt(o.a)+' → R$ '+fmt(o.b)+')</span></div>';
+  }).join('');
+  const resto=difs.length>4?'<div class="hm-mais">+ '+(difs.length-4)+' outro(s) componente(s)</div>':'';
+  return '<div class="hm-tit">O que mudou nesta data:</div>'+linhas+resto;
+}
 // todas as datas de compra relevantes (para plotar)
 const HIST_DATA_CORTE='2026-06-23'; // histórico exibido a partir desta data (compras antigas ficam salvas, só não aparecem)
 function datasRelevantes(chaves){
@@ -3655,27 +3724,39 @@ function renderHist(){
     ${grafico(pontos, unidade)}
   </div>`;
 
-  // TABELA do histórico: data, valor e variação % vs ponto anterior
+  // TABELA do histórico: data, valor, variação % e "?" explicando a mudança
   if(pontos.length){
+    // item de referência pro _histMotivo conforme o nível
+    const itemRef = hNivel==='material' ? hItem
+      : (hNivel==='traco' ? (D.tracos.find(x=>x.id===+hItem)||D.tracos[0]) : D.produtos[+hItem]);
+    window.__histMotivos = {}; // guarda o texto de cada linha por índice
     let linhas='';
     for(let i=pontos.length-1;i>=0;i--){ // mais recente no topo
       const p=pontos[i];
       const ant = i>0 ? pontos[i-1].v : null;
-      let varTxt='—', vcls='eq';
+      let varTxt='—', vcls='eq'; let mudou=false;
       if(ant!=null && ant>0){
         const dv=(p.v-ant)/ant;
         if(Math.abs(dv)<0.0005){ varTxt='0,0%'; vcls='eq'; }
-        else { varTxt=(dv>0?'▲ +':'▼ ')+(dv*100).toFixed(1)+'%'; vcls=dv>0?'up':'dn'; }
+        else { varTxt=(dv>0?'▲ +':'▼ ')+(dv*100).toFixed(1)+'%'; vcls=dv>0?'up':'dn'; mudou=true; }
+      }
+      // botão "?" só quando houve mudança de valor (ou é nível material com compra nessa data)
+      let btnAjuda='';
+      const temCompraMat = hNivel==='material' && (comprasDe(hItem)||[]).some(c=>c.data===p.d);
+      if(mudou || temCompraMat){
+        try{ window.__histMotivos[i] = _histMotivo(hNivel, itemRef, p.d, i>0?pontos[i-1].d:p.d); }catch(e){ window.__histMotivos[i]='—'; }
+        btnAjuda='<button class="hl-q" onclick="__toggleHistMotivo('+i+')" title="O que mudou?">?</button>';
       }
       linhas+=`<div class="hl-linha">
-        <span class="hl-data">${fmtDataLonga(p.d)}</span>
+        <span class="hl-data">${fmtDataLonga(p.d)} ${btnAjuda}</span>
         <span class="hl-val mono">R$ ${fmt(p.v)}</span>
         <span class="hl-var ${vcls}">${varTxt}</span>
-      </div>`;
+      </div>
+      <div class="hl-motivo" id="hl-motivo-${i}" style="display:none">${window.__histMotivos[i]||''}</div>`;
     }
     html+=`<div class="chart-card">
       <div class="chart-t">Histórico em lista</div>
-      <div class="chart-s">${unidade} · variação em relação à data anterior</div>
+      <div class="chart-s">${unidade} · clique no <b>?</b> para ver o que mudou em cada data</div>
       <div class="hl-tab">
         <div class="hl-cab"><span>Data</span><span>Valor</span><span>Variação</span></div>
         ${linhas}
@@ -3827,6 +3908,11 @@ function renderAll(){
   try{ renderAcoEmb(); }catch(e){ console.warn('renderAcoEmb', e.message); }
 }
 window.__mpRenderAll = renderAll; // expõe pro reRender (que vive em outro escopo)
+window.__toggleHistMotivo = function(i){
+  const el=document.getElementById('hl-motivo-'+i);
+  if(!el) return;
+  el.style.display = (el.style.display==='none'||!el.style.display) ? 'block' : 'none';
+};
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
   document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
   document.querySelectorAll('.view').forEach(x=>x.classList.remove('on'));
