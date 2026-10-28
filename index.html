@@ -840,7 +840,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v89</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v91</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -1696,6 +1696,17 @@ function _relFmtNum(n){ n=Number(n)||0; return n.toLocaleString('pt-BR',{maximum
 function _relFmt(n){ n=Number(n)||0; return n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function _relMesLabel(mesRef){ try{const[a,m]=mesRef.split('-');const nn=['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];return nn[+m]+'/'+a;}catch(e){return mesRef;} }
 function _relEhCentral(f){ return /^central/i.test(f); }
+// Setores em que a eficiência usa a OCUPAÇÃO (% do dia) do produto como padrão:
+// base = produção/dia × (fração_lançada ÷ ocupação). Assim 1 número serve p/ custo E eficiência.
+function _usaOcupNaEficiencia(setor){ return /fossa|caixa/i.test(setor||''); }
+// ocupação (0..1) de um produto; padrão 1 se não houver
+function _ocupProduto(setor, produto){
+  const D=_relDmo(); if(!D||!D.produtos) return 1;
+  const arr=D.produtos[setor]||[];
+  const p=arr.find(x=>x && x.nome===produto);
+  const o=p?parseFloat(p.ocup):NaN;
+  return (o>0 && o<=1)?o:1;
+}
 
 // dias de um lançamento (período tem .dias[]; diário tem .data)
 function _relDiasDoLanc(l){ if(!l) return []; if(Array.isArray(l.dias)) return l.dias; if(l.data) return [l.data]; return []; }
@@ -1710,16 +1721,28 @@ function _relProdRealMes(setor, produto, mesRef, semSobra){
               .filter(l=>!(semSobra && l && l.sobra))
               .reduce((s,l)=>s+(parseFloat(l.qtd)||0),0);
 }
-// base esperada = (dias × fração do dia) × capacidade diária; SOBRA não entra.
+// base esperada de eficiência. SOBRA não entra.
+// - Setores com ocupação (Fossas/Caixas): base = produção/dia × (fração ÷ ocupação) por lançamento.
+//   (a produção/dia é o que se faz na fatia padrão "ocupação"; se o tempo gasto bate com o padrão, dá 100%)
+// - Demais setores: base = (dias × fração) × capacidade/dia.
 function _relBaseEsperada(setor, produto, mesRef, prodDiaIdeal){
   const D=_relDmo(); if(!D||!D.prodReal) return 0;
   const lancs=(D.prodReal[setor]&&D.prodReal[setor][produto])||[];
-  let dias=0; lancs.forEach(l=>{
+  const usaOcup=_usaOcupNaEficiencia(setor);
+  const ocup=usaOcup?_ocupProduto(setor,produto):1;
+  let base=0;
+  lancs.forEach(l=>{
     if(!l || l.sobra) return;
+    const nDias=_relDiasNoMes(l,mesRef);
+    if(nDias<=0) return;
     const frac=(l.frac!=null && l.frac>0)?l.frac:1;
-    dias+=_relDiasNoMes(l,mesRef)*frac;
+    if(usaOcup){
+      base += prodDiaIdeal * (frac/ocup) * nDias;
+    } else {
+      base += prodDiaIdeal * frac * nDias;
+    }
   });
-  return dias>0 ? dias*prodDiaIdeal : 0;
+  return base;
 }
 // dias trabalhados de um produto no mês (em frações de dia; SOBRA não conta)
 function _relDiasProduto(setor, produto, mesRef){
@@ -4466,15 +4489,19 @@ function resumoDias(l){
 // diário: dias com lançamento; período: soma dos dias marcados dos lançamentos do mês
 function baseEsperada(setor, produto, mesRef, prodDiaIdeal){
   const lancs=((Dmo.prodReal&&Dmo.prodReal[setor]&&Dmo.prodReal[setor][produto])||[]);
-  let dias=0;
-  // SOBRA não conta dias. Cada lançamento conta pela FRAÇÃO do dia que ocupou (padrão 1 = dia inteiro),
-  // porque num mesmo dia podem ser produzidos vários tipos (ex: meio turno de cada).
+  const usaOcup=_usaOcupNaEficiencia(setor);
+  const ocup=usaOcup?_ocupProduto(setor,produto):1;
+  let base=0;
+  // SOBRA não conta. Fossas/Caixas: base = produção/dia × (fração ÷ ocupação).
+  // Demais: base = (dias × fração) × capacidade/dia.
   lancs.forEach(l=>{
     if(!l || l.sobra) return;
+    const nDias=diasNoMes(l, mesRef);
+    if(nDias<=0) return;
     const frac=(l.frac!=null && l.frac>0)?l.frac:1;
-    dias += diasNoMes(l, mesRef) * frac;
+    base += usaOcup ? prodDiaIdeal*(frac/ocup)*nDias : prodDiaIdeal*frac*nDias;
   });
-  return dias>0 ? dias*prodDiaIdeal : 0;
+  return base;
 }
 // dias (ISO) que JÁ TÊM produção lançada para um setor|produto — para pintar de verde no calendário
 function _diasLancados(setor, produto){
@@ -4550,7 +4577,7 @@ function _mkFracSelect(chave){
   const wrap=document.createElement('div');wrap.className='pr-frac';
   const lab=document.createElement('span');lab.className='pr-frac-lab';lab.textContent='Quanto do dia:';
   wrap.appendChild(lab);
-  const opcoes=[{v:1,t:'Dia inteiro'},{v:0.5,t:'½ dia'},{v:1/3,t:'⅓'},{v:0.25,t:'¼'}];
+  const opcoes=[{v:1,t:'Dia inteiro'},{v:0.5,t:'½ dia'},{v:1/3,t:'⅓'},{v:0.25,t:'¼'},{v:0.2,t:'⅕'},{v:1/6,t:'⅙'}];
   const atual=(_prNovoLanc[chave]&&_prNovoLanc[chave].frac!=null)?_prNovoLanc[chave].frac:1;
   opcoes.forEach(o=>{
     const b=document.createElement('button');b.type='button';b.className='pr-frac-b'+(Math.abs(atual-o.v)<0.001?' on':'');
@@ -4630,7 +4657,15 @@ function painelProducaoReal(setor, mesRef){
         const tagMes = '<span class="pr-lanc-mes'+(doMesAtual?' atual':'')+'">'+mesRefLabel(mesLanc)+'</span> ';
         const tagSobra = (o.l && o.l.sobra) ? '<span class="pr-lanc-sobra">sobra</span> ' : '';
         const fr=(o.l && o.l.frac!=null && o.l.frac>0 && o.l.frac!==1)?o.l.frac:null;
-        const fracTxt = fr ? '<span class="pr-lanc-frac">'+(Math.abs(fr-0.5)<0.001?'½ dia':(Math.abs(fr-1/3)<0.01?'⅓ dia':(Math.abs(fr-0.25)<0.001?'¼ dia':(fr).toLocaleString('pt-BR',{maximumFractionDigits:2})+' dia')))+'</span> ' : '';
+        const _fracLabel=(v)=>{
+          if(Math.abs(v-0.5)<0.001) return '½ dia';
+          if(Math.abs(v-1/3)<0.01) return '⅓ dia';
+          if(Math.abs(v-0.25)<0.001) return '¼ dia';
+          if(Math.abs(v-0.2)<0.001) return '⅕ dia';
+          if(Math.abs(v-1/6)<0.01) return '⅙ dia';
+          return v.toLocaleString('pt-BR',{maximumFractionDigits:2})+' dia';
+        };
+        const fracTxt = fr ? '<span class="pr-lanc-frac">'+_fracLabel(fr)+'</span> ' : '';
         li.innerHTML='<span>'+tagMes+tagSobra+fracTxt+desc+'</span><span>'+fmtNum(o.l.qtd)+' pç</span>';
         if(!doMesAtual) li.classList.add('pr-lanc-outro');
         const del=document.createElement('button');del.className='pr-del';del.textContent='×';del.title='Apagar este lançamento';
