@@ -733,6 +733,9 @@ main{padding:16px;max-width:680px;margin:0 auto}
 .rel-custo>div{flex:1;min-width:90px}
 .rel-custo span{display:block;font-size:.65rem;color:var(--txt3);text-transform:uppercase}
 .rel-custo b{font-size:.85rem;font-variant-numeric:tabular-nums}
+.rel-tab td.rel-mo{font-variant-numeric:tabular-nums;white-space:nowrap}
+.rel-tab td.rel-mo .rel-up{font-size:.6rem}
+.rel-nota{margin-top:8px;font-size:.62rem;color:var(--txt3);line-height:1.5;background:rgba(90,140,255,.06);border-radius:6px;padding:7px 9px}
 .rel-total{text-align:right;font-weight:800;color:var(--txt);font-size:1rem;padding:8px 4px}
 .rel-vazio{text-align:center;color:var(--txt3);padding:40px 20px;font-size:.9rem}
 .rel-sub{font-size:.8rem;font-weight:700;color:var(--rebar2);margin:14px 0 8px;text-transform:uppercase;letter-spacing:.03em}
@@ -840,7 +843,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v91</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v93</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -1694,6 +1697,7 @@ function _relJornada(){ const D=_relDmo(); return (D&&D.jornada)||8.8; }
 function _relDias(){ const D=_relDmo(); return (D&&D.diasIdeal)||22; }
 function _relFmtNum(n){ n=Number(n)||0; return n.toLocaleString('pt-BR',{maximumFractionDigits:0}); }
 function _relFmt(n){ n=Number(n)||0; return n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function _relFmt3(n){ n=Number(n)||0; return n.toLocaleString('pt-BR',{minimumFractionDigits:3,maximumFractionDigits:3}); }
 function _relMesLabel(mesRef){ try{const[a,m]=mesRef.split('-');const nn=['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];return nn[+m]+'/'+a;}catch(e){return mesRef;} }
 function _relEhCentral(f){ return /^central/i.test(f); }
 // Setores em que a eficiência usa a OCUPAÇÃO (% do dia) do produto como padrão:
@@ -1792,13 +1796,18 @@ function _relDadosMes(mesRef){
   (D.familias||[]).filter(f=>!_relEhCentral(f)).forEach(f=>{
     const prods=[];
     let realSetor=0, baseSetor=0, realEfSetor=0;
+    const ch0=chSetor[f]||{folha:0,horas:0,custoHora:0};
     (D.produtos[f]||[]).forEach(p=>{
       const real=_relProdRealMes(f,p.nome,mesRef);         // total (com sobra) — exibição/produção
       const realEf=_relProdRealMes(f,p.nome,mesRef,true);  // sem sobra — eficiência
       const base=_relBaseEsperada(f,p.nome,mesRef,p.prodDia||0);
       const diasP=_relDiasProduto(f,p.nome,mesRef);
       if(real>0||base>0){
-        prods.push({nome:p.nome, real, realEf, base, dias:diasP, prodDia:p.prodDia||0, efic: base>0?realEf/base:0});
+        // custo-padrão de M.O. por peça = (pessoas × ocup × jornada × custo/hora) ÷ produção/dia
+        const moPeca = (p.prodDia>0) ? ((p.pessoas||0)*(p.ocup||0)*jornada*ch0.custoHora)/p.prodDia : 0;
+        const efic = base>0?realEf/base:0;
+        const deficit = (base>realEf) ? (base-realEf) : 0; // peças que faltaram p/ atingir o mínimo
+        prods.push({nome:p.nome, real, realEf, base, dias:diasP, prodDia:p.prodDia||0, efic, moPeca, deficit});
         realSetor+=real; baseSetor+=base; realEfSetor+=realEf;
       }
     });
@@ -1807,6 +1816,18 @@ function _relDadosMes(mesRef){
       const efSetor = baseSetor>0 ? realEfSetor/baseSetor : 0;
       const absorvido = ch.folha*Math.min(efSetor,1);
       const ocioso = Math.max(ch.folha-absorvido,0);
+      // rateia o OCIOSO só nos produtos abaixo do mínimo (efic<100%), proporcional ao déficit de cada um
+      const abaixo = prods.filter(p=>p.efic<0.999 && p.deficit>0);
+      const somaDef = abaixo.reduce((a,p)=>a+p.deficit,0);
+      prods.forEach(p=>{
+        p.ociosoRateado = 0; p.moRealMes = p.moPeca;
+        if(ocioso>0 && somaDef>0 && p.efic<0.999 && p.deficit>0){
+          p.ociosoRateado = ocioso*(p.deficit/somaDef);
+          // dilui o ocioso rateado nas peças REALMENTE produzidas daquele item
+          const qtd = p.realEf>0 ? p.realEf : p.real;
+          p.moRealMes = p.moPeca + (qtd>0 ? p.ociosoRateado/qtd : 0);
+        }
+      });
       setores.push({setor:f, prods, real:realSetor, base:baseSetor, efic:efSetor, folha:ch.folha, absorvido, ocioso});
       totalReal+=realSetor;
     }
@@ -1892,10 +1913,19 @@ function _relEficienciaHTML(){
   dados.setores.forEach(s=>{
     const cls=s.efic>=0.85?'ef-ok':(s.efic>=0.6?'ef-med':'ef-bad');
     h+='<div class="rel-setor"><div class="rel-setor-cab"><span>'+s.setor+'</span><span class="'+cls+'">'+(s.efic*100).toFixed(0)+'%</span></div>';
-    h+='<table class="rel-tab"><thead><tr><th>Produto</th><th>Real</th><th>Base</th><th>Ef.</th></tr></thead><tbody>';
+    const temOcioso = s.prods.some(p=>p.ociosoRateado>0);
+    h+='<table class="rel-tab"><thead><tr><th>Produto</th><th>Real</th><th>Base</th><th>Ef.</th>'+(temOcioso?'<th title="Custo de M.O. por peça no padrão">M.O./pç</th><th title="Custo de M.O. por peça já com a fatia de ocioso do mês (informativo, não entra no preço)">Real do mês</th>':'')+'</tr></thead><tbody>';
     s.prods.forEach(p=>{ const c=p.efic>=0.85?'ef-ok':(p.efic>=0.6?'ef-med':'ef-bad');
-      h+='<tr><td>'+p.nome+'</td><td>'+_relFmtNum(p.real)+'</td><td>'+_relFmtNum(p.base)+'</td><td class="'+c+'">'+(p.base>0?(p.efic*100).toFixed(0)+'%':'—')+'</td></tr>'; });
+      let cols='<tr><td>'+p.nome+'</td><td>'+_relFmtNum(p.real)+'</td><td>'+_relFmtNum(p.base)+'</td><td class="'+c+'">'+(p.base>0?(p.efic*100).toFixed(0)+'%':'—')+'</td>';
+      if(temOcioso){
+        const temAcrescimo = p.ociosoRateado>0;
+        cols += '<td class="rel-mo">'+(p.moPeca>0?'R$ '+_relFmt3(p.moPeca):'—')+'</td>';
+        cols += '<td class="rel-mo '+(temAcrescimo?'ef-bad':'')+'">'+(p.moPeca>0?'R$ '+_relFmt3(p.moRealMes)+(temAcrescimo?' <span class="rel-up">▲</span>':''):'—')+'</td>';
+      }
+      cols+='</tr>';
+      h+=cols; });
     h+='</tbody></table>';
+    if(temOcioso) h+='<div class="rel-nota">A coluna <b>Real do mês</b> inclui a fatia do custo ocioso diluída nos produtos que ficaram abaixo do mínimo (proporcional ao déficit). É só informativo — não altera o preço, que usa o custo-padrão.</div>';
     if(s.folha>0){
       h+='<div class="rel-custo"><div><span>Custo M.O.</span><b>R$ '+_relFmt(s.folha)+'</b></div>';
       h+='<div><span>Absorvido</span><b class="ef-ok">R$ '+_relFmt(s.absorvido)+'</b></div>';
@@ -4671,7 +4701,7 @@ function painelProducaoReal(setor, mesRef){
         const del=document.createElement('button');del.className='pr-del';del.textContent='×';del.title='Apagar este lançamento';
         del.onclick=()=>{
           if(!confirm('Apagar este lançamento de '+p.nome+' ('+desc+(doMesAtual?'':' · '+mesRefLabel(mesLanc))+', '+fmtNum(o.l.qtd)+' pç)?')) return;
-          Dmo.prodReal[setor][p.nome].splice(o.idx,1); salvarSecaoMO('prodReal'); recalc();
+          Dmo.prodReal[setor][p.nome].splice(o.idx,1); salvarSecaoMO('prodReal'); recalcMantendoScroll();
         };
         li.appendChild(del); lista.appendChild(li);
       });
@@ -4702,7 +4732,7 @@ function painelProducaoReal(setor, mesRef){
         if(!Dmo.prodReal[setor][p.nome]) Dmo.prodReal[setor][p.nome]=[];
         Dmo.prodReal[setor][p.nome].push(sobra?{dias:dias.slice(), qtd, sobra:true}:{dias:dias.slice(), qtd});
         _prNovoLanc[chave]={};
-        salvarSecaoMO('prodReal'); recalc();
+        salvarSecaoMO('prodReal'); recalcMantendoScroll();
       };
       add.appendChild(dQtd); add.appendChild(bAdd);
       bloco.appendChild(add);
@@ -4731,7 +4761,7 @@ function painelProducaoReal(setor, mesRef){
         if(frac && frac!==1) lanc.frac=frac; // só grava se não for dia inteiro
         Dmo.prodReal[setor][p.nome].push(lanc);
         _prNovoLanc[chave]={};
-        salvarSecaoMO('prodReal'); recalc();
+        salvarSecaoMO('prodReal'); recalcMantendoScroll();
       };
       add.appendChild(dData); add.appendChild(dQtd); add.appendChild(bAdd);
       bloco.appendChild(add);
@@ -5303,6 +5333,13 @@ document.querySelectorAll('.epi-sub button').forEach(b=>b.onclick=()=>{
   b.classList.add('on'); epiAba=b.dataset.e; renderEpi();
 });
 function recalc(){ renderSetores(); }
+// re-renderiza mantendo a posição de rolagem (pra não "pular pro topo" ao lançar produção)
+function recalcMantendoScroll(){
+  const y = window.scrollY || window.pageYOffset || 0;
+  renderSetores();
+  // restaura após o DOM ser reconstruído
+  requestAnimationFrame(()=>{ window.scrollTo(0, y); setTimeout(()=>window.scrollTo(0, y), 0); });
+}
 
 
 // recálculo leve: atualiza os números SEM redesenhar os inputs (preserva o foco ao digitar)
