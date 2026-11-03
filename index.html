@@ -843,7 +843,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v93</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v94</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -4202,7 +4202,14 @@ async function initMaoDeObra(container){
           // não sobrescreve enquanto o usuário digita
           const f=document.activeElement;
           const digitando = f && (f.tagName==='INPUT'||f.tagName==='TEXTAREA') && document.getElementById('mo-container') && document.getElementById('mo-container').contains(f);
-          const aplicar=()=>{ Dmo[secao]=val; migrarSetoresMO(); if(document.getElementById('mo-container')) runMaoDeObra(); };
+          const aplicar=()=>{
+            Dmo[secao]=val; migrarSetoresMO();
+            if(!document.getElementById('mo-container')) return;
+            // prodReal muda a cada lançamento: re-render LEVE (só a lista de setores), preservando
+            // os painéis abertos e a rolagem — não reconstrói o módulo inteiro (que fecharia tudo).
+            if(secao==='prodReal'){ if(typeof recalcMantendoScroll==='function') recalcMantendoScroll(); else renderSetores(); }
+            else runMaoDeObra();
+          };
           if(digitando){ f.addEventListener('blur', aplicar, {once:true}); return; }
           aplicar();
         });
