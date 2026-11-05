@@ -480,6 +480,17 @@ main{padding:16px;max-width:680px;margin:0 auto}
 #mo-container .ef-med{color:#e0a030}
 #mo-container .ef-bad{color:#e0603c}
 #mo-container .pr-lista{margin:4px 0 6px;display:flex;flex-direction:column;gap:3px}
+#mo-container .pr-meses{display:flex;flex-direction:column;gap:5px;margin:4px 0 6px}
+#mo-container .pr-mes-sec{border:1px solid var(--line);border-radius:7px;overflow:hidden;background:rgba(255,255,255,.015)}
+#mo-container .pr-mes-sec.atual{border-color:rgba(232,112,28,.4)}
+#mo-container .pr-mes-cab{width:100%;display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.03);border:none;color:#cbd;padding:7px 10px;font-size:12px;cursor:pointer;text-align:left}
+#mo-container .pr-mes-cab:hover{background:rgba(255,255,255,.06)}
+#mo-container .pr-mes-cab.on{background:rgba(232,112,28,.08)}
+#mo-container .pr-mes-cab .pmc-seta{font-size:9px;color:#8a94a0;width:10px}
+#mo-container .pr-mes-cab .pmc-nome{font-weight:700;color:#e8eaed;text-transform:uppercase;letter-spacing:.02em}
+#mo-container .pr-mes-cab .pmc-atual{background:rgba(232,112,28,.2);color:#e8955f;border-radius:4px;padding:0 5px;font-size:9px;letter-spacing:0}
+#mo-container .pr-mes-cab .pmc-qtd{margin-left:auto;color:#9aa;font-size:11px;font-variant-numeric:tabular-nums}
+#mo-container .pr-mes-sec .pr-lista{margin:0;padding:4px 8px 8px}
 #mo-container .pr-lanc{display:flex;align-items:center;gap:8px;font-size:12px;color:#cbd;background:rgba(255,255,255,.03);padding:3px 8px;border-radius:5px}
 #mo-container .pr-lanc span:first-child{min-width:74px}
 #mo-container .pr-lanc span:nth-child(2){flex:1;color:#e8eaed}
@@ -843,7 +854,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v94</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v95</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -4498,6 +4509,7 @@ function fmtNum(n){ n=Number(n)||0; return n.toLocaleString('pt-BR',{maximumFrac
 // ===== PRODUÇÃO REAL =====
 let _resSetores = {};
 const _prAberto = {};       // estado aberto/fechado do painel por setor
+const _prMesAberto = {};    // estado aberto/fechado de cada mês na lista de lançamentos (chave: setor|produto|mes)
 const _prNovoLanc = {};     // rascunho do lançamento em digitação por setor|produto
 function tipoLancDe(setor){ return (Dmo.tipoLanc && Dmo.tipoLanc[setor]) || 'mensal'; }
 function mesRefLabel(mesRef){
@@ -4681,38 +4693,58 @@ function painelProducaoReal(setor, mesRef){
       .filter(o=>diasDoLanc(o.l).length>0)
       .sort((a,b)=>{ const da=(diasDoLanc(a.l)[0]||''); const db=(diasDoLanc(b.l)[0]||''); return da<db?-1:(da>db?1:0); });
     if(lancsTodos.length){
-      const lista=document.createElement('div');lista.className='pr-lista';
-      lancsTodos.forEach(o=>{
-        const li=document.createElement('div');li.className='pr-lanc';
-        const nd=diasDoLanc(o.l).length;
-        const mesLanc=(diasDoLanc(o.l)[0]||'').slice(0,7);
-        const doMesAtual=mesLanc===mesRef;
-        const desc = modo==='periodo'
-          ? (nd+' dia'+(nd>1?'s':'')+' (dia'+(nd>1?'s':'')+' '+resumoDias(o.l)+')')
-          : fmtData(o.l.data||(diasDoLanc(o.l)[0]));
-        // mostra SEMPRE o mês de cada lançamento (não só dos outros meses) — evita ambiguidade
-        const tagMes = '<span class="pr-lanc-mes'+(doMesAtual?' atual':'')+'">'+mesRefLabel(mesLanc)+'</span> ';
-        const tagSobra = (o.l && o.l.sobra) ? '<span class="pr-lanc-sobra">sobra</span> ' : '';
-        const fr=(o.l && o.l.frac!=null && o.l.frac>0 && o.l.frac!==1)?o.l.frac:null;
-        const _fracLabel=(v)=>{
-          if(Math.abs(v-0.5)<0.001) return '½ dia';
-          if(Math.abs(v-1/3)<0.01) return '⅓ dia';
-          if(Math.abs(v-0.25)<0.001) return '¼ dia';
-          if(Math.abs(v-0.2)<0.001) return '⅕ dia';
-          if(Math.abs(v-1/6)<0.01) return '⅙ dia';
-          return v.toLocaleString('pt-BR',{maximumFractionDigits:2})+' dia';
-        };
-        const fracTxt = fr ? '<span class="pr-lanc-frac">'+_fracLabel(fr)+'</span> ' : '';
-        li.innerHTML='<span>'+tagMes+tagSobra+fracTxt+desc+'</span><span>'+fmtNum(o.l.qtd)+' pç</span>';
-        if(!doMesAtual) li.classList.add('pr-lanc-outro');
-        const del=document.createElement('button');del.className='pr-del';del.textContent='×';del.title='Apagar este lançamento';
-        del.onclick=()=>{
-          if(!confirm('Apagar este lançamento de '+p.nome+' ('+desc+(doMesAtual?'':' · '+mesRefLabel(mesLanc))+', '+fmtNum(o.l.qtd)+' pç)?')) return;
-          Dmo.prodReal[setor][p.nome].splice(o.idx,1); salvarSecaoMO('prodReal'); recalcMantendoScroll();
-        };
-        li.appendChild(del); lista.appendChild(li);
+      const _fracLabel=(v)=>{
+        if(Math.abs(v-0.5)<0.001) return '½ dia';
+        if(Math.abs(v-1/3)<0.01) return '⅓ dia';
+        if(Math.abs(v-0.25)<0.001) return '¼ dia';
+        if(Math.abs(v-0.2)<0.001) return '⅕ dia';
+        if(Math.abs(v-1/6)<0.01) return '⅙ dia';
+        return v.toLocaleString('pt-BR',{maximumFractionDigits:2})+' dia';
+      };
+      // agrupa os lançamentos por mês (YYYY-MM)
+      const porMes={};
+      lancsTodos.forEach(o=>{ const m=(diasDoLanc(o.l)[0]||'').slice(0,7); (porMes[m]=porMes[m]||[]).push(o); });
+      const meses=Object.keys(porMes).sort().reverse(); // mais recente primeiro
+      const wrapMes=document.createElement('div');wrapMes.className='pr-meses';
+      meses.forEach(m=>{
+        const itens=porMes[m];
+        const totalMes=itens.reduce((a,o)=>a+(parseFloat(o.l.qtd)||0),0);
+        const chaveMes=setor+'|'+p.nome+'|'+m;
+        // abre por padrão só o mês de referência selecionado; os outros começam fechados
+        if(_prMesAberto[chaveMes]===undefined) _prMesAberto[chaveMes]=(m===mesRef);
+        const aberto=_prMesAberto[chaveMes];
+        const sec=document.createElement('div');sec.className='pr-mes-sec'+(m===mesRef?' atual':'');
+        // cabeçalho clicável do mês
+        const cab=document.createElement('button');cab.className='pr-mes-cab'+(aberto?' on':'');
+        cab.innerHTML='<span class="pmc-seta">'+(aberto?'▼':'▶')+'</span>'
+          +'<span class="pmc-nome">'+mesRefLabel(m)+(m===mesRef?' <span class="pmc-atual">atual</span>':'')+'</span>'
+          +'<span class="pmc-qtd">'+itens.length+' lanç. · '+fmtNum(totalMes)+' pç</span>';
+        cab.onclick=()=>{ _prMesAberto[chaveMes]=!_prMesAberto[chaveMes]; recalcMantendoScroll(); };
+        sec.appendChild(cab);
+        if(aberto){
+          const lista=document.createElement('div');lista.className='pr-lista';
+          itens.forEach(o=>{
+            const li=document.createElement('div');li.className='pr-lanc';
+            const nd=diasDoLanc(o.l).length;
+            const desc = modo==='periodo'
+              ? (nd+' dia'+(nd>1?'s':'')+' (dia'+(nd>1?'s':'')+' '+resumoDias(o.l)+')')
+              : fmtData(o.l.data||(diasDoLanc(o.l)[0]));
+            const tagSobra = (o.l && o.l.sobra) ? '<span class="pr-lanc-sobra">sobra</span> ' : '';
+            const fr=(o.l && o.l.frac!=null && o.l.frac>0 && o.l.frac!==1)?o.l.frac:null;
+            const fracTxt = fr ? '<span class="pr-lanc-frac">'+_fracLabel(fr)+'</span> ' : '';
+            li.innerHTML='<span>'+tagSobra+fracTxt+desc+'</span><span>'+fmtNum(o.l.qtd)+' pç</span>';
+            const del=document.createElement('button');del.className='pr-del';del.textContent='×';del.title='Apagar este lançamento';
+            del.onclick=()=>{
+              if(!confirm('Apagar este lançamento de '+p.nome+' ('+desc+' · '+mesRefLabel(m)+', '+fmtNum(o.l.qtd)+' pç)?')) return;
+              Dmo.prodReal[setor][p.nome].splice(o.idx,1); salvarSecaoMO('prodReal'); recalcMantendoScroll();
+            };
+            li.appendChild(del); lista.appendChild(li);
+          });
+          sec.appendChild(lista);
+        }
+        wrapMes.appendChild(sec);
       });
-      bloco.appendChild(lista);
+      bloco.appendChild(wrapMes);
     }
     // NOVO lançamento
     const chave=setor+'|'+p.nome;
