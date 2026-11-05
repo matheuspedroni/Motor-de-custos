@@ -854,7 +854,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v95</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v96</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -1709,6 +1709,8 @@ function _relDias(){ const D=_relDmo(); return (D&&D.diasIdeal)||22; }
 function _relFmtNum(n){ n=Number(n)||0; return n.toLocaleString('pt-BR',{maximumFractionDigits:0}); }
 function _relFmt(n){ n=Number(n)||0; return n.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
 function _relFmt3(n){ n=Number(n)||0; return n.toLocaleString('pt-BR',{minimumFractionDigits:3,maximumFractionDigits:3}); }
+// dias com no máx. 2 casas, sem zeros à toa (ex: 0,33 · 1,17 · 2)
+function _relFmtDias(n){ n=Number(n)||0; return n.toLocaleString('pt-BR',{maximumFractionDigits:2}); }
 function _relMesLabel(mesRef){ try{const[a,m]=mesRef.split('-');const nn=['','jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];return nn[+m]+'/'+a;}catch(e){return mesRef;} }
 function _relEhCentral(f){ return /^central/i.test(f); }
 // Setores em que a eficiência usa a OCUPAÇÃO (% do dia) do produto como padrão:
@@ -1909,7 +1911,7 @@ function _relProducaoHTML(){
   dados.setores.forEach(s=>{
     h+='<div class="rel-setor"><div class="rel-setor-cab"><span>'+s.setor+'</span><span>'+_relFmtNum(s.real)+' pç</span></div>';
     h+='<table class="rel-tab"><thead><tr><th>Produto</th><th>Dias</th><th>Produzido</th></tr></thead><tbody>';
-    s.prods.forEach(p=>{ h+='<tr><td>'+p.nome+'</td><td>'+p.dias+'</td><td>'+_relFmtNum(p.real)+'</td></tr>'; });
+    s.prods.forEach(p=>{ h+='<tr><td>'+p.nome+'</td><td>'+_relFmtDias(p.dias)+'</td><td>'+_relFmtNum(p.real)+'</td></tr>'; });
     h+='</tbody></table></div>';
   });
   h+='<div class="rel-total">Total do mês: '+_relFmtNum(dados.totalReal)+' peças</div>';
@@ -1997,7 +1999,7 @@ function _relGerarPDF(){
   if(dados.setores.length){
     dados.setores.forEach(s=>{
       corpo+='<h3>'+s.setor+' — '+_relFmtNum(s.real)+' pç</h3><table><tr><th>Produto</th><th>Dias</th><th>Produzido</th><th>Base</th><th>Eficiência</th></tr>';
-      s.prods.forEach(p=>{ corpo+='<tr><td>'+p.nome+'</td><td>'+p.dias+'</td><td>'+_relFmtNum(p.real)+'</td><td>'+_relFmtNum(p.base)+'</td><td>'+(p.base>0?(p.efic*100).toFixed(0)+'%':'—')+'</td></tr>'; });
+      s.prods.forEach(p=>{ corpo+='<tr><td>'+p.nome+'</td><td>'+_relFmtDias(p.dias)+'</td><td>'+_relFmtNum(p.real)+'</td><td>'+_relFmtNum(p.base)+'</td><td>'+(p.base>0?(p.efic*100).toFixed(0)+'%':'—')+'</td></tr>'; });
       corpo+='</table>';
       if(s.folha>0) corpo+='<p class="cst">Custo M.O.: R$ '+_relFmt(s.folha)+' &nbsp;|&nbsp; Absorvido: R$ '+_relFmt(s.absorvido)+' &nbsp;|&nbsp; Ocioso: R$ '+_relFmt(s.ocioso)+' &nbsp;|&nbsp; Eficiência do setor: '+(s.efic*100).toFixed(0)+'%</p>';
     });
