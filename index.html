@@ -510,6 +510,11 @@ main{padding:16px;max-width:680px;margin:0 auto}
 #mo-container .pr-frac-b:hover{background:#2b3440}
 #mo-container .pr-frac-b.on{background:#e8701c;border-color:#e8701c;color:#fff;font-weight:700}
 #mo-container .pr-frac-in{width:60px;background:#1a1f26;color:#e8eaed;border:1px solid #333;border-radius:5px;padding:4px 6px;font-size:12px;text-align:center}
+#mo-container .pr-modo-tog{display:inline-flex;gap:0;margin:6px 0 8px;border:1px solid #2e3640;border-radius:7px;overflow:hidden}
+#mo-container .pr-modo-b{background:#222a33;border:none;color:#9aa;padding:5px 14px;font-size:12px;cursor:pointer;font-weight:600}
+#mo-container .pr-modo-b+.pr-modo-b{border-left:1px solid #2e3640}
+#mo-container .pr-modo-b:hover{background:#2b3440}
+#mo-container .pr-modo-b.on{background:#e8701c;color:#fff}
 #mo-container .pr-add{display:flex;gap:6px;align-items:center;margin-top:4px}
 #mo-container .pr-data{flex:1;background:#1a1f26;color:#e8eaed;border:1px solid #333;border-radius:5px;padding:5px;font-size:12px}
 #mo-container .pr-qtd{width:70px;background:#1a1f26;color:#e8eaed;border:1px solid #333;border-radius:5px;padding:5px;font-size:12px}
@@ -854,7 +859,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v96</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v97</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -4512,6 +4517,7 @@ function fmtNum(n){ n=Number(n)||0; return n.toLocaleString('pt-BR',{maximumFrac
 let _resSetores = {};
 const _prAberto = {};       // estado aberto/fechado do painel por setor
 const _prMesAberto = {};    // estado aberto/fechado de cada mês na lista de lançamentos (chave: setor|produto|mes)
+const _prModoLanc = {};     // modo de lançamento escolhido por produto (chave: setor|produto) → 'diario' | 'periodo'
 const _prNovoLanc = {};     // rascunho do lançamento em digitação por setor|produto
 function tipoLancDe(setor){ return (Dmo.tipoLanc && Dmo.tipoLanc[setor]) || 'mensal'; }
 function mesRefLabel(mesRef){
@@ -4624,9 +4630,9 @@ function _mkSobraCheck(chave){
   return lbl;
 }
 // seletor de FRAÇÃO do dia (quanto do dia este produto ocupou) — p/ quando faz vários tipos no mesmo dia
-function _mkFracSelect(chave){
+function _mkFracSelect(chave, sufixo){
   const wrap=document.createElement('div');wrap.className='pr-frac';
-  const lab=document.createElement('span');lab.className='pr-frac-lab';lab.textContent='Quanto do dia:';
+  const lab=document.createElement('span');lab.className='pr-frac-lab';lab.textContent='Quanto do dia'+(sufixo?' ('+sufixo+')':'')+':';
   wrap.appendChild(lab);
   const opcoes=[{v:1,t:'Dia inteiro'},{v:0.5,t:'½ dia'},{v:1/3,t:'⅓'},{v:0.25,t:'¼'},{v:0.2,t:'⅕'},{v:1/6,t:'⅙'}];
   const atual=(_prNovoLanc[chave]&&_prNovoLanc[chave].frac!=null)?_prNovoLanc[chave].frac:1;
@@ -4750,7 +4756,18 @@ function painelProducaoReal(setor, mesRef){
     }
     // NOVO lançamento
     const chave=setor+'|'+p.nome;
-    if(modo==='periodo'){
+    // modo de lançamento POR PRODUTO (escolhido na hora): default = modo do setor
+    if(_prModoLanc[chave]===undefined) _prModoLanc[chave]=modo;
+    const modoAtual=_prModoLanc[chave];
+    // alternador diário / período
+    const tog=document.createElement('div');tog.className='pr-modo-tog';
+    const bDia=document.createElement('button');bDia.type='button';bDia.className='pr-modo-b'+(modoAtual==='diario'?' on':'');bDia.textContent='Por dia';
+    const bPer=document.createElement('button');bPer.type='button';bPer.className='pr-modo-b'+(modoAtual==='periodo'?' on':'');bPer.textContent='Por período';
+    bDia.onclick=()=>{ _prModoLanc[chave]='diario'; recalcMantendoScroll(); };
+    bPer.onclick=()=>{ _prModoLanc[chave]='periodo'; recalcMantendoScroll(); };
+    tog.appendChild(bDia);tog.appendChild(bPer);
+    bloco.appendChild(tog);
+    if(modoAtual==='periodo'){
       // calendário + quantidade total
       const calBtn=document.createElement('button');calBtn.className='pr-cal-btn';
       const sel=(_prNovoLanc[chave]&&_prNovoLanc[chave].dias)||[];
@@ -4766,17 +4783,22 @@ function painelProducaoReal(setor, mesRef){
         const dias=(_prNovoLanc[chave]&&_prNovoLanc[chave].dias)||[];
         const qtd=parseFloat(dQtd.value)||0;
         const sobra=!!(_prNovoLanc[chave]&&_prNovoLanc[chave].sobra);
+        const frac=(_prNovoLanc[chave]&&_prNovoLanc[chave].frac!=null)?_prNovoLanc[chave].frac:1;
         if(!dias.length){ alert('Marque no calendário os dias em que produziu este item.'); return; }
         if(qtd<=0){ alert('Informe o total de peças do período.'); return; }
         if(!Dmo.prodReal) Dmo.prodReal={};
         if(!Dmo.prodReal[setor]) Dmo.prodReal[setor]={};
         if(!Dmo.prodReal[setor][p.nome]) Dmo.prodReal[setor][p.nome]=[];
-        Dmo.prodReal[setor][p.nome].push(sobra?{dias:dias.slice(), qtd, sobra:true}:{dias:dias.slice(), qtd});
+        const lanc={dias:dias.slice(), qtd};
+        if(sobra) lanc.sobra=true;
+        if(frac && frac!==1) lanc.frac=frac; // fração do dia em CADA dia marcado
+        Dmo.prodReal[setor][p.nome].push(lanc);
         _prNovoLanc[chave]={};
         salvarSecaoMO('prodReal'); recalcMantendoScroll();
       };
       add.appendChild(dQtd); add.appendChild(bAdd);
       bloco.appendChild(add);
+      bloco.appendChild(_mkFracSelect(chave, 'em cada dia marcado'));
       bloco.appendChild(_mkSobraCheck(chave));
     } else {
       // diário: data + qtd
