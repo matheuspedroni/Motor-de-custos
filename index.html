@@ -515,6 +515,24 @@ main{padding:16px;max-width:680px;margin:0 auto}
 #mo-container .pr-modo-b+.pr-modo-b{border-left:1px solid #2e3640}
 #mo-container .pr-modo-b:hover{background:#2b3440}
 #mo-container .pr-modo-b.on{background:#e8701c;color:#fff}
+#mo-container .pr-lote{border:1px solid rgba(232,112,28,.35);border-radius:9px;margin:10px 0 14px;overflow:hidden;background:rgba(232,112,28,.04)}
+#mo-container .pr-lote-cab{width:100%;background:rgba(232,112,28,.1);border:none;color:#e8955f;padding:10px 12px;font-size:13px;font-weight:700;cursor:pointer;text-align:left}
+#mo-container .pr-lote-cab:hover{background:rgba(232,112,28,.16)}
+#mo-container .pr-lote-corpo{padding:12px}
+#mo-container .pr-lote-dica{font-size:11px;color:#9aa;margin-bottom:10px;line-height:1.5}
+#mo-container .pr-lote-lin{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+#mo-container .pr-lote-lin .pll-lab{font-size:12px;color:#8a94a0}
+#mo-container .pr-lote-lista{display:flex;flex-direction:column;gap:4px;margin:10px 0}
+#mo-container .pr-lote-item{display:flex;align-items:center;gap:9px;padding:5px 7px;border-radius:6px;background:rgba(255,255,255,.02);cursor:pointer}
+#mo-container .pr-lote-item:hover{background:rgba(255,255,255,.05)}
+#mo-container .pr-lote-item input[type=checkbox]{width:16px;height:16px;accent-color:#e8701c;cursor:pointer}
+#mo-container .pr-lote-item .pli-nome{flex:1;font-size:12px;color:#cbd}
+#mo-container .pr-lote-item .pli-qtd{width:64px;background:#1a1f26;color:#e8eaed;border:1px solid #333;border-radius:5px;padding:4px 6px;font-size:12px;text-align:right}
+#mo-container .pr-lote-prev{background:rgba(90,140,255,.06);border-radius:7px;padding:8px 10px;margin:8px 0;font-size:11px}
+#mo-container .pr-lote-prev .pll-prev-tit{color:#8ab4ff;font-weight:700;margin-bottom:4px;text-transform:uppercase;font-size:10px;letter-spacing:.03em}
+#mo-container .pr-lote-prev .pll-prev-l{display:flex;justify-content:space-between;color:#bcc;padding:2px 0}
+#mo-container .pr-lote-btn{width:100%;background:#e8701c;border:none;color:#fff;border-radius:7px;padding:9px;font-size:13px;font-weight:700;cursor:pointer;margin-top:6px}
+#mo-container .pr-lote-btn:hover{background:#d16214}
 #mo-container .pr-add{display:flex;gap:6px;align-items:center;margin-top:4px}
 #mo-container .pr-data{flex:1;background:#1a1f26;color:#e8eaed;border:1px solid #333;border-radius:5px;padding:5px;font-size:12px}
 #mo-container .pr-qtd{width:70px;background:#1a1f26;color:#e8eaed;border:1px solid #333;border-radius:5px;padding:5px;font-size:12px}
@@ -859,7 +877,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v98</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v99</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -4518,6 +4536,8 @@ let _resSetores = {};
 const _prAberto = {};       // estado aberto/fechado do painel por setor
 const _prMesAberto = {};    // estado aberto/fechado de cada mês na lista de lançamentos (chave: setor|produto|mes)
 const _prModoLanc = {};     // modo de lançamento escolhido por produto (chave: setor|produto) → 'diario' | 'periodo'
+const _prLote = {};         // rascunho do lançamento EM LOTE por setor: {data, frac, qtds:{produto:qtd}}
+function _ehSetorLote(setor){ return /caixa/i.test(setor||''); } // lançamento em lote habilitado só nas Caixas
 const _prNovoLanc = {};     // rascunho do lançamento em digitação por setor|produto
 function tipoLancDe(setor){ return (Dmo.tipoLanc && Dmo.tipoLanc[setor]) || 'mensal'; }
 function mesRefLabel(mesRef){
@@ -4651,6 +4671,95 @@ function _mkFracSelect(chave, sufixo){
   wrap.appendChild(inp);
   return wrap;
 }
+// Caixa de LANÇAMENTO EM LOTE: você define quanto do dia o LOTE ocupou (botões), marca as caixas
+// e informa a quantidade de cada. O app reparte o tempo entre elas por quantidade e grava a fração de cada.
+function _mkLoteBox(setor, mesRef, prods){
+  const st=_prLote[setor]=_prLote[setor]||{data:new Date().toISOString().slice(0,10), frac:0.5, qtds:{}, aberto:false};
+  const box=document.createElement('div');box.className='pr-lote';
+  // cabeçalho clicável
+  const cab=document.createElement('button');cab.type='button';cab.className='pr-lote-cab'+(st.aberto?' on':'');
+  cab.innerHTML='<span>'+(st.aberto?'▼':'▶')+' ⚡ Lançar VÁRIAS caixas de uma vez (lote do dia)</span>';
+  cab.onclick=()=>{ st.aberto=!st.aberto; recalcMantendoScroll(); };
+  box.appendChild(cab);
+  if(!st.aberto) return box;
+  const corpo=document.createElement('div');corpo.className='pr-lote-corpo';
+  corpo.innerHTML='<div class="pr-lote-dica">Marque as caixas que fez no mesmo bloco de tempo, informe a quantidade de cada, e diga quanto do dia o lote todo ocupou. O app divide o tempo entre elas automaticamente — você não precisa calcular fração.</div>';
+  // data
+  const linData=document.createElement('div');linData.className='pr-lote-lin';
+  linData.innerHTML='<span class="pll-lab">Data:</span>';
+  const dData=document.createElement('input');dData.type='date';dData.className='pr-data';dData.value=st.data;
+  dData.onchange=()=>{ st.data=dData.value; };
+  linData.appendChild(dData);corpo.appendChild(linData);
+  // fração do LOTE (botões)
+  const linFr=document.createElement('div');linFr.className='pr-frac';
+  linFr.innerHTML='<span class="pr-frac-lab">Quanto do dia o LOTE ocupou:</span>';
+  const opc=[{v:1,t:'Dia inteiro'},{v:0.5,t:'½ dia'},{v:1/3,t:'⅓'},{v:0.25,t:'¼'}];
+  opc.forEach(o=>{
+    const b=document.createElement('button');b.type='button';b.className='pr-frac-b'+(Math.abs(st.frac-o.v)<0.01?' on':'');
+    b.textContent=o.t;
+    b.onclick=()=>{ st.frac=o.v; linFr.querySelectorAll('.pr-frac-b').forEach(x=>x.classList.remove('on')); b.classList.add('on'); fin.value=''; };
+    linFr.appendChild(b);
+  });
+  const fin=document.createElement('input');fin.type='number';fin.step='0.05';fin.min='0.05';fin.max='1';fin.className='pr-frac-in';fin.placeholder='outro';
+  if(!opc.some(o=>Math.abs(st.frac-o.v)<0.01)) fin.value=st.frac;
+  fin.oninput=()=>{ const v=parseFloat(fin.value); if(v>0&&v<=1){ st.frac=v; linFr.querySelectorAll('.pr-frac-b').forEach(x=>x.classList.remove('on')); } };
+  linFr.appendChild(fin);corpo.appendChild(linFr);
+  // lista de produtos com checkbox + qtd
+  const lista=document.createElement('div');lista.className='pr-lote-lista';
+  prods.forEach(p=>{
+    const row=document.createElement('label');row.className='pr-lote-item';
+    const cb=document.createElement('input');cb.type='checkbox';
+    const temQ=(st.qtds[p.nome]||0)>0; cb.checked=temQ;
+    const nome=document.createElement('span');nome.className='pli-nome';nome.textContent=p.nome;
+    const q=document.createElement('input');q.type='number';q.className='pli-qtd';q.placeholder='qtd';q.min='0';
+    q.value=st.qtds[p.nome]||'';
+    q.oninput=()=>{ const v=parseFloat(q.value)||0; if(v>0) st.qtds[p.nome]=v; else delete st.qtds[p.nome]; cb.checked=v>0; };
+    cb.onchange=()=>{ if(!cb.checked){ delete st.qtds[p.nome]; q.value=''; } else { q.focus(); } };
+    row.appendChild(cb);row.appendChild(nome);row.appendChild(q);
+    lista.appendChild(row);
+  });
+  corpo.appendChild(lista);
+  // prévia da divisão
+  const prev=document.createElement('div');prev.className='pr-lote-prev';
+  const atualizaPrev=()=>{
+    const itens=Object.keys(st.qtds).filter(n=>st.qtds[n]>0);
+    const totQ=itens.reduce((a,n)=>a+st.qtds[n],0);
+    if(!itens.length||totQ<=0||!(st.frac>0)){ prev.innerHTML=''; return; }
+    let h='<div class="pll-prev-tit">Tempo do dia por produto (dividido por quantidade):</div>';
+    itens.forEach(n=>{ const fr=st.frac*(st.qtds[n]/totQ); h+='<div class="pll-prev-l"><span>'+n+' ('+fmtNum(st.qtds[n])+')</span><span>'+(fr*100).toFixed(1)+'% do dia</span></div>'; });
+    prev.innerHTML=h;
+  };
+  // recalcula a prévia ao digitar (sem re-render)
+  lista.addEventListener('input', atualizaPrev);
+  linFr.addEventListener('click', ()=>setTimeout(atualizaPrev,0));
+  linFr.addEventListener('input', atualizaPrev);
+  atualizaPrev();
+  corpo.appendChild(prev);
+  // botão lançar lote
+  const bLan=document.createElement('button');bLan.className='pr-lote-btn';bLan.textContent='+ lançar lote';
+  bLan.onclick=()=>{
+    const itens=Object.keys(st.qtds).filter(n=>st.qtds[n]>0);
+    const totQ=itens.reduce((a,n)=>a+st.qtds[n],0);
+    if(!st.data){ alert('Informe a data do lote.'); return; }
+    if(!itens.length||totQ<=0){ alert('Marque ao menos uma caixa e informe a quantidade.'); return; }
+    if(!(st.frac>0)){ alert('Escolha quanto do dia o lote ocupou.'); return; }
+    if(!Dmo.prodReal) Dmo.prodReal={};
+    if(!Dmo.prodReal[setor]) Dmo.prodReal[setor]={};
+    itens.forEach(n=>{
+      const fr = st.frac*(st.qtds[n]/totQ); // fração do dia desse produto no lote
+      if(!Dmo.prodReal[setor][n]) Dmo.prodReal[setor][n]=[];
+      const lanc={data:st.data, qtd:st.qtds[n]};
+      if(fr && Math.abs(fr-1)>0.0001) lanc.frac=fr;
+      Dmo.prodReal[setor][n].push(lanc);
+    });
+    // limpa o rascunho mas mantém aberto e a data
+    _prLote[setor]={data:st.data, frac:st.frac, qtds:{}, aberto:true};
+    salvarSecaoMO('prodReal'); recalcMantendoScroll();
+  };
+  corpo.appendChild(bLan);
+  box.appendChild(corpo);
+  return box;
+}
 function painelProducaoReal(setor, mesRef){
   const wrap=document.createElement('div');wrap.className='pr-painel';
   const modo = tipoLancDe(setor); // 'diario' ou 'periodo'
@@ -4682,6 +4791,10 @@ function painelProducaoReal(setor, mesRef){
       wrap.appendChild(box);
     }
   })();
+  // ===== LANÇAMENTO EM LOTE (só setor Caixas) =====
+  if(_ehSetorLote(setor)){
+    wrap.appendChild(_mkLoteBox(setor, mesRef, prods));
+  }
   prods.forEach(p=>{
     const bloco=document.createElement('div');bloco.className='pr-produto';
     const realMes = prodRealMes(setor, p.nome, mesRef);          // total (com sobra)
