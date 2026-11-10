@@ -877,7 +877,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v99</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v100</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -4537,7 +4537,7 @@ const _prAberto = {};       // estado aberto/fechado do painel por setor
 const _prMesAberto = {};    // estado aberto/fechado de cada mês na lista de lançamentos (chave: setor|produto|mes)
 const _prModoLanc = {};     // modo de lançamento escolhido por produto (chave: setor|produto) → 'diario' | 'periodo'
 const _prLote = {};         // rascunho do lançamento EM LOTE por setor: {data, frac, qtds:{produto:qtd}}
-function _ehSetorLote(setor){ return /caixa/i.test(setor||''); } // lançamento em lote habilitado só nas Caixas
+function _ehSetorLote(setor){ return /caixa|fossa/i.test(setor||''); } // lançamento em lote: Caixas e Fossas
 const _prNovoLanc = {};     // rascunho do lançamento em digitação por setor|produto
 function tipoLancDe(setor){ return (Dmo.tipoLanc && Dmo.tipoLanc[setor]) || 'mensal'; }
 function mesRefLabel(mesRef){
