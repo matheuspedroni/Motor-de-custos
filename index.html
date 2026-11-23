@@ -882,7 +882,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v102</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v103</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -2222,19 +2222,21 @@ function _frotaCustoMesEquip(nomeEquip, mes){
 // MÉDIA MÓVEL de 5 meses FECHADOS (exclui o mês corrente) de combustível+manutenção do equipamento
 function _frotaCustoMedioEquip(nomeEquip){
   const fd=window.__frotaD; if(!fd) return 0;
+  const alvo=_frotaNorm(nomeEquip);
   const hoje=new Date();
   const mesCorrente=hoje.toISOString().slice(0,7);
-  // últimos 5 meses fechados
+  // últimos 5 meses fechados (exclui o mês corrente)
   const meses=[];
   for(let i=1;i<=5;i++){
     const d=new Date(hoje.getFullYear(), hoje.getMonth()-i, 1);
     meses.push(d.toISOString().slice(0,7));
   }
-  // só considera meses que têm algum dado no FROTA (não divide por meses vazios anteriores ao histórico)
-  const mesesComDado=new Set();
-  _frotaVals(fd.abasts).forEach(a=>{ if(a&&a.data){ const m=a.data.slice(0,7); if(m<mesCorrente) mesesComDado.add(m); } });
-  _frotaVals(fd.os).forEach(o=>{ if(o&&o.data){ const m=o.data.slice(0,7); if(m<mesCorrente) mesesComDado.add(m); } });
-  const usar=meses.filter(m=>mesesComDado.has(m));
+  // IMPORTANTE: só conta os meses em que ESTE equipamento teve movimento (abastecimento OU manutenção).
+  // Mês em que a empilhadeira ficou parada NÃO entra na média (não divide por meses-zero dela).
+  const mesesDoEquip=new Set();
+  _frotaVals(fd.abasts).forEach(a=>{ if(a&&a.data&&_frotaNorm(a.equip)===alvo){ const m=a.data.slice(0,7); if(m<mesCorrente) mesesDoEquip.add(m); } });
+  _frotaVals(fd.os).forEach(o=>{ if(o&&o.data&&_frotaNorm(o.equip)===alvo){ const m=o.data.slice(0,7); if(m<mesCorrente) mesesDoEquip.add(m); } });
+  const usar=meses.filter(m=>mesesDoEquip.has(m));
   if(!usar.length) return 0;
   const soma=usar.reduce((a,m)=>a+_frotaCustoMesEquip(nomeEquip,m),0);
   return soma/usar.length;
