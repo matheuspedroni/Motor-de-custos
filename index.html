@@ -877,7 +877,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v100</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v101</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -2198,14 +2198,17 @@ async function _maqCarregarDadosAssincrono(container){
           fb.onValue(fb.ref(db,'custos/maq/'+s), snap=>{
             if(!snap || !snap.exists()) return;
             const raw=snap.val();
+            // guard de eco robusto: compara pela forma NORMALIZADA (Firebase pode reordenar chaves
+            // ou converter array↔objeto, o que fazia a comparação crua falhar e re-renderizar à toa)
             if(JSON.stringify(raw)===_maqLastWriteSec[s]) return;
+            try{ if(JSON.stringify(_maqNormalizaSecao(s,raw))===JSON.stringify(_maqNormalizaSecao(s, JSON.parse(_maqLastWriteSec[s]||'null')))) return; }catch(e){}
             const ativo=document.activeElement;
-            if(ativo && (ativo.tagName==='INPUT'||ativo.tagName==='TEXTAREA')){
-              ativo.addEventListener('blur', ()=>{ DMaq[s]=_maqNormalizaSecao(s,raw); if(maqReady) renderMaq(); }, {once:true});
+            if(ativo && (ativo.tagName==='INPUT'||ativo.tagName==='TEXTAREA') && document.getElementById('maq-container') && document.getElementById('maq-container').contains(ativo)){
+              ativo.addEventListener('blur', ()=>{ DMaq[s]=_maqNormalizaSecao(s,raw); if(maqReady) _maqRenderMantendoScroll(); }, {once:true});
               return;
             }
             DMaq[s]=_maqNormalizaSecao(s,raw);
-            if(maqReady) renderMaq();
+            if(maqReady) _maqRenderMantendoScroll();
           });
         }catch(e){}
       });
@@ -2488,26 +2491,31 @@ function _maqFmt(n){ n=Number(n)||0; return n.toLocaleString('pt-BR',{minimumFra
 function _maqNum(n){ n=Number(n)||0; return n.toLocaleString('pt-BR',{maximumFractionDigits:0}); }
 
 let _maqContainer=null;
+let _maqAbaAtual='resumo'; // aba ativa do módulo de máquina (p/ preservar ao re-renderizar)
+// re-renderiza o módulo de máquina preservando a rolagem (evita "pular pro topo" ao digitar)
+function _maqRenderMantendoScroll(){
+  const y=window.scrollY||window.pageYOffset||0;
+  renderMaq();
+  requestAnimationFrame(()=>{ window.scrollTo(0,y); setTimeout(()=>window.scrollTo(0,y),0); });
+}
 function renderMaq(container){
   try{
   if(container) _maqContainer=container;
   const c=_maqContainer; if(!c) return;
   const res=calcMaq();
   const SET=_maqSet().filter(s=>!_maqEhCentral(s));
+  const abaAtiva=_maqAbaAtual||'resumo'; // mantém a aba aberta ao re-renderizar
+  const ABAS=[['resumo','Resumo'],['energia','Energia'],['deprec','Depreciação'],['diretos','Gastos diretos'],['gerais','Gastos gerais']];
   let h='<div id="maq-container" class="module-view">';
   h+='<div class="maq-abas">';
-  h+='<button class="maq-aba on" data-aba="resumo">Resumo</button>';
-  h+='<button class="maq-aba" data-aba="energia">Energia</button>';
-  h+='<button class="maq-aba" data-aba="deprec">Depreciação</button>';
-  h+='<button class="maq-aba" data-aba="diretos">Gastos diretos</button>';
-  h+='<button class="maq-aba" data-aba="gerais">Gastos gerais</button>';
+  ABAS.forEach(([k,t])=>{ h+='<button class="maq-aba'+(k===abaAtiva?' on':'')+'" data-aba="'+k+'">'+t+'</button>'; });
   h+='</div>';
   h+='<div id="maq-corpo"></div></div>';
   c.innerHTML=h;
   c.querySelectorAll('.maq-aba').forEach(b=>{
-    b.onclick=()=>{ c.querySelectorAll('.maq-aba').forEach(x=>x.classList.remove('on')); b.classList.add('on'); _maqRenderAba(b.dataset.aba, res); };
+    b.onclick=()=>{ _maqAbaAtual=b.dataset.aba; c.querySelectorAll('.maq-aba').forEach(x=>x.classList.remove('on')); b.classList.add('on'); _maqRenderAba(b.dataset.aba, res); };
   });
-  _maqRenderAba('resumo', res);
+  _maqRenderAba(abaAtiva, res);
 
   }catch(err){
     console.error('renderMaq erro:', err);
