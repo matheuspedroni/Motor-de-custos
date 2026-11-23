@@ -815,6 +815,11 @@ main{padding:16px;max-width:680px;margin:0 auto}
 .maq-dep-cab{font-weight:700;color:var(--txt);margin-bottom:8px;font-size:.9rem}
 .maq-dep select,.maq-dep input{background:var(--surf2);color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:8px;width:100%;margin-bottom:6px;font-size:.88rem}
 .maq-dep-res{font-size:.82rem;color:var(--rebar2);text-align:right;font-weight:700;margin-top:2px}
+.maq-emp-custos{margin-top:8px;padding-top:8px;border-top:1px solid var(--line)}
+.maq-emp-custos .mec-l{display:flex;justify-content:space-between;align-items:center;font-size:.68rem;color:var(--txt2);padding:2px 0}
+.maq-emp-custos .mec-l small{color:var(--txt3);font-size:.58rem}
+.maq-emp-custos .mec-tot{font-weight:800;color:var(--rebar2);font-size:.82rem;border-top:1px dashed var(--line);margin-top:3px;padding-top:4px}
+.maq-emp-custos .mec-aviso{font-size:.6rem;color:#e0a040;margin-top:4px;line-height:1.4}
 .maq-med{font-size:.72rem;color:var(--txt3);font-weight:400}
 .maq-gd{display:flex;gap:5px;margin-bottom:6px;align-items:center}
 .maq-gd input[type=date]{width:120px}
@@ -877,7 +882,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v101</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v102</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -2153,6 +2158,86 @@ async function _maqGarantirDados(){
       else if(typeof D_DEFAULT!=='undefined'){ window.__mpD=JSON.parse(JSON.stringify(D_DEFAULT)); }
     }catch(e){}
   }
+  // FROTA (combustível + manutenção dos equipamentos) — mesmo Firebase, caminhos na raiz.
+  await _frotaGarantirDados();
+}
+// ===== INTEGRAÇÃO COM O APP FROTA (combustível + manutenção) =====
+// Lê frota (veículos), abasts (abastecimentos), diesel (compras/preço) e os (ordens de serviço).
+async function _frotaGarantirDados(){
+  if(window.__frotaD && window.__frotaD._carregado) return;
+  if(window.__MAQ_DEMO || !(typeof db!=='undefined' && db && typeof fb!=='undefined' && fb)){
+    window.__frotaD={frota:{},abasts:{},diesel:{},os:{},_carregado:true}; return;
+  }
+  const fd={frota:{},abasts:{},diesel:{},os:{}};
+  const cols=['frota','abasts','diesel','os'];
+  for(const c of cols){
+    try{
+      const snap=await new Promise((res,rej)=>{ try{ fb.onValue(fb.ref(db,c), res, rej, {onlyOnce:true}); }catch(e){ rej(e); } });
+      if(snap && snap.exists()) fd[c]=snap.val()||{};
+    }catch(e){}
+  }
+  fd._carregado=true;
+  window.__frotaD=fd;
+  // atualiza ao vivo (um watcher por coleção) — re-renderiza o módulo de máquina preservando scroll
+  if(!window.__frotaWatching){
+    window.__frotaWatching=true;
+    cols.forEach(c=>{
+      try{ fb.onValue(fb.ref(db,c), snap=>{
+        if(!window.__frotaD) return;
+        window.__frotaD[c]=(snap&&snap.exists())?(snap.val()||{}):{};
+        if(typeof maqReady!=='undefined' && maqReady && typeof _maqRenderMantendoScroll==='function') _maqRenderMantendoScroll();
+      }); }catch(e){}
+    });
+  }
+}
+function _frotaVals(o){ return o&&typeof o==='object'?Object.values(o):[]; }
+// preço do litro vigente numa data (última compra de diesel até aquela data)
+function _frotaPrecoDiesel(dataISO){
+  const fd=window.__frotaD; if(!fd) return null;
+  const compras=_frotaVals(fd.diesel).filter(c=>c&&c.data&&c.data<=dataISO).sort((a,b)=>b.data.localeCompare(a.data));
+  return compras.length?(parseFloat(compras[0].precoPorLitro)||0):null;
+}
+// normaliza nome p/ casar equipamento entre os dois apps (ignora caixa e espaços extras)
+function _frotaNorm(n){ return (n||'').toString().trim().toLowerCase().replace(/\s+/g,' '); }
+// custo mensal (combustível + manutenção) de um equipamento por MÊS (YYYY-MM)
+function _frotaCustoMesEquip(nomeEquip, mes){
+  const fd=window.__frotaD; if(!fd) return 0;
+  const alvo=_frotaNorm(nomeEquip);
+  let custo=0;
+  // combustível = litros × preço vigente na data
+  _frotaVals(fd.abasts).forEach(a=>{
+    if(!a||_frotaNorm(a.equip)!==alvo) return;
+    const d=(a.data||'').slice(0,10); if(d.slice(0,7)!==mes) return;
+    const preco=_frotaPrecoDiesel(d); if(preco==null) return;
+    custo += (parseFloat(a.litros)||0)*preco;
+  });
+  // manutenção = soma das OS (valor direto)
+  _frotaVals(fd.os).forEach(o=>{
+    if(!o||_frotaNorm(o.equip)!==alvo) return;
+    const d=(o.data||'').slice(0,10); if(d.slice(0,7)!==mes) return;
+    custo += parseFloat(o.valor)||0;
+  });
+  return custo;
+}
+// MÉDIA MÓVEL de 5 meses FECHADOS (exclui o mês corrente) de combustível+manutenção do equipamento
+function _frotaCustoMedioEquip(nomeEquip){
+  const fd=window.__frotaD; if(!fd) return 0;
+  const hoje=new Date();
+  const mesCorrente=hoje.toISOString().slice(0,7);
+  // últimos 5 meses fechados
+  const meses=[];
+  for(let i=1;i<=5;i++){
+    const d=new Date(hoje.getFullYear(), hoje.getMonth()-i, 1);
+    meses.push(d.toISOString().slice(0,7));
+  }
+  // só considera meses que têm algum dado no FROTA (não divide por meses vazios anteriores ao histórico)
+  const mesesComDado=new Set();
+  _frotaVals(fd.abasts).forEach(a=>{ if(a&&a.data){ const m=a.data.slice(0,7); if(m<mesCorrente) mesesComDado.add(m); } });
+  _frotaVals(fd.os).forEach(o=>{ if(o&&o.data){ const m=o.data.slice(0,7); if(m<mesCorrente) mesesComDado.add(m); } });
+  const usar=meses.filter(m=>mesesComDado.has(m));
+  if(!usar.length) return 0;
+  const soma=usar.reduce((a,m)=>a+_frotaCustoMesEquip(nomeEquip,m),0);
+  return soma/usar.length;
 }
 
 // ---- init: carrega por seção + onValue por seção ----
@@ -2289,8 +2374,15 @@ function deprecUmaEmp(e){
   if(e.modo==='reposicao' || (e.repo>0 && e.vida>0)){ return (e.repo>0&&e.vida>0)? e.repo/(e.vida*12) : (e.val||0); }
   return e.val||0;
 }
+// custo do FROTA (combustível+manutenção, média de 5 meses) de uma empilhadeira, pelo NOME
+function custoFrotaEmp(e){
+  if(!e||!e.nome) return 0;
+  try{ return _frotaCustoMedioEquip(e.nome)||0; }catch(err){ return 0; }
+}
+// custo mensal TOTAL de uma empilhadeira = depreciação + (combustível+manutenção do FROTA)
+function custoMensalEmp(e){ return deprecUmaEmp(e) + custoFrotaEmp(e); }
 function deprecEmpilhadeiras(){
-  return _maqArr(DMaq.empilhadeiras).reduce((s,e)=>s+deprecUmaEmp(e),0);
+  return _maqArr(DMaq.empilhadeiras).reduce((s,e)=>s+custoMensalEmp(e),0);
 }
 // Rateio de empilhadeiras por setor:
 // 1) o % que você digita por setor define quanto do custo da empilhadeira vai p/ cada "destino"
@@ -2301,7 +2393,7 @@ function deprecEmpParaSetor(s){
   if(_maqEhLogistica(s)) return 0;
   let total=0;
   _maqArr(DMaq.empilhadeiras).forEach(e=>{
-    const dep=deprecUmaEmp(e); if(dep<=0) return;
+    const dep=custoMensalEmp(e); if(dep<=0) return;
     const aloc=e.aloc||{};
     // peso de cada setor de produção = %uso × KG do setor
     let somaPesoProd=0; const pesos={};
@@ -2325,7 +2417,7 @@ function deprecEmpParaSetor(s){
 function deprecEmpLogistica(){
   let total=0;
   _maqArr(DMaq.empilhadeiras).forEach(e=>{
-    const dep=deprecUmaEmp(e); if(dep<=0) return;
+    const dep=custoMensalEmp(e); if(dep<=0) return;
     const aloc=e.aloc||{};
     const pctLog=Object.keys(aloc).filter(_maqEhLogistica).reduce((a,k)=>a+(parseFloat(aloc[k])||0),0)/100;
     total+=dep*pctLog;
@@ -2646,7 +2738,15 @@ function _maqAbaDeprec(box){
     h+='</div>';
     const corSoma=Math.abs(somaPct-100)<0.5?'var(--ok,#4caf50)':(somaPct>100?'#e57373':'var(--txt3)');
     h+='<div class="maq-emp-soma" data-i="'+idx+'" style="font-size:.64rem;text-align:right;margin-top:4px;color:'+corSoma+'">Soma: '+_maqFmt(somaPct)+'% '+(Math.abs(somaPct-100)<0.5?'✓':(somaPct>100?'(passou de 100%)':'(falta '+_maqFmt(100-somaPct)+'%)'))+'</div>';
-    h+='<div class="maq-dep-res">R$ '+_maqFmt(deprecUmaEmp(e))+'/mês</div></div>';
+    // decomposição: depreciação + FROTA (combustível+manutenção, média 5 meses) = total
+    const dDep=deprecUmaEmp(e), dFrota=custoFrotaEmp(e), dTot=dDep+dFrota;
+    const achouFrota = !!(e.nome && window.__frotaD && _frotaVals(window.__frotaD.frota).some(f=>f&&_frotaNorm(f.id)===_frotaNorm(e.nome)));
+    h+='<div class="maq-emp-custos">';
+    h+='<div class="mec-l"><span>Depreciação</span><span>R$ '+_maqFmt(dDep)+'</span></div>';
+    h+='<div class="mec-l"><span>Combustível + manutenção <small>(FROTA · média 5m)</small></span><span>R$ '+_maqFmt(dFrota)+'</span></div>';
+    h+='<div class="mec-l mec-tot"><span>Total/mês</span><span>R$ '+_maqFmt(dTot)+'</span></div>';
+    if(e.nome && !achouFrota) h+='<div class="mec-aviso">⚠ Não achei "'+e.nome+'" no FROTA — confira se o nome é idêntico ao ID cadastrado lá.</div>';
+    h+='</div></div>';
   });
   h+='<div class="maq-dep-res">Total empilhadeiras: R$ '+_maqFmt(deprecEmpilhadeiras())+'/mês · reservado p/ Logística: R$ '+_maqFmt(deprecEmpLogistica())+'/mês</div>';
   box.innerHTML=h;
