@@ -914,7 +914,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v112</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v113</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -2666,14 +2666,37 @@ function _maqRenderAba(aba, res){
 
 // ===== MOLDES / FÔRMAS (custo por peça, só produtos de prensa) =====
 // Molde se gasta pelo USO, não pelo tempo. Custo/peça = preço ÷ (vida em ciclos × peças por ciclo).
-const MOLDE_FAMILIAS=['Maquina Blocos 01','Maquina Blocos 02'];
-function _moldeProdutos(){
+// Moldes agrupados pela MÁQUINA real (da M.O.: Gervasi e PWR), não pela família da matéria-prima.
+// Gervasi e PWR fazem produtos diferentes do que a família "Blocos 01/02" sugere.
+const MOLDE_SETORES=['Blocos maquina Gervasi','Blocos maquina PWR'];
+// produtos que têm molde mas não estão na lista de produção da M.O. — adicionados à máquina certa
+const MOLDE_EXTRA={'Blocos maquina Gervasi':['MEIO BLOCO 14','MEIO BLOCO 19']};
+function _moldePesoDe(nome){
   const MP = window.__mpD || (typeof D_DEFAULT!=='undefined'?D_DEFAULT:null);
-  if(!MP) return [];
-  return _maqArr(MP.produtos).filter(p=>p&&p.nome && MOLDE_FAMILIAS.includes(p.familia));
+  if(!MP) return 0;
+  const p=_maqArr(MP.produtos).find(x=>x&&x.nome===nome);
+  return p ? (p.pesoPeca||p.peso||0) : 0;
+}
+// id (chave do molde) de um produto pelo NOME, cruzando com a matéria-prima (id estável)
+function _moldeIdDe(nome){
+  const MP = window.__mpD || (typeof D_DEFAULT!=='undefined'?D_DEFAULT:null);
+  const p = MP ? _maqArr(MP.produtos).find(x=>x&&x.nome===nome) : null;
+  return (p && p.id!=null) ? String(p.id) : nome;
+}
+// lista de produtos de molde por máquina: [{setor, nome, id, pesoPeca}]
+function _moldeProdutos(){
+  const MO = window.__moD;
+  const out=[];
+  MOLDE_SETORES.forEach(setor=>{
+    const lista = MO && MO.produtos ? _maqArr(MO.produtos[setor]) : [];
+    lista.forEach(p=>{ if(p&&p.nome) out.push({setor, nome:p.nome}); });
+    // extras (produtos com molde que não estão na produção da M.O.)
+    (MOLDE_EXTRA[setor]||[]).forEach(nome=>{ if(!out.some(x=>x.setor===setor&&x.nome===nome)) out.push({setor, nome}); });
+  });
+  return out;
 }
 // chave do molde: SEMPRE com prefixo 'p' (chaves só-numéricas fazem o Firebase virar array e embaralhar)
-function _moldeProdId(p){ return 'p'+(p.id!=null ? String(p.id) : p.nome); }
+function _moldeProdId(p){ const id = p.id!=null ? String(p.id) : _moldeIdDe(p.nome); return 'p'+id; }
 // R$/peça de um molde = preço ÷ (ciclos × peças por ciclo)
 function moldeRsPeca(prodId){
   const m=(DMaq.moldes||{})[prodId]; if(!m) return null;
@@ -2695,12 +2718,15 @@ function _maqAbaMoldes(box){
   let h='<div class="maq-head"><div class="maq-head-t">Moldes / Fôrmas</div><span class="help" onclick="abrirAjuda(\'maq_moldes\')">?</span></div>';
   h+='<div class="maq-head-sub">O molde se gasta pelo <b>uso</b>, não pelo tempo. O custo por peça é o preço do molde dividido por quantas peças ele faz na vida inteira (ciclos × peças por ciclo). Só produtos de prensa.</div>';
   const prods=_moldeProdutos();
-  if(!prods.length){ h+='<div class="maq-aviso" style="border:1px solid var(--line);border-radius:9px">Nenhum produto de prensa encontrado na matéria-prima. Abra a aba Material uma vez para carregar os produtos.</div>'; box.innerHTML=h; return; }
-  const fams={};
-  prods.forEach(p=>{ const f=p.familia||'(sem família)'; (fams[f]=fams[f]||[]).push(p); });
-  Object.keys(fams).forEach(fam=>{
-    h+='<div class="maq-sub">'+fam+'</div>';
-    fams[fam].forEach(p=>{
+  if(!prods.length){ h+='<div class="maq-aviso" style="border:1px solid var(--line);border-radius:9px">Nenhum produto de prensa encontrado. Abra a aba M. obra uma vez para carregar a produção das máquinas Gervasi e PWR.</div>'; box.innerHTML=h; return; }
+  // agrupa por MÁQUINA (setor da M.O.), com nome amigável
+  const nomeMaq={'Blocos maquina Gervasi':'Máquina Gervasi','Blocos maquina PWR':'Máquina PWR'};
+  const grp={};
+  prods.forEach(p=>{ const s=p.setor; (grp[s]=grp[s]||[]).push(p); });
+  MOLDE_SETORES.forEach(setor=>{
+    if(!grp[setor]||!grp[setor].length) return;
+    h+='<div class="maq-sub">'+(nomeMaq[setor]||setor)+'</div>';
+    grp[setor].forEach(p=>{
       const id=_moldeProdId(p); const idsafe=String(id).replace(/"/g,'&quot;'); const idattr=encodeURIComponent(String(id));
       const m=(DMaq.moldes||{})[id]||{};
       h+='<div class="maq-dep" data-mid="'+idattr+'"><div class="maq-dep-cab">'+p.nome+' <span class="molde-rs" data-mid="'+idattr+'">'+_moldeRsLabel(id)+'</span></div>';
