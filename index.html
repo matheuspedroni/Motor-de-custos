@@ -914,7 +914,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v115</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v116</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -2209,13 +2209,31 @@ async function _maqGarantirDados(){
       }catch(e){ if(typeof DMO_DEFAULT!=='undefined') window.__moD=JSON.parse(JSON.stringify(DMO_DEFAULT)); }
     }
   }
-  // Matéria-prima (pesos das peças) — se não carregada, tenta localStorage/DEFAULT
-  if(!window.__mpD){
-    try{
-      const blob=JSON.parse(localStorage.getItem('pedroni:custos/mp/produtos')||'null');
-      if(blob && typeof D_DEFAULT!=='undefined'){ const base=JSON.parse(JSON.stringify(D_DEFAULT)); base.produtos=blob; window.__mpD=base; }
-      else if(typeof D_DEFAULT!=='undefined'){ window.__mpD=JSON.parse(JSON.stringify(D_DEFAULT)); }
-    }catch(e){}
+  // Matéria-prima (pesos/nomes/ids das peças). PRECISA vir do Firebase (custos/mp/produtos),
+  // igual a aba Material faz — senão cai na lista PADRÃO (D_DEFAULT) e os produtos reais não aparecem
+  // até abrir a aba Material. Recarrega se não existe OU se veio incompleto (sem produtos de verdade).
+  const _mpIncompleto = window.__mpD && (!window.__mpD.produtos || !window.__mpD.__fb);
+  if(!window.__mpD || _mpIncompleto){
+    if(!(typeof db!=='undefined' && db && typeof fb!=='undefined' && fb) || window.__MAQ_DEMO){
+      // modo local (sem Firebase): localStorage/DEFAULT
+      try{
+        const blob=JSON.parse(localStorage.getItem('pedroni:custos/mp/produtos')||'null');
+        if(blob && typeof D_DEFAULT!=='undefined'){ const base=JSON.parse(JSON.stringify(D_DEFAULT)); base.produtos=blob; window.__mpD=base; }
+        else if(typeof D_DEFAULT!=='undefined' && !window.__mpD){ window.__mpD=JSON.parse(JSON.stringify(D_DEFAULT)); }
+      }catch(e){}
+    } else {
+      // Firebase: busca os produtos reais (a lista verdadeira do motor)
+      try{
+        const base = window.__mpD || (typeof D_DEFAULT!=='undefined' ? JSON.parse(JSON.stringify(D_DEFAULT)) : {produtos:[]});
+        const snap=await new Promise((res,rej)=>{ try{ fb.onValue(fb.ref(db,'custos/mp/produtos'), res, rej, {onlyOnce:true}); }catch(e){ rej(e); } });
+        if(snap && snap.exists()){
+          const v=snap.val();
+          base.produtos = Array.isArray(v) ? v : Object.values(v||{});
+          try{ Object.defineProperty(base,'__fb',{value:true,enumerable:false,configurable:true}); }catch(e){}
+        }
+        window.__mpD=base;
+      }catch(e){ if(typeof D_DEFAULT!=='undefined' && !window.__mpD) window.__mpD=JSON.parse(JSON.stringify(D_DEFAULT)); }
+    }
   }
   // FROTA (combustível + manutenção dos equipamentos) — mesmo Firebase, caminhos na raiz.
   await _frotaGarantirDados();
