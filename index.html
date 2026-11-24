@@ -914,7 +914,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v107</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v108</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -5921,17 +5921,27 @@ function freteKmFrotaMes(){
   const meses=Object.keys(kmPorMes); if(!meses.length) return 0;
   return meses.reduce((s,m)=>s+kmPorMes[m],0)/meses.length;
 }
-// R$/km = custo mensal da operação ÷ km rodados no mês
-function freteRsPorKm(){ const km=freteKmFrotaMes(); return km<=0?0:freteCustoMensalTotal()/km; }
+// --- separação dos custos: VARIÁVEL (varia com km) vs FIXO (varia com tempo) ---
+// VARIÁVEL = combustível + manutenção da frota (vem do FROTA). Só isso sobe quando roda mais longe.
+function freteCustoVariavelMes(){ return _freteArr(DFrete.caminhoes).reduce((s,c)=>s+freteFrotaCaminhao(c),0); }
+// FIXO = depreciação dos caminhões + motoristas + carregamento no pátio. Independe do km.
+function freteCustoFixoMes(){
+  const depCam=_freteArr(DFrete.caminhoes).reduce((s,c)=>s+freteDeprecCaminhao(c),0);
+  return depCam + freteTotalMotoristas() + freteCustoLogisticaEmp();
+}
+// R$/km = SÓ o custo variável (combustível+manutenção) ÷ km rodados no mês.
+// (depreciação e motorista NÃO entram aqui — não variam com km; eles entram na diária)
+function freteRsPorKm(){ const km=freteKmFrotaMes(); return km<=0?0:freteCustoVariavelMes()/km; }
 // custo de imobilizar UMA dupla (caminhão+motorista) por um dia =
-// custo mensal da operação ÷ nº de motoristas ÷ dias úteis
+// SÓ o custo FIXO ÷ nº de motoristas ÷ dias úteis (o variável já é cobrado pelo km)
 function freteCustoDia(){
   const op=DFrete.operacao||{};
   const n=parseFloat(op.nMotoristas)||0, d=parseFloat(op.diasUteis)||0;
   if(n<=0||d<=0) return 0;
-  return freteCustoMensalTotal()/n/d;
+  return freteCustoFixoMes()/n/d;
 }
-// adicional de frete longo (Opção B: diária + km): dias de viagem × custo/dia + km × R$/km
+// adicional de frete longo (Opção B: diária + km), SEM dupla-contagem:
+// km × R$/km (só combustível+manutenção da estrada) + dias × custo/dia (só os fixos imobilizados)
 function freteLongo(kmTotal, diasViagem){
   const km=parseFloat(kmTotal)||0, dias=parseFloat(diasViagem)||0;
   return dias*freteCustoDia() + km*freteRsPorKm();
@@ -6232,10 +6242,11 @@ function _freteAbaLongo(box){
   const kmViagem = (_freteLongoKm!=null?_freteLongoKm:0) * (_freteLongoIdaVolta?2:1);
   const adicional = (_freteLongoKm!=null) ? freteLongo(kmViagem, _freteLongoDias) : null;
   let h='<div class="maq-nota">Para entregas <b>fora da região</b>. Esta é uma calculadora: você informa a distância e os dias da viagem, e o app te dá o valor do adicional de frete pra somar no orçamento. (No futuro, com o módulo de orçamento, isso entra automático.)</div>';
+  h+='<div class="maq-nota" style="font-size:.7rem">O adicional separa <b>o que varia com a distância</b> (combustível + manutenção, pelo km) do <b>que varia com o tempo</b> (depreciação + motorista + pátio, pela diária). Sem contar nada duas vezes: o km paga a estrada, a diária paga o caminhão e o motorista imobilizados.</div>';
   // parâmetros automáticos
   h+='<div class="maq-card"><div class="maq-card-cab"><span class="maq-card-nome">Custos automáticos</span></div>';
-  h+='<div class="frete-lin"><span>R$/km rodado (custo da operação ÷ km da frota)</span><b>R$ '+_freteFmt(rsKm)+'</b></div>';
-  h+='<div class="frete-lin"><span>Custo de um dia de caminhão + motorista</span><b>R$ '+_freteFmt(custoDia)+'</b></div>';
+  h+='<div class="frete-lin"><span>R$/km rodado <small style="color:var(--txt3)">(só combustível + manutenção ÷ km)</small></span><b>R$ '+_freteFmt(rsKm)+'</b></div>';
+  h+='<div class="frete-lin"><span>Custo de um dia de caminhão + motorista <small style="color:var(--txt3)">(depreciação + motorista + pátio)</small></span><b>R$ '+_freteFmt(custoDia)+'</b></div>';
   h+='<div class="frete-lin"><span>Km rodados pela frota no mês (média, do FROTA)</span><b>'+_freteN(kmMes)+' km</b></div>';
   if(kmMes<=0) h+='<div class="maq-aviso" style="border-top:1px solid var(--line)">Sem km lançados no FROTA ainda (ou placas não encontradas) — o R$/km fica zero até os abastecimentos terem hodômetro registrado.</div>';
   h+='</div>';
