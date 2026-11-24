@@ -914,7 +914,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v108</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v109</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -1673,7 +1673,7 @@ function toggleUserMenu(){
         if(v!=null) backup.mo[s]=v;
       }
       // Custo de máquina: custos/maq/<secao>
-      const maqSecs=['deprec','depConfig','central','centralDep','empilhadeiras','potencias','horasMes','energia','prodPorSetor','gg','ggCustom','diretos','pessoasSetor','config'];
+      const maqSecs=['deprec','depConfig','central','centralDep','empilhadeiras','potencias','horasMes','energia','prodPorSetor','gg','ggCustom','diretos','moldes','pessoasSetor','config'];
       backup.maq={};
       for(const s of maqSecs){
         let v = await lerNuvem('custos/maq/'+s);
@@ -2089,7 +2089,7 @@ const DMAQ_DEFAULT = {"setores": ["Blocos maquina PWR", "Blocos maquina Gervasi"
 // ==================== MÓDULO CUSTO DE MÁQUINA ====================
 let DMaq = null;
 let maqReady = false;
-const MAQ_SECOES = ['deprec','depConfig','central','centralDep','empilhadeiras','potencias','horasMes','energia','prodPorSetor','gg','ggCustom','diretos','pessoasSetor','config'];
+const MAQ_SECOES = ['deprec','depConfig','central','centralDep','empilhadeiras','potencias','horasMes','energia','prodPorSetor','gg','ggCustom','diretos','moldes','pessoasSetor','config'];
 const _maqLastWriteSec = {};
 const _maqTimers = {};
 
@@ -2284,7 +2284,8 @@ function _maqRegistrarAjudas(){
   maq_resumo:{t:'Custo de máquina por setor', c:'<p>Cada máquina tem um custo mensal formado por 4 partes: <b>energia</b>, <b>depreciação</b>, <b>gastos diretos</b> e <b>gastos gerais</b>.</p><p>Esse total é dividido pela produção do setor (em toneladas) para dar o <b>custo por tonelada</b> — que depois entra no preço de cada peça conforme o peso dela.</p><p>A produção usada é a <b>MÉDIA da produção real</b> lançada na M.O. (como a máquina faz um produto por vez, não somamos capacidades em paralelo). Quanto mais meses lançados, mais estável fica a média. Setor sem produção lançada não calcula custo/tonelada até você cadastrar.</p>'},
   maq_energia:{t:'Energia', c:'<p>A conta de luz é dividida entre os setores em duas partes:</p><p><b>Demanda</b> (a parte fixa que você paga pela potência contratada) é rateada pela <b>potência instalada</b> de cada máquina.</p><p><b>Consumo</b> (a energia efetivamente usada) é rateado por <b>potência × horas</b> de operação.</p><p>Informe a conta média paga, o % que é demanda, e a potência (kW) e horas/mês de cada máquina.</p>'},
   maq_deprec:{t:'Depreciação', c:'<p>É a reserva mensal para repor a máquina no futuro. Mesmo uma máquina velha e quitada continua depreciando pelo <b>valor de reposição</b> — assim você junta o dinheiro para trocá-la quando precisar.</p><p><b>Valor fixo:</b> você informa direto o R$/mês.</p><p><b>Por reposição:</b> informe quanto custaria repor a máquina hoje e a vida útil em anos; o app calcula o R$/mês (reposição ÷ vida ÷ 12).</p><p>As empilhadeiras servem todas as máquinas, então são rateadas por KG entre todas. Cada central é rateada por KG só entre as máquinas que ela abastece (a lista vem da aba Mão de obra → "esta central abastece quais máquinas").</p>'},
-  maq_diretos:{t:'Gastos diretos', c:'<p>Gastos específicos de uma máquina: moldes, correias, discos, reparos daquele equipamento.</p><p>Lance cada gasto com a <b>data</b> em que aconteceu. O app faz a <b>média mensal</b> — assim um molde de R$ 12.000 comprado uma vez não estoura o custo de um único mês, ele se dilui.</p>'},
+  maq_diretos:{t:'Gastos diretos', c:'<p>Gastos específicos de uma máquina: correias, discos, reparos daquele equipamento.</p><p>Lance cada gasto com a <b>data</b> em que aconteceu. O app faz a <b>média mensal</b> — assim uma compra grande feita uma vez não estoura o custo de um único mês, ela se dilui.</p><p><b>Moldes de prensa têm aba própria</b> (Moldes), porque se diluem por peça, não por mês.</p>'},
+  maq_moldes:{t:'Moldes / Fôrmas', c:'<p>O molde de prensa (bloco, piso, meio-fio…) se gasta pelo <b>uso</b>, não pelo tempo: um molde parado não desgasta. Por isso o custo dele não é por mês, é <b>por peça</b>.</p><p><b>Custo por peça = preço do molde ÷ (vida em ciclos × peças por ciclo)</b>.</p><p>Exemplo: molde de R$ 12.000, vida de 50.000 ciclos, 6 peças por prensada → 300.000 peças → R$ 0,04 por bloco.</p><p>Só produtos de prensa têm molde consumível. Produto sem molde preenchido não gera custo.</p>'},
   maq_gerais:{t:'Gastos gerais', c:'<p>Custos da fábrica que não são de uma máquina só: água, gás, ar comprimido, movimentação interna, instalações.</p><p>Cada item tem um <b>critério de rateio</b>: por horas de operação, por número de pessoas, ou direto para um setor específico.</p>'},
 });
 }
@@ -2634,7 +2635,7 @@ function renderMaq(container){
   const res=calcMaq();
   const SET=_maqSet().filter(s=>!_maqEhCentral(s));
   const abaAtiva=_maqAbaAtual||'resumo'; // mantém a aba aberta ao re-renderizar
-  const ABAS=[['resumo','Resumo'],['energia','Energia'],['deprec','Depreciação'],['diretos','Gastos diretos'],['gerais','Gastos gerais']];
+  const ABAS=[['resumo','Resumo'],['energia','Energia'],['deprec','Depreciação'],['diretos','Gastos diretos'],['gerais','Gastos gerais'],['moldes','Moldes']];
   let h='<div id="maq-container" class="module-view">';
   h+='<div class="maq-abas">';
   ABAS.forEach(([k,t])=>{ h+='<button class="maq-aba'+(k===abaAtiva?' on':'')+'" data-aba="'+k+'">'+t+'</button>'; });
@@ -2660,6 +2661,50 @@ function _maqRenderAba(aba, res){
   if(aba==='deprec') return _maqAbaDeprec(box);
   if(aba==='diretos') return _maqAbaDiretos(box);
   if(aba==='gerais') return _maqAbaGerais(box);
+  if(aba==='moldes') return _maqAbaMoldes(box);
+}
+
+// ===== MOLDES / FÔRMAS (custo por peça, só produtos de prensa) =====
+// Molde se gasta pelo USO, não pelo tempo. Custo/peça = preço ÷ (vida em ciclos × peças por ciclo).
+const MOLDE_FAMILIAS=['Maquina Blocos 01','Maquina Blocos 02'];
+function _moldeProdutos(){
+  const MP = window.__mpD || (typeof D_DEFAULT!=='undefined'?D_DEFAULT:null);
+  if(!MP) return [];
+  return _maqArr(MP.produtos).filter(p=>p&&p.nome && MOLDE_FAMILIAS.includes(p.familia));
+}
+function _moldeProdId(p){ return p.id!=null ? String(p.id) : p.nome; }
+// R$/peça de um molde = preço ÷ (ciclos × peças por ciclo)
+function moldeRsPeca(prodId){
+  const m=(DMaq.moldes||{})[prodId]; if(!m) return null;
+  const preco=parseFloat(m.preco)||0, ciclos=parseFloat(m.ciclos)||0, pc=parseFloat(m.pecasCiclo)||0;
+  const totalPecas=ciclos*pc;
+  if(preco<=0 || totalPecas<=0) return null;
+  return preco/totalPecas;
+}
+function _maqAbaMoldes(box){
+  let h='<div class="maq-head"><div class="maq-head-t">Moldes / Fôrmas</div><span class="help" onclick="abrirAjuda(\'maq_moldes\')">?</span></div>';
+  h+='<div class="maq-head-sub">O molde se gasta pelo <b>uso</b>, não pelo tempo. O custo por peça é o preço do molde dividido por quantas peças ele faz na vida inteira (ciclos × peças por ciclo). Só produtos de prensa.</div>';
+  const prods=_moldeProdutos();
+  if(!prods.length){ h+='<div class="maq-aviso" style="border:1px solid var(--line);border-radius:9px">Nenhum produto de prensa encontrado na matéria-prima. Abra a aba Material uma vez para carregar os produtos.</div>'; box.innerHTML=h; return; }
+  const fams={};
+  prods.forEach(p=>{ const f=p.familia||'(sem família)'; (fams[f]=fams[f]||[]).push(p); });
+  Object.keys(fams).forEach(fam=>{
+    h+='<div class="maq-sub">'+fam+'</div>';
+    fams[fam].forEach(p=>{
+      const id=_moldeProdId(p); const m=(DMaq.moldes||{})[id]||{}; const rs=moldeRsPeca(id);
+      const totalPecas=(parseFloat(m.ciclos)||0)*(parseFloat(m.pecasCiclo)||0);
+      h+='<div class="maq-dep"><div class="maq-dep-cab">'+p.nome+(rs!=null?' <span class="maq-med">R$ '+(Math.round(rs*10000)/10000).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:4})+'/peça</span>':' <span class="maq-med" style="color:var(--txt3)">— sem molde</span>')+'</div>';
+      h+='<div class="maq-row2"><input class="molde-preco" data-id="'+String(id).replace(/"/g,'&quot;')+'" type="number" placeholder="preço do molde R$" value="'+(m.preco||'')+'"></div>';
+      h+='<div class="maq-row2"><input class="molde-ciclos" data-id="'+String(id).replace(/"/g,'&quot;')+'" type="number" placeholder="vida (ciclos/prensadas)" value="'+(m.ciclos||'')+'"><input class="molde-pc" data-id="'+String(id).replace(/"/g,'&quot;')+'" type="number" placeholder="peças por ciclo" value="'+(m.pecasCiclo||'')+'"></div>';
+      if(totalPecas>0) h+='<div class="maq-dep-res">Vida total: '+totalPecas.toLocaleString('pt-BR')+' peças</div>';
+      h+='</div>';
+    });
+  });
+  box.innerHTML=h;
+  const M=(id)=>{ if(!DMaq.moldes)DMaq.moldes={}; if(!DMaq.moldes[id])DMaq.moldes[id]={}; return DMaq.moldes[id]; };
+  box.querySelectorAll('.molde-preco').forEach(i=>{ i.oninput=()=>{ M(i.dataset.id).preco=parseFloat(i.value)||0; salvarSecaoMaq('moldes'); }; i.onblur=()=>_maqRenderMantendoScroll(); });
+  box.querySelectorAll('.molde-ciclos').forEach(i=>{ i.oninput=()=>{ M(i.dataset.id).ciclos=parseFloat(i.value)||0; salvarSecaoMaq('moldes'); }; i.onblur=()=>_maqRenderMantendoScroll(); });
+  box.querySelectorAll('.molde-pc').forEach(i=>{ i.oninput=()=>{ M(i.dataset.id).pecasCiclo=parseFloat(i.value)||0; salvarSecaoMaq('moldes'); }; i.onblur=()=>_maqRenderMantendoScroll(); });
 }
 
 // RESUMO: custo/mês e custo/ton por setor
