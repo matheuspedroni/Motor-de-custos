@@ -914,7 +914,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v114</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v115</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -1625,10 +1625,11 @@ async function _precarregarTudo(){
     if(typeof _maqGarantirDados==='function'){ try{ await _maqGarantirDados(); }catch(e){} }
     // 2) Máquina (DMaq + suas seções) — sem desenhar
     try{
-      if(typeof DMaq==='undefined' || !DMaq){ if(typeof DMAQ_DEFAULT!=='undefined'){ window.__maqD = JSON.parse(JSON.stringify(DMAQ_DEFAULT)); } }
+      // IMPORTANTE: atribuir DMaq (a variável que as funções usam), não só window.__maqD
+      if(!DMaq && typeof DMAQ_DEFAULT!=='undefined'){ DMaq = JSON.parse(JSON.stringify(DMAQ_DEFAULT)); window.__maqD = DMaq; }
       if(typeof window.__MAQ_DEMO==='undefined') window.__MAQ_DEMO = !(typeof db!=='undefined' && db && typeof fb!=='undefined' && fb);
       if(typeof _maqRegistrarAjudas==='function') _maqRegistrarAjudas();
-      if(typeof _maqCarregarDadosAssincrono==='function') await _maqCarregarDadosAssincrono(null);
+      if(DMaq && typeof _maqCarregarDadosAssincrono==='function') await _maqCarregarDadosAssincrono(null);
     }catch(e){ console.warn('pré-carga maq', e&&e.message); }
     // 3) Frete (DFrete + suas seções) — sem desenhar
     try{
