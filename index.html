@@ -833,6 +833,15 @@ main{padding:16px;max-width:680px;margin:0 auto}
 .maq-gg-rat{background:var(--surf2);color:var(--txt);border:1px solid var(--line);border-radius:5px;padding:6px;font-size:.75rem;max-width:130px}
 .maq-tot-gg{font-weight:800;color:var(--txt);text-align:right;margin-bottom:12px;font-size:1rem}
 .maq-mini{background:var(--rebar-dim);border:1px solid var(--rebar);color:var(--rebar2);border-radius:6px;padding:6px 12px;font-size:.78rem;cursor:pointer;margin-top:6px}
+.frete-lin{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 14px;font-size:.84rem;color:var(--txt2);border-top:1px solid var(--line)}
+.frete-lin b{color:var(--txt);font-weight:700;font-variant-numeric:tabular-nums}
+.frete-tbl{width:100%;border-collapse:collapse;font-size:.8rem;margin-bottom:8px}
+.frete-tbl th{text-align:left;font-size:.68rem;text-transform:uppercase;letter-spacing:.02em;color:var(--txt3);padding:6px 8px;border-bottom:1px solid var(--line)}
+.frete-tbl td{padding:6px 8px;border-bottom:1px solid var(--line);color:var(--txt2);vertical-align:middle}
+.frete-tbl .r{text-align:right;font-variant-numeric:tabular-nums}
+.frete-tbl .c{text-align:center}
+.frete-tbl input{width:78px;background:var(--surf2);color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:6px;font-size:.82rem;text-align:center}
+.maq-row2 input,.maq-row2 select{background:var(--surf2);color:var(--txt);border:1px solid var(--line);border-radius:6px;padding:7px;font-size:.85rem;flex:1;min-width:0}
 .maq-del{background:transparent;border:1px solid var(--line);color:#e0603c;border-radius:5px;padding:5px 9px;font-size:.75rem;cursor:pointer}
 .maq-nota{font-size:.76rem;color:var(--txt3);background:var(--surf2);border:1px solid var(--line);border-radius:7px;padding:9px 11px;margin-bottom:10px;line-height:1.45}
 .maq-row-ro{background:var(--surf2)}
@@ -882,7 +891,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v104</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v105</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -1724,7 +1733,7 @@ const MODULES = {
   mp:   { ico:"🧱", cls:"dc-mp",    name:"Matéria-prima",   tag:"Custo do concreto por produto",  status:"ok",  desc:"Traços, aço, embalagem e histórico de preços." },
   mo:   { ico:"👷", cls:"dc-mo",    name:"Mão de obra",     tag:"Custo/hora por setor",           status:"ok",  desc:"Encargos, 7 setores, EPI por consumo." },
   maq:  { ico:"⚙️", cls:"dc-maq",   name:"Custo de máquina",tag:"Energia, depreciação, gastos",   status:"wip", desc:"Energia calibrada; faltam potências e produção." },
-  frete:{ ico:"🚚", cls:"dc-frete", name:"Frete e admin",   tag:"Custos fixos rateados",          status:"wip", desc:"Faturamento real; falta combustível da frota." },
+  frete:{ ico:"🚚", cls:"dc-frete", name:"Frete",   tag:"Custo de entrega por peça",          status:"ok", desc:"Caminhões (FROTA) + motoristas ÷ viagens = frete-base por peça." },
 };
 
 // ==================== MÓDULO RELATÓRIOS ====================
@@ -2925,6 +2934,11 @@ function renderModule(key){
   if(key === "maq"){
     $("app-main").innerHTML = '<div id="maq-container" class="module-view"></div>';
     initCustoMaquina($("maq-container"));
+    return;
+  }
+  if(key === "frete"){
+    $("app-main").innerHTML = '<div id="frete-container" class="module-view"></div>';
+    initFrete($("frete-container"));
     return;
   }
   if(key === "relatorios"){
@@ -5748,6 +5762,331 @@ window.forcarBaixarMP = async function(){
   if(comp) D.compras=comp;
   if(typeof renderAll==="function") renderAll();
 };
+
+// ===================================================================
+// MÓDULO FRETE  (custo de entrega embutido no produto)
+// Modelo: custo mensal da operação de entrega (caminhões FROTA + motoristas
+// + parcela de carregamento das empilhadeiras) ÷ viagens/mês = custo por viagem.
+// Frete por peça = custo por viagem ÷ quantas peças cabem no caminhão.
+// Frete longo NÃO entra aqui — é adicional de orçamento, caso a caso.
+// ===================================================================
+const FRETE_SECOES = ['caminhoes','motoristas','operacao','capacidade'];
+const FRETE_CAMINHOES_PADRAO = [
+  {placa:'GIZ7B48',  modelo:'Ford Cargo 3031', modo:'reposicao', val:0, repo:0, vida:0},
+  {placa:'IPU-6918', modelo:'Ford Cargo 2428', modo:'reposicao', val:0, repo:0, vida:0},
+  {placa:'IQF 4468', modelo:'Ford Cargo 2428', modo:'reposicao', val:0, repo:0, vida:0},
+  {placa:'ISH 6F89', modelo:'Ford Cargo 2429', modo:'reposicao', val:0, repo:0, vida:0},
+  {placa:'ISU-9133', modelo:'Ford Cargo 2428', modo:'reposicao', val:0, repo:0, vida:0},
+  {placa:'ITZ 6C53', modelo:'Ford Cargo 2429', modo:'reposicao', val:0, repo:0, vida:0},
+  {placa:'MDQ 6B93', modelo:'Volks 17-250',    modo:'reposicao', val:0, repo:0, vida:0},
+];
+const DFRETE_DEFAULT = {
+  caminhoes: FRETE_CAMINHOES_PADRAO.map(c=>Object.assign({},c)),
+  motoristas: [],
+  operacao: { entregasDia:2.6, nMotoristas:5, diasUteis:22, incluirLogistica:true },
+  capacidade: {}
+};
+
+let DFrete = null;
+let freteReady = false;
+const _freteTimers = {};
+const _freteLastWriteSec = {};
+let _freteAbaAtual = 'resumo';
+
+function _freteArr(x){ if(Array.isArray(x)) return x; if(x&&typeof x==='object') return Object.values(x); return []; }
+function _freteFmt(n){ return (Math.round((n||0)*100)/100).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function _freteN(n){ const v=Math.round((parseFloat(n)||0)*100)/100; return v.toLocaleString('pt-BR',{maximumFractionDigits:2}); }
+
+function _freteSanitize(v){ return (typeof _maqSanitize==='function') ? _maqSanitize(v) : v; }
+function _freteDesanitize(v){ return (typeof _maqDesanitize==='function') ? _maqDesanitize(v) : v; }
+function _freteNormalizaSecao(sec,val){ return _freteDesanitize(val); }
+
+function salvarSecaoFrete(sec){
+  if(!DFrete) return;
+  try{
+    const dado = _freteSanitize(DFrete[sec]);
+    _freteLastWriteSec[sec] = JSON.stringify(dado);
+    if(_freteTimers[sec]) clearTimeout(_freteTimers[sec]);
+    _freteTimers[sec] = setTimeout(()=>{
+      try{
+        if(window.__FRETE_DEMO){
+          const blob = JSON.parse(localStorage.getItem('pedroni:custos/frete_bloco')||'{}');
+          blob[sec]=dado; localStorage.setItem('pedroni:custos/frete_bloco', JSON.stringify(blob));
+        } else if(fb && db){
+          fb.set(fb.ref(db,'custos/frete/'+sec), dado).catch(e=>{ alert('Erro ao salvar Frete (seção '+sec+'): '+e.message); console.error('frete save', sec, e); });
+        }
+      }catch(e){ console.error('frete save inner', sec, e); }
+    }, 500);
+  }catch(e){ console.error('salvarSecaoFrete', sec, e); }
+}
+
+// ---------- CÁLCULO ----------
+function freteDeprecCaminhao(c){
+  if(!c) return 0;
+  if(c.modo==='reposicao' || (c.repo>0 && c.vida>0)){ return (c.repo>0&&c.vida>0)? c.repo/(c.vida*12) : (c.val||0); }
+  return c.val||0;
+}
+function freteFrotaCaminhao(c){
+  if(!c||!c.placa) return 0;
+  try{ return (typeof _frotaCustoMedioEquip==='function') ? (_frotaCustoMedioEquip(c.placa)||0) : 0; }catch(e){ return 0; }
+}
+function freteCustoCaminhao(c){ return freteFrotaCaminhao(c) + freteDeprecCaminhao(c); }
+function freteTotalCaminhoes(){ return _freteArr(DFrete.caminhoes).reduce((s,c)=>s+freteCustoCaminhao(c),0); }
+
+function freteCustoMotorista(m){ if(!m) return 0; return (parseFloat(m.salario)||0) + (parseFloat(m.encargos)||0); }
+function freteTotalMotoristas(){ return _freteArr(DFrete.motoristas).reduce((s,m)=>s+freteCustoMotorista(m),0); }
+
+function freteCustoLogisticaEmp(){
+  const op = DFrete.operacao||{};
+  if(op.incluirLogistica===false) return 0;
+  try{ return (typeof deprecEmpLogistica==='function') ? (deprecEmpLogistica()||0) : 0; }catch(e){ return 0; }
+}
+
+function freteViagensMes(){
+  const op = DFrete.operacao||{};
+  return (parseFloat(op.nMotoristas)||0)*(parseFloat(op.entregasDia)||0)*(parseFloat(op.diasUteis)||0);
+}
+function freteCustoMensalTotal(){ return freteTotalCaminhoes() + freteTotalMotoristas() + freteCustoLogisticaEmp(); }
+function freteCustoViagem(){ const v=freteViagensMes(); return v<=0?0:freteCustoMensalTotal()/v; }
+function fretePorPeca(prodId){ const cap=parseFloat((DFrete.capacidade||{})[prodId])||0; if(cap<=0) return null; return freteCustoViagem()/cap; }
+
+function _freteProdutos(){
+  const MP = window.__mpD || (typeof D_DEFAULT!=='undefined'?D_DEFAULT:null);
+  if(!MP) return [];
+  return _freteArr(MP.produtos).filter(p=>p&&p.nome);
+}
+function _freteProdId(p){ return p.id!=null ? String(p.id) : p.nome; }
+
+// ---------- INIT / CARGA ----------
+async function initFrete(container){
+  if(!DFrete){
+    DFrete = JSON.parse(JSON.stringify(DFRETE_DEFAULT));
+    window.__FRETE_DEMO = !(typeof db!=='undefined' && db && typeof fb!=='undefined' && fb);
+  }
+  window.__freteD = DFrete;
+  freteReady = true;
+  try{ runFrete(container); }catch(e){ console.error('frete render inicial', e); }
+  _freteCarregarDadosAssincrono(container);
+}
+
+async function _freteCarregarDadosAssincrono(container){
+  try{
+    if(!window.__FRETE_DEMO && !DFrete._carregado){
+      for(const s of FRETE_SECOES){
+        try{
+          const snap=await new Promise((res,rej)=>{ try{ fb.onValue(fb.ref(db,'custos/frete/'+s), res, rej, {onlyOnce:true}); }catch(err){ rej(err); } });
+          if(snap && snap.exists()) DFrete[s]=_freteMerge(s, _freteNormalizaSecao(s, snap.val()));
+        }catch(e){}
+      }
+      FRETE_SECOES.forEach(s=>{
+        try{
+          fb.onValue(fb.ref(db,'custos/frete/'+s), snap=>{
+            if(!snap || !snap.exists()) return;
+            const raw=snap.val();
+            if(JSON.stringify(raw)===_freteLastWriteSec[s]) return;
+            try{ if(JSON.stringify(_freteNormalizaSecao(s,raw))===JSON.stringify(_freteNormalizaSecao(s, JSON.parse(_freteLastWriteSec[s]||'null')))) return; }catch(e){}
+            const ativo=document.activeElement;
+            if(ativo && (ativo.tagName==='INPUT'||ativo.tagName==='TEXTAREA'||ativo.tagName==='SELECT') && document.getElementById('frete-container') && document.getElementById('frete-container').contains(ativo)){
+              ativo.addEventListener('blur', ()=>{ DFrete[s]=_freteMerge(s,_freteNormalizaSecao(s,raw)); if(freteReady) _freteRenderMantendoScroll(); }, {once:true});
+              return;
+            }
+            DFrete[s]=_freteMerge(s,_freteNormalizaSecao(s,raw));
+            if(freteReady) _freteRenderMantendoScroll();
+          });
+        }catch(e){}
+      });
+    } else if(window.__FRETE_DEMO && !DFrete._carregado){
+      try{
+        const blob=JSON.parse(localStorage.getItem('pedroni:custos/frete_bloco')||'null');
+        if(blob) FRETE_SECOES.forEach(s=>{ if(blob[s]!==undefined) DFrete[s]=_freteMerge(s,_freteNormalizaSecao(s, blob[s])); });
+      }catch(e){}
+    }
+    Object.defineProperty(DFrete,'_carregado',{value:true,enumerable:false,configurable:true});
+    if(typeof _maqGarantirDados==='function'){ try{ await _maqGarantirDados(); }catch(e){} }
+    await _freteGarantirMaq();
+    window.__freteD = DFrete;
+    if(freteReady && container){ try{ runFrete(container); }catch(e){ console.error('frete re-render', e); } }
+  }catch(e){ console.error('frete carga assíncrona', e); }
+}
+
+function _freteMerge(sec, val){
+  if(sec==='caminhoes'){ const s=_freteArr(val); return s.length?s:FRETE_CAMINHOES_PADRAO.map(c=>Object.assign({},c)); }
+  if(sec==='operacao'){ return Object.assign({}, DFRETE_DEFAULT.operacao, val||{}); }
+  if(sec==='capacidade'){ return (val&&typeof val==='object')?val:{}; }
+  if(sec==='motoristas'){ return _freteArr(val); }
+  return val;
+}
+
+async function _freteGarantirMaq(){
+  try{
+    if(typeof DMaq!=='undefined' && DMaq && DMaq.empilhadeiras) return;
+    if(window.__FRETE_DEMO){
+      if((typeof DMaq==='undefined' || !DMaq) && typeof DMAQ_DEFAULT!=='undefined'){ window.__maqD = JSON.parse(JSON.stringify(DMAQ_DEFAULT)); }
+      try{ const blob=JSON.parse(localStorage.getItem('pedroni:custos/maq_bloco')||'null'); if(blob && typeof DMaq!=='undefined' && DMaq && blob.empilhadeiras!==undefined) DMaq.empilhadeiras=blob.empilhadeiras; }catch(e){}
+      return;
+    }
+    if(fb && db){
+      if((typeof DMaq==='undefined' || !DMaq) && typeof DMAQ_DEFAULT!=='undefined') window.__maqD = JSON.parse(JSON.stringify(DMAQ_DEFAULT));
+      try{
+        const snap=await new Promise((res,rej)=>fb.onValue(fb.ref(db,'custos/maq/empilhadeiras'), res, rej, {onlyOnce:true}));
+        if(snap.exists() && typeof DMaq!=='undefined' && DMaq) DMaq.empilhadeiras = (typeof _maqNormalizaSecao==='function') ? _maqNormalizaSecao('empilhadeiras', snap.val()) : snap.val();
+      }catch(e){}
+    }
+  }catch(e){ console.error('_freteGarantirMaq', e); }
+}
+
+function _freteRenderMantendoScroll(){
+  const sc=window.scrollY; const cont=document.getElementById('frete-container'); if(!cont) return;
+  try{ runFrete(cont); }catch(e){ console.error('frete render', e); }
+  window.scrollTo(0, sc);
+}
+
+const FRETE_ABAS=[['resumo','Resumo'],['caminhoes','Caminhões'],['motoristas','Motoristas'],['operacao','Operação'],['capacidade','Capacidade']];
+function runFrete(container){
+  if(!container) return;
+  let h='<div class="maq-head"><div class="maq-head-t">Frete — custo de entrega</div></div>';
+  h+='<div class="maq-head-sub">Custo da operação de entrega na região, embutido no produto. Entregas distantes continuam cobradas à parte no orçamento.</div>';
+  h+='<div class="maq-abas">';
+  FRETE_ABAS.forEach(([k,t])=>{ h+='<button class="maq-aba'+(k===_freteAbaAtual?' on':'')+'" data-fab="'+k+'">'+t+'</button>'; });
+  h+='</div><div id="frete-body"></div>';
+  container.innerHTML=h;
+  container.querySelectorAll('.maq-aba').forEach(b=>{ b.onclick=()=>{ _freteAbaAtual=b.dataset.fab; runFrete(container); }; });
+  const body=container.querySelector('#frete-body');
+  if(_freteAbaAtual==='resumo') _freteAbaResumo(body);
+  else if(_freteAbaAtual==='caminhoes') _freteAbaCaminhoes(body);
+  else if(_freteAbaAtual==='motoristas') _freteAbaMotoristas(body);
+  else if(_freteAbaAtual==='operacao') _freteAbaOperacao(body);
+  else if(_freteAbaAtual==='capacidade') _freteAbaCapacidade(body);
+}
+
+// ---------- RESUMO ----------
+function _freteAbaResumo(box){
+  const tCam=freteTotalCaminhoes(), tMot=freteTotalMotoristas(), tLog=freteCustoLogisticaEmp();
+  const total=freteCustoMensalTotal(), viagens=freteViagensMes(), cv=freteCustoViagem();
+  const op=DFrete.operacao||{};
+  let h='';
+  if(window.__FRETE_DEMO) h+='<div class="maq-aviso" style="border:1px solid var(--line);border-radius:9px;margin-bottom:11px">⚠️ Modo demonstração (sem Firebase): combustível e manutenção da frota aparecem só no app real.</div>';
+  // custo mensal
+  h+='<div class="maq-card"><div class="maq-card-cab"><span class="maq-card-nome">Custo mensal da operação</span><span class="maq-ton">R$ '+_freteFmt(total)+'</span></div>';
+  h+='<div class="frete-lin"><span>Caminhões (combustível + manutenção + depreciação)</span><b>R$ '+_freteFmt(tCam)+'</b></div>';
+  h+='<div class="frete-lin"><span>Motoristas (salário + encargos)</span><b>R$ '+_freteFmt(tMot)+'</b></div>';
+  h+='<div class="frete-lin"><span>Carregamento no pátio (empilhadeiras · Logística)</span><b>R$ '+_freteFmt(tLog)+'</b></div>';
+  h+='</div>';
+  // custo por viagem
+  h+='<div class="maq-card"><div class="maq-card-cab"><span class="maq-card-nome">Custo por viagem</span><span class="maq-ton">R$ '+_freteFmt(cv)+'</span></div>';
+  h+='<div class="frete-lin"><span>Viagens/mês ('+_freteN(op.nMotoristas)+' motoristas × '+_freteN(op.entregasDia)+'/dia × '+_freteN(op.diasUteis)+' dias)</span><b>'+_freteN(viagens)+'</b></div>';
+  h+='<div class="maq-aviso" style="border-top:1px solid var(--line)">Esse é o <b>frete-base da região</b>, embutido no produto. Entregas distantes continuam cobradas à parte.</div>';
+  h+='</div>';
+  // frete por peça (prévia)
+  const prods=_freteProdutos();
+  const comCap=prods.filter(p=>{ const c=parseFloat((DFrete.capacidade||{})[_freteProdId(p)])||0; return c>0; });
+  h+='<div class="maq-card"><div class="maq-card-cab"><span class="maq-card-nome">Frete por peça</span><span class="maq-ton" style="font-size:.82rem">'+comCap.length+' de '+prods.length+'</span></div>';
+  if(!comCap.length){
+    h+='<div class="maq-aviso" style="border-top:1px solid var(--line)">Nenhum produto tem capacidade definida. Vá em <b>Capacidade</b> e informe quantas peças cabem no caminhão.</div>';
+  } else {
+    h+='<table class="frete-tbl"><thead><tr><th>Produto</th><th class="r">Cabem</th><th class="r">Frete/peça</th></tr></thead><tbody>';
+    comCap.slice(0,40).forEach(p=>{ const id=_freteProdId(p); const cap=parseFloat(DFrete.capacidade[id])||0; const fp=fretePorPeca(id);
+      h+='<tr><td>'+p.nome+'</td><td class="r">'+_freteN(cap)+'</td><td class="r">R$ '+_freteFmt(fp||0)+'</td></tr>'; });
+    h+='</tbody></table>';
+    if(comCap.length>40) h+='<div class="maq-aviso" style="border-top:1px solid var(--line)">Mostrando 40 de '+comCap.length+'. Veja todos na aba Capacidade.</div>';
+  }
+  h+='</div>';
+  box.innerHTML=h;
+}
+
+// ---------- CAMINHÕES ----------
+function _freteAbaCaminhoes(box){
+  let h='<div class="maq-nota">Combustível e manutenção vêm automaticamente do FROTA (média dos meses fechados), casando pela <b>placa</b>. A depreciação você informa aqui.</div>';
+  _freteArr(DFrete.caminhoes).forEach((c,i)=>{
+    const frota=freteFrotaCaminhao(c), dep=freteDeprecCaminhao(c), tot=frota+dep;
+    const achou=!!(c.placa && window.__frotaD && _frotaVals(window.__frotaD.frota||{}).some(f=>f&&_frotaNorm(f.id)===_frotaNorm(c.placa)));
+    h+='<div class="maq-dep">';
+    h+='<div class="maq-row2"><input class="frete-cam-placa" data-i="'+i+'" value="'+(c.placa||'')+'" placeholder="placa" style="flex:0 0 100px"><input class="frete-cam-modelo" data-i="'+i+'" value="'+(c.modelo||'')+'" placeholder="modelo"><button class="maq-del frete-cam-del" data-i="'+i+'" style="flex:0 0 36px">🗑</button></div>';
+    h+='<div class="maq-row2"><select class="frete-cam-modo" data-i="'+i+'"><option value="valor"'+(c.modo!=='reposicao'?' selected':'')+'>Depreciação: valor fixo</option><option value="reposicao"'+(c.modo==='reposicao'?' selected':'')+'>Depreciação: por reposição</option></select></div>';
+    if(c.modo==='reposicao'){
+      h+='<div class="maq-row2"><input class="frete-cam-repo" data-i="'+i+'" type="number" placeholder="valor de reposição R$" value="'+(c.repo||'')+'"><input class="frete-cam-vida" data-i="'+i+'" type="number" placeholder="vida (anos)" value="'+(c.vida||'')+'" style="flex:0 0 110px"></div>';
+    } else {
+      h+='<div class="maq-row2"><input class="frete-cam-val" data-i="'+i+'" type="number" placeholder="depreciação R$/mês" value="'+(c.val||'')+'"></div>';
+    }
+    h+='<div class="maq-emp-custos">';
+    h+='<div class="mec-l"><span>FROTA: combustível + manutenção '+(achou?'':'<small style="color:#e0603c">⚠️ placa não encontrada no FROTA</small>')+'</span><b>R$ '+_freteFmt(frota)+'</b></div>';
+    h+='<div class="mec-l"><span>Depreciação</span><b>R$ '+_freteFmt(dep)+'</b></div>';
+    h+='<div class="mec-l mec-tot"><span>Total/mês</span><b>R$ '+_freteFmt(tot)+'</b></div>';
+    h+='</div></div>';
+  });
+  h+='<div class="maq-dep-res">Total frota: R$ '+_freteFmt(freteTotalCaminhoes())+'/mês</div>';
+  h+='<button class="maq-add" id="frete-cam-add">+ Adicionar caminhão</button>';
+  box.innerHTML=h;
+  const C=(i)=>{ DFrete.caminhoes=_freteArr(DFrete.caminhoes); if(!DFrete.caminhoes[i])DFrete.caminhoes[i]={}; return DFrete.caminhoes[i]; };
+  box.querySelector('#frete-cam-add').onclick=()=>{ DFrete.caminhoes=_freteArr(DFrete.caminhoes); DFrete.caminhoes.push({placa:'',modelo:'',modo:'valor',val:0}); salvarSecaoFrete('caminhoes'); _freteAbaCaminhoes(box); };
+  box.querySelectorAll('.frete-cam-placa').forEach(inp=>{ inp.oninput=()=>{ C(+inp.dataset.i).placa=inp.value; salvarSecaoFrete('caminhoes'); }; inp.onblur=()=>_freteRenderMantendoScroll(); });
+  box.querySelectorAll('.frete-cam-modelo').forEach(inp=>{ inp.oninput=()=>{ C(+inp.dataset.i).modelo=inp.value; salvarSecaoFrete('caminhoes'); }; });
+  box.querySelectorAll('.frete-cam-modo').forEach(sel=>{ sel.onchange=()=>{ C(+sel.dataset.i).modo=sel.value; salvarSecaoFrete('caminhoes'); _freteAbaCaminhoes(box); }; });
+  box.querySelectorAll('.frete-cam-val').forEach(inp=>{ inp.oninput=()=>{ C(+inp.dataset.i).val=parseFloat(inp.value)||0; salvarSecaoFrete('caminhoes'); }; inp.onblur=()=>_freteRenderMantendoScroll(); });
+  box.querySelectorAll('.frete-cam-repo').forEach(inp=>{ inp.oninput=()=>{ C(+inp.dataset.i).repo=parseFloat(inp.value)||0; salvarSecaoFrete('caminhoes'); }; inp.onblur=()=>_freteRenderMantendoScroll(); });
+  box.querySelectorAll('.frete-cam-vida').forEach(inp=>{ inp.oninput=()=>{ C(+inp.dataset.i).vida=parseFloat(inp.value)||0; salvarSecaoFrete('caminhoes'); }; inp.onblur=()=>_freteRenderMantendoScroll(); });
+  box.querySelectorAll('.frete-cam-del').forEach(btn=>{ btn.onclick=()=>{ DFrete.caminhoes=_freteArr(DFrete.caminhoes); DFrete.caminhoes.splice(+btn.dataset.i,1); salvarSecaoFrete('caminhoes'); _freteAbaCaminhoes(box); }; });
+}
+
+// ---------- MOTORISTAS ----------
+function _freteAbaMotoristas(box){
+  let h='<div class="maq-nota">Motoristas de entrega, um a um. Salário e encargos separados, como na Mão de obra.</div>';
+  _freteArr(DFrete.motoristas).forEach((m,i)=>{
+    h+='<div class="maq-dep">';
+    h+='<div class="maq-row2"><input class="frete-mot-nome" data-i="'+i+'" value="'+(m.nome||'')+'" placeholder="nome do motorista"><button class="maq-del frete-mot-del" data-i="'+i+'" style="flex:0 0 36px">🗑</button></div>';
+    h+='<div class="maq-row2"><input class="frete-mot-sal" data-i="'+i+'" type="number" placeholder="salário R$" value="'+(m.salario||'')+'"><input class="frete-mot-enc" data-i="'+i+'" type="number" placeholder="encargos R$" value="'+(m.encargos||'')+'"></div>';
+    h+='<div class="maq-dep-res">Total: R$ '+_freteFmt(freteCustoMotorista(m))+'/mês</div>';
+    h+='</div>';
+  });
+  h+='<div class="maq-dep-res">Total motoristas: R$ '+_freteFmt(freteTotalMotoristas())+'/mês</div>';
+  h+='<button class="maq-add" id="frete-mot-add">+ Adicionar motorista</button>';
+  box.innerHTML=h;
+  const M=(i)=>{ DFrete.motoristas=_freteArr(DFrete.motoristas); if(!DFrete.motoristas[i])DFrete.motoristas[i]={}; return DFrete.motoristas[i]; };
+  box.querySelector('#frete-mot-add').onclick=()=>{ DFrete.motoristas=_freteArr(DFrete.motoristas); DFrete.motoristas.push({nome:'',salario:0,encargos:0}); salvarSecaoFrete('motoristas'); _freteAbaMotoristas(box); };
+  box.querySelectorAll('.frete-mot-nome').forEach(inp=>{ inp.oninput=()=>{ M(+inp.dataset.i).nome=inp.value; salvarSecaoFrete('motoristas'); }; });
+  box.querySelectorAll('.frete-mot-sal').forEach(inp=>{ inp.oninput=()=>{ M(+inp.dataset.i).salario=parseFloat(inp.value)||0; salvarSecaoFrete('motoristas'); }; inp.onblur=()=>_freteRenderMantendoScroll(); });
+  box.querySelectorAll('.frete-mot-enc').forEach(inp=>{ inp.oninput=()=>{ M(+inp.dataset.i).encargos=parseFloat(inp.value)||0; salvarSecaoFrete('motoristas'); }; inp.onblur=()=>_freteRenderMantendoScroll(); });
+  box.querySelectorAll('.frete-mot-del').forEach(btn=>{ btn.onclick=()=>{ DFrete.motoristas=_freteArr(DFrete.motoristas); DFrete.motoristas.splice(+btn.dataset.i,1); salvarSecaoFrete('motoristas'); _freteAbaMotoristas(box); }; });
+}
+
+// ---------- OPERAÇÃO ----------
+function _freteAbaOperacao(box){
+  const op=DFrete.operacao||{};
+  let h='<div class="maq-nota">Parâmetros da operação. As viagens/mês saem daqui e definem o custo por viagem.</div>';
+  h+='<div class="maq-field"><label>Entregas por dia (por motorista)</label><input class="frete-op" data-k="entregasDia" type="number" step="0.1" value="'+(op.entregasDia!=null?op.entregasDia:'')+'"></div>';
+  h+='<div class="maq-field"><label>Número de motoristas</label><input class="frete-op" data-k="nMotoristas" type="number" value="'+(op.nMotoristas!=null?op.nMotoristas:'')+'"></div>';
+  h+='<div class="maq-field"><label>Dias úteis por mês</label><input class="frete-op" data-k="diasUteis" type="number" value="'+(op.diasUteis!=null?op.diasUteis:'')+'"></div>';
+  h+='<div class="maq-card"><div class="maq-card-rod"><div><span>Viagens por mês</span></div><div><b>'+_freteN(freteViagensMes())+'</b></div></div></div>';
+  h+='<label class="maq-row" style="cursor:pointer"><span>Incluir carregamento no pátio (empilhadeiras · Logística)</span><input type="checkbox" id="frete-op-log" style="width:auto"'+(op.incluirLogistica!==false?' checked':'')+'></label>';
+  box.innerHTML=h;
+  box.querySelectorAll('.frete-op').forEach(inp=>{ inp.oninput=()=>{ DFrete.operacao[inp.dataset.k]=parseFloat(inp.value)||0; salvarSecaoFrete('operacao'); }; inp.onblur=()=>_freteRenderMantendoScroll(); });
+  const chk=box.querySelector('#frete-op-log'); if(chk) chk.onchange=()=>{ DFrete.operacao.incluirLogistica=chk.checked; salvarSecaoFrete('operacao'); _freteRenderMantendoScroll(); };
+}
+
+// ---------- CAPACIDADE ----------
+function _freteAbaCapacidade(box){
+  const prods=_freteProdutos(); const cv=freteCustoViagem();
+  let h='<div class="maq-nota">Para cada produto, informe <b>quantas peças cabem num caminhão</b> (o que ocupa a vaga). Peças que viajam em cima de outras — como lajes sobre o anel da fossa — não precisam de número próprio: conte pela unidade que ocupa o caminhão. Produto sem número não cobra frete.</div>';
+  h+='<div class="maq-nota" style="color:var(--rebar2)">Custo por viagem: <b>R$ '+_freteFmt(cv)+'</b> — o frete/peça é esse valor ÷ quantas cabem.</div>';
+  const fams={};
+  prods.forEach(p=>{ const f=p.familia||'(sem família)'; (fams[f]=fams[f]||[]).push(p); });
+  Object.keys(fams).forEach(fam=>{
+    h+='<div class="maq-sub">'+fam+'</div>';
+    h+='<table class="frete-tbl"><thead><tr><th>Produto</th><th class="r">Peso</th><th class="c">Cabem</th><th class="r">Frete/peça</th></tr></thead><tbody>';
+    fams[fam].forEach(p=>{
+      const id=_freteProdId(p); const cap=(DFrete.capacidade||{})[id]; const fp=fretePorPeca(id);
+      h+='<tr><td>'+p.nome+'</td><td class="r">'+_freteN(p.pesoPeca||p.peso||0)+'</td>';
+      h+='<td class="c"><input class="frete-cap" data-id="'+String(id).replace(/"/g,'&quot;')+'" type="number" step="0.1" value="'+(cap!=null?cap:'')+'" placeholder="—"></td>';
+      h+='<td class="r">'+(fp!=null?('R$ '+_freteFmt(fp)):'<span style="color:var(--txt3)">—</span>')+'</td></tr>';
+    });
+    h+='</tbody></table>';
+  });
+  box.innerHTML=h;
+  box.querySelectorAll('.frete-cap').forEach(inp=>{
+    inp.oninput=()=>{ if(!DFrete.capacidade)DFrete.capacidade={}; const v=parseFloat(inp.value); if(isNaN(v)||v<=0){ delete DFrete.capacidade[inp.dataset.id]; } else { DFrete.capacidade[inp.dataset.id]=v; } salvarSecaoFrete('capacidade'); };
+    inp.onblur=()=>_freteRenderMantendoScroll();
+  });
+}
 
 // ===================================================================
 // START
