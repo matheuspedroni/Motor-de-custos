@@ -914,7 +914,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v113</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v114</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -1611,6 +1611,32 @@ function showApp(){
   $("user-avatar").textContent = initials;
   updateSync(DEMO ? "off" : "ok");
   renderNav();
+  // pré-carrega os dados de TODOS os módulos logo na abertura, para que qualquer aba
+  // já abra com tudo pronto (não precisa mais "passar por todas as abas" primeiro).
+  _precarregarTudo();
+}
+// Carrega em segundo plano os dados de todos os módulos, sem renderizar as telas.
+// Reusa os carregadores existentes passando container=null (carregam dados + watchers, não desenham).
+let _precarregouTudo=false;
+async function _precarregarTudo(){
+  if(_precarregouTudo) return; _precarregouTudo=true;
+  try{
+    // 1) Matéria-prima (__mpD) + M.O. (__moD) + FROTA (__frotaD)
+    if(typeof _maqGarantirDados==='function'){ try{ await _maqGarantirDados(); }catch(e){} }
+    // 2) Máquina (DMaq + suas seções) — sem desenhar
+    try{
+      if(typeof DMaq==='undefined' || !DMaq){ if(typeof DMAQ_DEFAULT!=='undefined'){ window.__maqD = JSON.parse(JSON.stringify(DMAQ_DEFAULT)); } }
+      if(typeof window.__MAQ_DEMO==='undefined') window.__MAQ_DEMO = !(typeof db!=='undefined' && db && typeof fb!=='undefined' && fb);
+      if(typeof _maqRegistrarAjudas==='function') _maqRegistrarAjudas();
+      if(typeof _maqCarregarDadosAssincrono==='function') await _maqCarregarDadosAssincrono(null);
+    }catch(e){ console.warn('pré-carga maq', e&&e.message); }
+    // 3) Frete (DFrete + suas seções) — sem desenhar
+    try{
+      if(typeof DFrete==='undefined' || !DFrete){ if(typeof DFRETE_DEFAULT!=='undefined'){ window.__freteD = DFrete = JSON.parse(JSON.stringify(DFRETE_DEFAULT)); } }
+      if(typeof window.__FRETE_DEMO==='undefined') window.__FRETE_DEMO = !(typeof db!=='undefined' && db && typeof fb!=='undefined' && fb);
+      if(typeof _freteCarregarDadosAssincrono==='function') await _freteCarregarDadosAssincrono(null);
+    }catch(e){ console.warn('pré-carga frete', e&&e.message); }
+  }catch(e){ console.warn('pré-carga geral', e&&e.message); }
 }
 
 // ===================================================================
