@@ -914,7 +914,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v109</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v110</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -2691,20 +2691,36 @@ function _maqAbaMoldes(box){
   Object.keys(fams).forEach(fam=>{
     h+='<div class="maq-sub">'+fam+'</div>';
     fams[fam].forEach(p=>{
-      const id=_moldeProdId(p); const m=(DMaq.moldes||{})[id]||{}; const rs=moldeRsPeca(id);
-      const totalPecas=(parseFloat(m.ciclos)||0)*(parseFloat(m.pecasCiclo)||0);
-      h+='<div class="maq-dep"><div class="maq-dep-cab">'+p.nome+(rs!=null?' <span class="maq-med">R$ '+(Math.round(rs*10000)/10000).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:4})+'/peça</span>':' <span class="maq-med" style="color:var(--txt3)">— sem molde</span>')+'</div>';
-      h+='<div class="maq-row2"><input class="molde-preco" data-id="'+String(id).replace(/"/g,'&quot;')+'" type="number" placeholder="preço do molde R$" value="'+(m.preco||'')+'"></div>';
-      h+='<div class="maq-row2"><input class="molde-ciclos" data-id="'+String(id).replace(/"/g,'&quot;')+'" type="number" placeholder="vida (ciclos/prensadas)" value="'+(m.ciclos||'')+'"><input class="molde-pc" data-id="'+String(id).replace(/"/g,'&quot;')+'" type="number" placeholder="peças por ciclo" value="'+(m.pecasCiclo||'')+'"></div>';
-      if(totalPecas>0) h+='<div class="maq-dep-res">Vida total: '+totalPecas.toLocaleString('pt-BR')+' peças</div>';
+      const id=_moldeProdId(p); const idsafe=String(id).replace(/"/g,'&quot;'); const idattr=encodeURIComponent(String(id));
+      const m=(DMaq.moldes||{})[id]||{};
+      h+='<div class="maq-dep" data-mid="'+idattr+'"><div class="maq-dep-cab">'+p.nome+' <span class="molde-rs" data-mid="'+idattr+'">'+_moldeRsLabel(id)+'</span></div>';
+      h+='<div class="maq-row2"><input class="molde-preco" data-id="'+idsafe+'" type="number" placeholder="preço do molde R$" value="'+(m.preco||'')+'"></div>';
+      h+='<div class="maq-row2"><input class="molde-ciclos" data-id="'+idsafe+'" type="number" placeholder="vida (ciclos/prensadas)" value="'+(m.ciclos||'')+'"><input class="molde-pc" data-id="'+idsafe+'" type="number" placeholder="peças por ciclo" value="'+(m.pecasCiclo||'')+'"></div>';
+      h+='<div class="maq-dep-res molde-vida" data-mid="'+idattr+'">'+_moldeVidaLabel(id)+'</div>';
       h+='</div>';
     });
   });
   box.innerHTML=h;
   const M=(id)=>{ if(!DMaq.moldes)DMaq.moldes={}; if(!DMaq.moldes[id])DMaq.moldes[id]={}; return DMaq.moldes[id]; };
-  box.querySelectorAll('.molde-preco').forEach(i=>{ i.oninput=()=>{ M(i.dataset.id).preco=parseFloat(i.value)||0; salvarSecaoMaq('moldes'); }; i.onblur=()=>_maqRenderMantendoScroll(); });
-  box.querySelectorAll('.molde-ciclos').forEach(i=>{ i.oninput=()=>{ M(i.dataset.id).ciclos=parseFloat(i.value)||0; salvarSecaoMaq('moldes'); }; i.onblur=()=>_maqRenderMantendoScroll(); });
-  box.querySelectorAll('.molde-pc').forEach(i=>{ i.oninput=()=>{ M(i.dataset.id).pecasCiclo=parseFloat(i.value)||0; salvarSecaoMaq('moldes'); }; i.onblur=()=>_maqRenderMantendoScroll(); });
+  // atualização LEVE: só o texto do R$/peça e da vida daquele molde, SEM recriar os inputs
+  // (recriar os inputs no meio da digitação fazia campos perderem o valor)
+  const _upd=(id)=>{
+    const idattr=encodeURIComponent(String(id));
+    const rsEl=box.querySelector('.molde-rs[data-mid="'+idattr+'"]'); if(rsEl) rsEl.outerHTML='<span class="molde-rs" data-mid="'+idattr+'">'+_moldeRsLabel(id)+'</span>';
+    const vdEl=box.querySelector('.molde-vida[data-mid="'+idattr+'"]'); if(vdEl) vdEl.innerHTML=_moldeVidaLabel(id);
+  };
+  box.querySelectorAll('.molde-preco').forEach(i=>{ i.oninput=()=>{ M(i.dataset.id).preco=parseFloat(i.value)||0; salvarSecaoMaq('moldes'); _upd(i.dataset.id); }; });
+  box.querySelectorAll('.molde-ciclos').forEach(i=>{ i.oninput=()=>{ M(i.dataset.id).ciclos=parseFloat(i.value)||0; salvarSecaoMaq('moldes'); _upd(i.dataset.id); }; });
+  box.querySelectorAll('.molde-pc').forEach(i=>{ i.oninput=()=>{ M(i.dataset.id).pecasCiclo=parseFloat(i.value)||0; salvarSecaoMaq('moldes'); _upd(i.dataset.id); }; });
+}
+function _moldeRsLabel(id){
+  const rs=moldeRsPeca(id);
+  return rs!=null ? ('<b style="color:var(--rebar2)">R$ '+(Math.round(rs*10000)/10000).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:4})+'/peça</b>') : '<span style="color:var(--txt3)">— sem molde</span>';
+}
+function _moldeVidaLabel(id){
+  const m=(DMaq.moldes||{})[id]||{};
+  const totalPecas=(parseFloat(m.ciclos)||0)*(parseFloat(m.pecasCiclo)||0);
+  return totalPecas>0 ? ('Vida total: '+totalPecas.toLocaleString('pt-BR')+' peças') : '';
 }
 
 // RESUMO: custo/mês e custo/ton por setor
@@ -4438,8 +4454,8 @@ async function initMaoDeObra(container){
             if(!document.getElementById('mo-container')) return;
             // prodReal muda a cada lançamento: re-render LEVE (só a lista de setores), preservando
             // os painéis abertos e a rolagem — não reconstrói o módulo inteiro (que fecharia tudo).
-            if(secao==='prodReal'){ if(typeof recalcMantendoScroll==='function') recalcMantendoScroll(); else renderSetores(); }
-            else runMaoDeObra();
+            if(secao==='prodReal'){ if(typeof recalcMantendoScroll==='function') recalcMantendoScroll(); else if(typeof renderSetores==='function') renderSetores(); }
+            else { if(typeof runMaoDeObra==='function') runMaoDeObra(); }
           };
           if(digitando){ f.addEventListener('blur', aplicar, {once:true}); return; }
           aplicar();
@@ -6266,18 +6282,30 @@ function _freteAbaCapacidade(box){
     h+='<div class="maq-sub">'+fam+'</div>';
     h+='<table class="frete-tbl"><thead><tr><th>Produto</th><th class="r">Peso</th><th class="c">Cabem</th><th class="r">Frete/peça</th></tr></thead><tbody>';
     fams[fam].forEach(p=>{
-      const id=_freteProdId(p); const cap=(DFrete.capacidade||{})[id]; const fp=fretePorPeca(id);
+      const id=_freteProdId(p); const idattr=encodeURIComponent(String(id)); const cap=(DFrete.capacidade||{})[id];
       h+='<tr><td>'+p.nome+'</td><td class="r">'+_freteN(p.pesoPeca||p.peso||0)+'</td>';
       h+='<td class="c"><input class="frete-cap" data-id="'+String(id).replace(/"/g,'&quot;')+'" type="number" step="0.1" value="'+(cap!=null?cap:'')+'" placeholder="—"></td>';
-      h+='<td class="r">'+(fp!=null?('R$ '+_freteFmt(fp)):'<span style="color:var(--txt3)">—</span>')+'</td></tr>';
+      h+='<td class="r frete-fp" data-mid="'+idattr+'">'+_freteFpLabel(id)+'</td></tr>';
     });
     h+='</tbody></table>';
   });
   box.innerHTML=h;
+  // atualização LEVE: só o texto do frete/peça daquela linha, SEM recriar os inputs
+  // (recriar no meio da digitação fazia o valor cair na chave de OUTRO produto)
   box.querySelectorAll('.frete-cap').forEach(inp=>{
-    inp.oninput=()=>{ if(!DFrete.capacidade)DFrete.capacidade={}; const v=parseFloat(inp.value); if(isNaN(v)||v<=0){ delete DFrete.capacidade[inp.dataset.id]; } else { DFrete.capacidade[inp.dataset.id]=v; } salvarSecaoFrete('capacidade'); };
-    inp.onblur=()=>_freteRenderMantendoScroll();
+    inp.oninput=()=>{
+      if(!DFrete.capacidade)DFrete.capacidade={};
+      const v=parseFloat(inp.value);
+      if(isNaN(v)||v<=0){ delete DFrete.capacidade[inp.dataset.id]; } else { DFrete.capacidade[inp.dataset.id]=v; }
+      salvarSecaoFrete('capacidade');
+      const idattr=encodeURIComponent(String(inp.dataset.id));
+      const cell=box.querySelector('.frete-fp[data-mid="'+idattr+'"]'); if(cell) cell.innerHTML=_freteFpLabel(inp.dataset.id);
+    };
   });
+}
+function _freteFpLabel(id){
+  const fp=fretePorPeca(id);
+  return fp!=null ? ('R$ '+_freteFmt(fp)) : '<span style="color:var(--txt3)">—</span>';
 }
 
 // ---------- FRETE LONGO (calculadora) ----------
