@@ -914,7 +914,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v111</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v112</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -2682,7 +2682,16 @@ function moldeRsPeca(prodId){
   if(preco<=0 || totalPecas<=0) return null;
   return preco/totalPecas;
 }
+// limpa moldes de formato antigo (chave numérica ou array da conversão do Firebase)
+function _moldeLimpa(){
+  const m=DMaq.moldes;
+  if(!m || typeof m!=='object'){ DMaq.moldes={}; return; }
+  if(Array.isArray(m)){ DMaq.moldes={}; return; } // array velho => descarta (estava embaralhado)
+  const out={}; Object.keys(m).forEach(k=>{ if(/^p/.test(k)) out[k]=m[k]; });
+  DMaq.moldes=out;
+}
 function _maqAbaMoldes(box){
+  _moldeLimpa();
   let h='<div class="maq-head"><div class="maq-head-t">Moldes / Fôrmas</div><span class="help" onclick="abrirAjuda(\'maq_moldes\')">?</span></div>';
   h+='<div class="maq-head-sub">O molde se gasta pelo <b>uso</b>, não pelo tempo. O custo por peça é o preço do molde dividido por quantas peças ele faz na vida inteira (ciclos × peças por ciclo). Só produtos de prensa.</div>';
   const prods=_moldeProdutos();
@@ -6073,7 +6082,14 @@ async function _freteCarregarDadosAssincrono(container){
 function _freteMerge(sec, val){
   if(sec==='caminhoes'){ const s=_freteArr(val); return s.length?s:FRETE_CAMINHOES_PADRAO.map(c=>Object.assign({},c)); }
   if(sec==='operacao'){ return Object.assign({}, DFRETE_DEFAULT.operacao, val||{}); }
-  if(sec==='capacidade'){ return (val&&typeof val==='object')?val:{}; }
+  if(sec==='capacidade'){
+    // só aceita chaves no formato novo 'p<id>' (prefixadas). Dados antigos (chave numérica
+    // pura, ou array da conversão do Firebase) são descartados — estavam embaralhados.
+    if(!val || typeof val!=='object') return {};
+    const out={}; const src = Array.isArray(val) ? {} : val; // array velho => ignora inteiro
+    Object.keys(src).forEach(k=>{ if(/^p/.test(k)){ const v=parseFloat(src[k]); if(!isNaN(v)&&v>0) out[k]=v; } });
+    return out;
+  }
   if(sec==='motoristas'){ return _freteArr(val); }
   return val;
 }
