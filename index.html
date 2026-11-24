@@ -914,7 +914,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v110</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v111</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -2672,7 +2672,8 @@ function _moldeProdutos(){
   if(!MP) return [];
   return _maqArr(MP.produtos).filter(p=>p&&p.nome && MOLDE_FAMILIAS.includes(p.familia));
 }
-function _moldeProdId(p){ return p.id!=null ? String(p.id) : p.nome; }
+// chave do molde: SEMPRE com prefixo 'p' (chaves só-numéricas fazem o Firebase virar array e embaralhar)
+function _moldeProdId(p){ return 'p'+(p.id!=null ? String(p.id) : p.nome); }
 // R$/peça de um molde = preço ÷ (ciclos × peças por ciclo)
 function moldeRsPeca(prodId){
   const m=(DMaq.moldes||{})[prodId]; if(!m) return null;
@@ -6013,7 +6014,9 @@ function _freteProdutos(){
   if(!MP) return [];
   return _freteArr(MP.produtos).filter(p=>p&&p.nome);
 }
-function _freteProdId(p){ return p.id!=null ? String(p.id) : p.nome; }
+// chave do produto no mapa de capacidade: SEMPRE com prefixo 'p' para nunca ser numérica pura.
+// (chaves só-numéricas fazem o Firebase converter o objeto em array esparso e embaralhar os valores)
+function _freteProdId(p){ return 'p'+(p.id!=null ? String(p.id) : p.nome); }
 
 // ---------- INIT / CARGA ----------
 async function initFrete(container){
