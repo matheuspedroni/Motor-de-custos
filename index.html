@@ -914,7 +914,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v116</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v117</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -4503,6 +4503,7 @@ async function initMaoDeObra(container){
     }
   }
   migrarSetoresMO();  // aplica os 10 setores novos preservando dados
+  _moGarantirMeiosBloco();  // garante MEIO BLOCO 14/19 na produção da Gervasi
   // Migração v49: classifica lançamento — diário (fossas/caixas/tampas) vs período (blocos/tubos)
   if(Dmo.tipoLanc && !Dmo._lancV49){
     const DIARIOS=['Fossas','Caixas','Tampas/Leitos'];
@@ -4546,6 +4547,19 @@ async function initMaoDeObra(container){
   }
 }
 // Migração de setores: renomeia antigos → novos, adiciona novos vazios, preserva produtos/pessoas
+// Garante que MEIO BLOCO 14 e 19 existam na produção da máquina Gervasi.
+// Idempotente: só adiciona se ainda não estiverem lá.
+function _moGarantirMeiosBloco(){
+  if(!Dmo || !Dmo.produtos) return;
+  const setor='Blocos maquina Gervasi';
+  if(!Array.isArray(Dmo.produtos[setor])) Dmo.produtos[setor]=Dmo.produtos[setor]?Object.values(Dmo.produtos[setor]):[];
+  const lista=Dmo.produtos[setor];
+  const temNome=(n)=>lista.some(p=>p&&p.nome===n);
+  const base={moAtual:0, novo:true, ocup:1, pessoas:2, prodDia:10000};
+  let mudou=false;
+  ['MEIO BLOCO 14','MEIO BLOCO 19'].forEach(n=>{ if(!temNome(n)){ lista.push(Object.assign({nome:n}, base)); mudou=true; } });
+  if(mudou && typeof salvarSecaoMO==='function'){ try{ salvarSecaoMO('produtos'); }catch(e){} }
+}
 function migrarSetoresMO(){
   if(!Dmo) return;
   const ORDEM=["Blocos maquina PWR","Blocos maquina Gervasi","Tubos maquina LKR","Tubos vibrados","Tubos Maquina Tuber","Fossas","Caixas","Tampas/Leitos","Central dosadora 01","Central dosadora 02 (nova)"];
@@ -6097,6 +6111,24 @@ function _freteProdutos(){
 // chave do produto no mapa de capacidade: SEMPRE com prefixo 'p' para nunca ser numérica pura.
 // (chaves só-numéricas fazem o Firebase converter o objeto em array esparso e embaralhar os valores)
 function _freteProdId(p){ return 'p'+(p.id!=null ? String(p.id) : p.nome); }
+// grupo de exibição do produto: produtos de prensa vão pela MÁQUINA real (Gervasi/PWR, da M.O.);
+// os demais ficam pela família da matéria-prima.
+const _FRETE_FAM_PRENSA=['Maquina Blocos 01','Maquina Blocos 02'];
+function _freteGrupoProduto(p){
+  if(!_FRETE_FAM_PRENSA.includes(p.familia||'')) return p.familia||'(sem família)';
+  // é produto de prensa: descobre a máquina pela lista de produtos da M.O.
+  const MO=window.__moD;
+  if(MO && MO.produtos){
+    const nomeMaq={'Blocos maquina Gervasi':'Máquina Gervasi','Blocos maquina PWR':'Máquina PWR'};
+    for(const setor of ['Blocos maquina Gervasi','Blocos maquina PWR']){
+      const lista=_freteArr(MO.produtos[setor]);
+      if(lista.some(x=>x&&x.nome===p.nome)) return nomeMaq[setor];
+    }
+    // extras: meios de bloco vão na Gervasi
+    if(/MEIO BLOCO/i.test(p.nome)) return 'Máquina Gervasi';
+  }
+  return p.familia||'(sem família)';
+}
 
 // ---------- INIT / CARGA ----------
 async function initFrete(container){
@@ -6366,9 +6398,10 @@ function _freteAbaCapacidade(box){
   const prods=_freteProdutos(); const cv=freteCustoViagem();
   let h='<div class="maq-nota">Para cada produto, informe <b>quantas peças cabem num caminhão</b> (o que ocupa a vaga). Peças que viajam em cima de outras — como lajes sobre o anel da fossa — não precisam de número próprio: conte pela unidade que ocupa o caminhão. Produto sem número não cobra frete.</div>';
   h+='<div class="maq-nota" style="color:var(--rebar2)">Custo por viagem: <b>R$ '+_freteFmt(cv)+'</b> — o frete/peça é esse valor ÷ quantas cabem.</div>';
-  const fams={};
-  prods.forEach(p=>{ const f=p.familia||'(sem família)'; (fams[f]=fams[f]||[]).push(p); });
-  Object.keys(fams).forEach(fam=>{
+  // agrupa: produtos de prensa pela MÁQUINA (Gervasi/PWR, da M.O.); os demais pela família
+  const fams={}; const ordem=[];
+  prods.forEach(p=>{ const f=_freteGrupoProduto(p); if(!fams[f]){ fams[f]=[]; ordem.push(f); } fams[f].push(p); });
+  ordem.forEach(fam=>{
     h+='<div class="maq-sub">'+fam+'</div>';
     h+='<table class="frete-tbl"><thead><tr><th>Produto</th><th class="r">Peso</th><th class="c">Cabem</th><th class="r">Frete/peça</th></tr></thead><tbody>';
     fams[fam].forEach(p=>{
