@@ -865,6 +865,30 @@ main{padding:16px;max-width:680px;margin:0 auto}
 #frete-container .calc-line .val{font-weight:700}
 #frete-container .p-actions{display:flex;justify-content:flex-end;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
 #frete-container .btn-remove{background:transparent;border:1px solid var(--bad);color:var(--bad);font-size:.7rem;font-weight:600;padding:7px 14px;border-radius:6px;cursor:pointer}
+#admin-container .pessoa-head{display:flex;align-items:center;gap:10px;padding:11px 13px;cursor:pointer}
+#admin-container .pessoa-head:active{background:var(--surf2)}
+#admin-container .p-exp{font-size:.7rem;color:var(--txt3);transition:transform .2s;flex:0 0 auto}
+#admin-container .pessoa.open .p-exp{transform:rotate(90deg)}
+#admin-container .p-nome{font-size:.83rem;font-weight:600;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#admin-container .p-total{font-size:.82rem;font-weight:700;color:var(--rebar2);white-space:nowrap}
+#admin-container .pessoa-body{display:none;padding:0 13px 13px;border-top:1px solid var(--line)}
+#admin-container .pessoa.open .pessoa-body{display:block}
+#admin-container .nome-row{margin:12px 0}
+#admin-container .nome-row label{font-size:.64rem;color:var(--txt3);display:block;margin-bottom:4px}
+#admin-container .nome-in{width:100%;background:var(--surf2);border:1px solid var(--line);color:var(--txt);border-radius:6px;padding:8px;font-size:.82rem;font-weight:600}
+#admin-container .nome-in:focus{border-color:var(--rebar);outline:none}
+#admin-container .p-sel{width:100%;background:var(--surf2);border:1px solid var(--line);color:var(--txt);border-radius:6px;padding:8px;font-size:.76rem}
+#admin-container .field-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+#admin-container .field label{font-size:.6rem;color:var(--txt3);display:block;margin-bottom:3px}
+#admin-container .field input{width:100%;background:var(--surf2);border:1px solid var(--line);color:var(--txt);border-radius:5px;padding:7px 8px;font-size:.76rem;text-align:right}
+#admin-container .field.auto input{background:var(--surf3);color:var(--txt2);border-style:dashed}
+#admin-container .field.auto label{color:var(--warn)}
+#admin-container .calc-line{grid-column:1/-1;display:flex;justify-content:space-between;padding:8px 0 2px;border-top:1px dashed var(--line);margin-top:4px;font-size:.72rem}
+#admin-container .calc-line .lab{color:var(--txt3)}
+#admin-container .calc-line .val{font-weight:700}
+#admin-container .p-actions{display:flex;justify-content:flex-end;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+#admin-container .btn-remove{background:transparent;border:1px solid var(--bad);color:var(--bad);font-size:.7rem;font-weight:600;padding:7px 14px;border-radius:6px;cursor:pointer}
+#admin-container .mes-sel{width:100%;background:var(--surf);border:1px solid var(--line);color:var(--txt);border-radius:7px;padding:9px;font-size:.78rem;margin-bottom:11px;font-weight:600}
 .maq-del{background:transparent;border:1px solid var(--line);color:#e0603c;border-radius:5px;padding:5px 9px;font-size:.75rem;cursor:pointer}
 .maq-nota{font-size:.76rem;color:var(--txt3);background:var(--surf2);border:1px solid var(--line);border-radius:7px;padding:9px 11px;margin-bottom:10px;line-height:1.45}
 .maq-row-ro{background:var(--surf2)}
@@ -914,7 +938,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v117</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v118</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -1419,6 +1443,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
     <button class="nav-item" data-nav="mo"><span class="ni-ico">👷</span><span class="ni-lbl">M. obra</span></button>
     <button class="nav-item" data-nav="maq"><span class="ni-ico">⚙️</span><span class="ni-lbl">Máquina</span></button>
     <button class="nav-item" data-nav="frete"><span class="ni-ico">🚚</span><span class="ni-lbl">Frete</span></button>
+    <button class="nav-item" data-nav="admin"><span class="ni-ico">🏢</span><span class="ni-lbl">Admin</span></button>
   </nav>
 </div>
 
@@ -1637,6 +1662,12 @@ async function _precarregarTudo(){
       if(typeof window.__FRETE_DEMO==='undefined') window.__FRETE_DEMO = !(typeof db!=='undefined' && db && typeof fb!=='undefined' && fb);
       if(typeof _freteCarregarDadosAssincrono==='function') await _freteCarregarDadosAssincrono(null);
     }catch(e){ console.warn('pré-carga frete', e&&e.message); }
+    // 4) Administrativo (DAdmin + suas seções) — sem desenhar
+    try{
+      if(!DAdmin && typeof DADMIN_DEFAULT!=='undefined'){ DAdmin = JSON.parse(JSON.stringify(DADMIN_DEFAULT)); window.__adminD = DAdmin; }
+      if(typeof window.__ADMIN_DEMO==='undefined') window.__ADMIN_DEMO = !(typeof db!=='undefined' && db && typeof fb!=='undefined' && fb);
+      if(DAdmin && typeof _adminCarregarDadosAssincrono==='function') await _adminCarregarDadosAssincrono(null);
+    }catch(e){ console.warn('pré-carga admin', e&&e.message); }
   }catch(e){ console.warn('pré-carga geral', e&&e.message); }
 }
 
@@ -1784,6 +1815,7 @@ const MODULES = {
   mo:   { ico:"👷", cls:"dc-mo",    name:"Mão de obra",     tag:"Custo/hora por setor",           status:"ok",  desc:"Encargos, 7 setores, EPI por consumo." },
   maq:  { ico:"⚙️", cls:"dc-maq",   name:"Custo de máquina",tag:"Energia, depreciação, gastos",   status:"wip", desc:"Energia calibrada; faltam potências e produção." },
   frete:{ ico:"🚚", cls:"dc-frete", name:"Frete",   tag:"Custo de entrega por peça",          status:"ok", desc:"Caminhões (FROTA) + motoristas ÷ viagens = frete-base por peça." },
+  admin:{ ico:"🏢", cls:"dc-admin", name:"Administrativo",   tag:"% sobre o faturamento",          status:"ok", desc:"Pessoal e despesas do escritório; média de 5 meses ÷ faturamento." },
 };
 
 // ==================== MÓDULO RELATÓRIOS ====================
@@ -3104,6 +3136,11 @@ function renderModule(key){
   if(key === "frete"){
     $("app-main").innerHTML = '<div id="frete-container" class="module-view"></div>';
     initFrete($("frete-container"));
+    return;
+  }
+  if(key === "admin"){
+    $("app-main").innerHTML = '<div id="admin-container" class="module-view"></div>';
+    initAdmin($("admin-container"));
     return;
   }
   if(key === "relatorios"){
@@ -6467,6 +6504,380 @@ function _freteAbaLongo(box){
   ivInp.onchange=()=>{ _freteLongoIdaVolta=ivInp.checked; _freteRenderMantendoScroll(); };
   diasInp.oninput=()=>{ _freteLongoDias=parseFloat(diasInp.value)||0; };
   diasInp.onblur=()=>_freteRenderMantendoScroll();
+}
+
+// ===================================================================
+// MÓDULO ADMINISTRATIVO
+// Pessoal fixo (com encargos) + despesas mês a mês + faturamento (com/sem nota).
+// % admin = média móvel de 5 meses do custo ÷ faturamento total (com+sem nota).
+// ===================================================================
+const ADMIN_SECOES = ['pessoal','despesas','faturamento','extraCats'];
+const ADMIN_MES_MEDIA = 5; // média móvel de 5 meses fechados
+
+// categorias e itens padrão das despesas administrativas (o usuário pode incluir/excluir)
+const ADMIN_CATS_PADRAO = [
+  { cat:'Serviços de terceiros', itens:['Contador / contabilidade','Advogado / jurídico','Consultoria seg. do trabalho','Consultoria ambiental','Despachante / assessoria'] },
+  { cat:'Estrutura e escritório', itens:['Aluguel do escritório','Energia/água (parte administrativa)','Telefone / celular','Internet','Material de escritório','Correios / motoboy','Limpeza / copa'] },
+  { cat:'Tecnologia e sistemas', itens:['Software ERP / gestão','Emissor de nota fiscal','Antivírus / licenças','Manutenção de TI'] },
+  { cat:'Despesas bancárias', itens:['Tarifas bancárias','Taxa de cartão / maquininha','IOF / juros'] },
+  { cat:'Tributos e taxas', itens:['Alvará / bombeiros','Sindicato patronal','Anuidades (CREA, associações)'] },
+  { cat:'Marketing e comercial', itens:['Publicidade / propaganda','Site / redes sociais','Brindes / catálogos','Comissões de vendedores'] },
+  { cat:'Outros', itens:['Seguros administrativos','Viagens / representação','Treinamentos / cursos','Despesas diversas'] },
+];
+
+const DADMIN_DEFAULT = {
+  pessoal: [],            // cadastro fixo (com encargos)
+  despesas: {},           // { 'YYYY-MM': { '<chave do item>': valor } }
+  faturamento: {},        // { 'YYYY-MM': { nota: valor, semNota: valor } }
+  extraCats: []           // itens extras adicionados pelo usuário: [{cat, nome}]
+};
+
+let DAdmin = null;
+let adminReady = false;
+const _adminTimers = {};
+const _adminLastWriteSec = {};
+let _adminMes = new Date().toISOString().slice(0,7);
+let _adminAba = 'resumo';
+
+function _adminArr(x){ if(Array.isArray(x)) return x; if(x&&typeof x==='object') return Object.values(x); return []; }
+function _adminFmt(n){ return (Math.round((n||0)*100)/100).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function _adminPct(n){ return (Math.round((n||0)*100)/100).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function _adminSanitize(v){ return (typeof _maqSanitize==='function') ? _maqSanitize(v) : v; }
+function _adminDesanitize(v){ return (typeof _maqDesanitize==='function') ? _maqDesanitize(v) : v; }
+function _adminNorm(sec,val){ return _adminDesanitize(val); }
+// chave de item de despesa: prefixo 'i' para nunca ser numérica pura (Firebase vira array senão)
+function _adminItemKey(nome){ return 'i'+String(nome).replace(/[^a-zA-Z0-9]/g,'_'); }
+
+function salvarSecaoAdmin(sec){
+  if(!DAdmin) return;
+  try{
+    const dado=_adminSanitize(DAdmin[sec]);
+    _adminLastWriteSec[sec]=JSON.stringify(dado);
+    if(_adminTimers[sec]) clearTimeout(_adminTimers[sec]);
+    _adminTimers[sec]=setTimeout(()=>{
+      try{
+        if(window.__ADMIN_DEMO){
+          const blob=JSON.parse(localStorage.getItem('pedroni:custos/admin_bloco')||'{}');
+          blob[sec]=dado; localStorage.setItem('pedroni:custos/admin_bloco', JSON.stringify(blob));
+        } else if(fb && db){
+          fb.set(fb.ref(db,'custos/admin/'+sec), dado).catch(e=>{ alert('Erro ao salvar Admin ('+sec+'): '+e.message); console.error('admin save',sec,e); });
+        }
+      }catch(e){ console.error('admin save inner',sec,e); }
+    },500);
+  }catch(e){ console.error('salvarSecaoAdmin',sec,e); }
+}
+
+// ---------- CÁLCULO ----------
+// custo de uma pessoa admin = mesma fórmula da M.O. (salário+extras+VA+...+13º/férias+INSS)
+function _adminCalcPessoa(mm){
+  const p={ salario:parseFloat(mm&&mm.salario)||0, extras50:parseFloat(mm&&mm.extras50)||0, extras100:parseFloat(mm&&mm.extras100)||0,
+    va:parseFloat(mm&&mm.va)||0, anuenio:parseFloat(mm&&mm.anuenio)||0, quinquenio:parseFloat(mm&&mm.quinquenio)||0,
+    foraFolha:parseFloat(mm&&mm.foraFolha)||0, tipoRisco:(mm&&mm.tipoRisco)||'none', insalubridade:parseFloat(mm&&mm.insalubridade)||0 };
+  const peric = p.tipoRisco==='periculosidade' ? (p.salario+p.extras50+p.extras100)*0.30 : 0;
+  const insal = p.tipoRisco==='insalubridade' ? (p.insalubridade||0) : 0;
+  const totalMes = p.salario+p.va+p.quinquenio+p.anuenio+insal+peric+p.extras50+p.extras100+p.foraFolha;
+  const ferias = ((p.salario+p.extras50+p.extras100)/3)*2.33;
+  const inss = ferias*0.26;
+  return {total: totalMes+ferias+inss, ferias, inss, peric};
+}
+function _adminPericValor(mm){ const s=(parseFloat(mm&&mm.salario)||0)+(parseFloat(mm&&mm.extras50)||0)+(parseFloat(mm&&mm.extras100)||0); return s*0.30; }
+function adminCustoPessoa(mm){ try{ return _adminCalcPessoa(mm).total||0; }catch(e){ return 0; } }
+function adminTotalPessoal(){ return _adminArr(DAdmin.pessoal).reduce((s,p)=>s+adminCustoPessoa(p),0); }
+
+// despesas de um mês (soma dos itens lançados)
+function adminDespesasMes(mes){
+  const d=(DAdmin.despesas||{})[mes]||{};
+  return Object.keys(d).reduce((s,k)=>s+(parseFloat(d[k])||0),0);
+}
+// custo admin TOTAL de um mês = pessoal fixo + despesas do mês
+function adminCustoMes(mes){ return adminTotalPessoal() + adminDespesasMes(mes); }
+// faturamento de um mês
+function adminFatMes(mes){ const f=(DAdmin.faturamento||{})[mes]||{}; return {nota:parseFloat(f.nota)||0, semNota:parseFloat(f.semNota)||0, total:(parseFloat(f.nota)||0)+(parseFloat(f.semNota)||0)}; }
+// % admin de um mês
+function adminPctMes(mes){ const c=adminCustoMes(mes), ft=adminFatMes(mes).total; return ft>0 ? (c/ft*100) : 0; }
+
+// meses com dados (despesa ou faturamento lançados)
+function adminMesesComDados(){
+  const s=new Set();
+  Object.keys(DAdmin.despesas||{}).forEach(m=>s.add(m));
+  Object.keys(DAdmin.faturamento||{}).forEach(m=>s.add(m));
+  return Array.from(s).sort();
+}
+// MÉDIA MÓVEL de 5 meses FECHADOS (exclui o mês corrente): custo, faturamento e %
+function adminMediaMovel(){
+  const hoje=new Date(); const mesCorrente=hoje.toISOString().slice(0,7);
+  const meses=[];
+  for(let i=1;i<=ADMIN_MES_MEDIA;i++){ const d=new Date(hoje.getFullYear(), hoje.getMonth()-i, 1); meses.push(d.toISOString().slice(0,7)); }
+  // só meses que têm faturamento lançado (sem faturamento não dá pra tirar %)
+  const comDados=meses.filter(m=>adminFatMes(m).total>0);
+  if(!comDados.length) return {custo:0, fat:0, pct:0, meses:[]};
+  const custo=comDados.reduce((s,m)=>s+adminCustoMes(m),0)/comDados.length;
+  const fat=comDados.reduce((s,m)=>s+adminFatMes(m).total,0)/comDados.length;
+  return {custo, fat, pct: fat>0?(custo/fat*100):0, meses:comDados};
+}
+
+// lista de itens de despesa (padrão + extras), agrupada por categoria
+function _adminItensPorCat(){
+  const map={}; const ordem=[];
+  ADMIN_CATS_PADRAO.forEach(c=>{ map[c.cat]=c.itens.slice(); ordem.push(c.cat); });
+  _adminArr(DAdmin.extraCats).forEach(e=>{ if(!e||!e.nome) return; const cat=e.cat||'Outros'; if(!map[cat]){ map[cat]=[]; ordem.push(cat); } if(!map[cat].includes(e.nome)) map[cat].push(e.nome); });
+  // remove itens excluídos
+  const excl=new Set(_adminArr(DAdmin.excluidos||[]));
+  ordem.forEach(cat=>{ map[cat]=map[cat].filter(n=>!excl.has(n)); });
+  return {map, ordem};
+}
+
+// ---------- INIT / CARGA ----------
+async function initAdmin(container){
+  if(!DAdmin){ DAdmin=JSON.parse(JSON.stringify(DADMIN_DEFAULT)); window.__ADMIN_DEMO=!(typeof db!=='undefined'&&db&&typeof fb!=='undefined'&&fb); }
+  window.__adminD=DAdmin;
+  adminReady=true;
+  try{ runAdmin(container); }catch(e){ console.error('admin render inicial', e); }
+  _adminCarregarDadosAssincrono(container);
+}
+async function _adminCarregarDadosAssincrono(container){
+  try{
+    if(!window.__ADMIN_DEMO && !DAdmin._carregado){
+      for(const s of ADMIN_SECOES.concat(['excluidos'])){
+        try{ const snap=await new Promise((res,rej)=>{ try{ fb.onValue(fb.ref(db,'custos/admin/'+s), res, rej, {onlyOnce:true}); }catch(e){ rej(e); } });
+          if(snap && snap.exists()) DAdmin[s]=_adminMerge(s, _adminNorm(s, snap.val())); }catch(e){}
+      }
+      ADMIN_SECOES.concat(['excluidos']).forEach(s=>{ try{
+        fb.onValue(fb.ref(db,'custos/admin/'+s), snap=>{
+          if(!snap||!snap.exists()) return;
+          const raw=snap.val();
+          if(JSON.stringify(raw)===_adminLastWriteSec[s]) return;
+          try{ if(JSON.stringify(_adminNorm(s,raw))===JSON.stringify(_adminNorm(s, JSON.parse(_adminLastWriteSec[s]||'null')))) return; }catch(e){}
+          const ativo=document.activeElement;
+          if(ativo && (ativo.tagName==='INPUT'||ativo.tagName==='TEXTAREA'||ativo.tagName==='SELECT') && document.getElementById('admin-container') && document.getElementById('admin-container').contains(ativo)){
+            ativo.addEventListener('blur', ()=>{ DAdmin[s]=_adminMerge(s,_adminNorm(s,raw)); if(adminReady) _adminRenderMantendoScroll(); }, {once:true}); return;
+          }
+          DAdmin[s]=_adminMerge(s,_adminNorm(s,raw));
+          if(adminReady) _adminRenderMantendoScroll();
+        });
+      }catch(e){} });
+    } else if(window.__ADMIN_DEMO && !DAdmin._carregado){
+      try{ const blob=JSON.parse(localStorage.getItem('pedroni:custos/admin_bloco')||'null');
+        if(blob) ADMIN_SECOES.concat(['excluidos']).forEach(s=>{ if(blob[s]!==undefined) DAdmin[s]=_adminMerge(s,_adminNorm(s, blob[s])); }); }catch(e){}
+    }
+    Object.defineProperty(DAdmin,'_carregado',{value:true,enumerable:false,configurable:true});
+    window.__adminD=DAdmin;
+    if(adminReady && container){ try{ runAdmin(container); }catch(e){ console.error('admin re-render', e); } }
+  }catch(e){ console.error('admin carga assíncrona', e); }
+}
+function _adminMerge(sec,val){
+  if(sec==='pessoal') return _adminArr(val);
+  if(sec==='extraCats'||sec==='excluidos') return _adminArr(val);
+  if(sec==='despesas'||sec==='faturamento') return (val&&typeof val==='object'&&!Array.isArray(val))?val:{};
+  return val;
+}
+function _adminRenderMantendoScroll(){ const sc=window.scrollY; const c=document.getElementById('admin-container'); if(!c) return; try{ runAdmin(c); }catch(e){ console.error('admin render', e); } window.scrollTo(0,sc); }
+
+// ---------- RENDER ----------
+const ADMIN_ABAS=[['resumo','Resumo'],['pessoal','Pessoal'],['despesas','Despesas'],['faturamento','Faturamento'],['historico','Histórico']];
+function runAdmin(container){
+  if(!container) return;
+  let h='<div class="maq-head"><div class="maq-head-t">Administrativo</div></div>';
+  h+='<div class="maq-head-sub">Custo da estrutura (escritório) rateado como % do faturamento. Pessoal é fixo; despesas e faturamento são mês a mês. O preço usa a média de '+ADMIN_MES_MEDIA+' meses.</div>';
+  h+='<div class="maq-abas">';
+  ADMIN_ABAS.forEach(([k,t])=>{ h+='<button class="maq-aba'+(k===_adminAba?' on':'')+'" data-aab="'+k+'">'+t+'</button>'; });
+  h+='</div><div id="admin-body"></div>';
+  container.innerHTML=h;
+  container.querySelectorAll('.maq-aba').forEach(b=>{ b.onclick=()=>{ _adminAba=b.dataset.aab; runAdmin(container); }; });
+  const body=container.querySelector('#admin-body');
+  if(_adminAba==='resumo') _adminAbaResumo(body);
+  else if(_adminAba==='pessoal') _adminAbaPessoal(body);
+  else if(_adminAba==='despesas') _adminAbaDespesas(body);
+  else if(_adminAba==='faturamento') _adminAbaFaturamento(body);
+  else if(_adminAba==='historico') _adminAbaHistorico(body);
+}
+
+// seletor de mês reutilizável
+function _adminSeletorMes(){
+  const meses=new Set(adminMesesComDados()); meses.add(_adminMes);
+  // adiciona os últimos 12 meses como opções
+  const hoje=new Date();
+  for(let i=0;i<12;i++){ const d=new Date(hoje.getFullYear(), hoje.getMonth()-i, 1); meses.add(d.toISOString().slice(0,7)); }
+  const lista=Array.from(meses).sort().reverse();
+  const MESN=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  const lbl=(m)=>{ const [y,mm]=m.split('-'); return MESN[+mm-1]+'/'+y.slice(2); };
+  let h='<select class="mes-sel" id="admin-mes">';
+  lista.forEach(m=>{ h+='<option value="'+m+'"'+(m===_adminMes?' selected':'')+'>'+lbl(m)+'</option>'; });
+  h+='</select>';
+  return h;
+}
+function _adminBindMes(box){
+  const sel=box.querySelector('#admin-mes'); if(sel) sel.onchange=()=>{ _adminMes=sel.value; runAdmin(document.getElementById('admin-container')); };
+}
+
+// ---------- RESUMO ----------
+function _adminAbaResumo(box){
+  const mm=adminMediaMovel();
+  const cMes=adminCustoMes(_adminMes), fMes=adminFatMes(_adminMes), pMes=adminPctMes(_adminMes);
+  let h='';
+  if(window.__ADMIN_DEMO) h+='<div class="maq-aviso" style="border:1px solid var(--line);border-radius:9px;margin-bottom:11px">⚠️ Modo demonstração (sem Firebase).</div>';
+  // média móvel (o que o preço usa)
+  h+='<div class="maq-card"><div class="maq-card-cab"><span class="maq-card-nome">% Admin (média '+ADMIN_MES_MEDIA+' meses)</span><span class="maq-ton">'+_adminPct(mm.pct)+'%</span></div>';
+  h+='<div class="frete-lin"><span>Custo admin médio/mês</span><b>R$ '+_adminFmt(mm.custo)+'</b></div>';
+  h+='<div class="frete-lin"><span>Faturamento médio/mês (com+sem nota)</span><b>R$ '+_adminFmt(mm.fat)+'</b></div>';
+  if(!mm.meses.length) h+='<div class="maq-aviso" style="border-top:1px solid var(--line)">Sem faturamento lançado nos últimos '+ADMIN_MES_MEDIA+' meses fechados. Lance faturamento na aba Faturamento.</div>';
+  else h+='<div class="maq-aviso" style="border-top:1px solid var(--line)">Média de '+mm.meses.length+' mês(es) com faturamento. Esse % entra no preço final.</div>';
+  h+='</div>';
+  // mês selecionado
+  h+='<div class="maq-card"><div class="maq-card-cab"><span class="maq-card-nome">Mês selecionado</span><span class="maq-ton" style="font-size:.9rem">'+_adminPct(pMes)+'%</span></div>';
+  h+='<div style="padding:8px 14px">'+_adminSeletorMes()+'</div>';
+  h+='<div class="frete-lin"><span>Pessoal administrativo (fixo)</span><b>R$ '+_adminFmt(adminTotalPessoal())+'</b></div>';
+  h+='<div class="frete-lin"><span>Despesas do mês</span><b>R$ '+_adminFmt(adminDespesasMes(_adminMes))+'</b></div>';
+  h+='<div class="frete-lin"><span><b>Custo admin do mês</b></span><b>R$ '+_adminFmt(cMes)+'</b></div>';
+  h+='<div class="frete-lin"><span>Faturamento com nota</span><b>R$ '+_adminFmt(fMes.nota)+'</b></div>';
+  h+='<div class="frete-lin"><span>Faturamento sem nota</span><b>R$ '+_adminFmt(fMes.semNota)+'</b></div>';
+  h+='<div class="frete-lin"><span><b>Faturamento total</b></span><b>R$ '+_adminFmt(fMes.total)+'</b></div>';
+  h+='</div>';
+  box.innerHTML=h;
+  _adminBindMes(box);
+}
+
+// ---------- PESSOAL (cadastro fixo, completo) ----------
+function _adminAbaPessoal(box){
+  box.innerHTML='';
+  const nota=document.createElement('div'); nota.className='maq-nota';
+  nota.innerHTML='Pessoal administrativo (escritório, vendas, gestão, sócios). Cadastro fixo com encargos — vale pra todos os meses. Toque pra abrir.';
+  box.appendChild(nota);
+  const wrap=document.createElement('div'); box.appendChild(wrap);
+  _adminArr(DAdmin.pessoal).forEach((m,i)=>{
+    const c=_adminCalcPessoa(m);
+    const div=document.createElement('div'); div.className='pessoa'+(m._open?' open':'');
+    const head=document.createElement('div'); head.className='pessoa-head';
+    head.innerHTML='<span class="p-exp">▶</span><span class="p-nome">'+(m.nome||'(sem nome)')+'</span><span class="p-total mono">R$ '+_adminFmt(c.total)+'</span>';
+    head.onclick=()=>{ m._open=!m._open; _adminAbaPessoal(box); };
+    div.appendChild(head);
+    const body=document.createElement('div'); body.className='pessoa-body';
+    const nr=document.createElement('div'); nr.className='nome-row'; nr.innerHTML='<label>Nome</label>';
+    const nIn=document.createElement('input'); nIn.className='nome-in'; nIn.value=m.nome||'';
+    nIn.oninput=()=>{ m.nome=nIn.value; div.querySelector('.p-nome').textContent=nIn.value||'(sem nome)'; salvarSecaoAdmin('pessoal'); };
+    nr.appendChild(nIn); body.appendChild(nr);
+    // função/cargo (texto livre)
+    const fr=document.createElement('div'); fr.className='nome-row'; fr.innerHTML='<label>Função / cargo</label>';
+    const fIn=document.createElement('input'); fIn.className='nome-in'; fIn.value=m.funcao||''; fIn.placeholder='ex.: contador, vendedor, sócio';
+    fIn.oninput=()=>{ m.funcao=fIn.value; salvarSecaoAdmin('pessoal'); };
+    fr.appendChild(fIn); body.appendChild(fr);
+    const fields=[['salario','Salário base'],['extras50','Extras 50%'],['extras100','Extras 100%'],['va','Vale-alimentação'],['anuenio','Anuênio'],['quinquenio','Quinquênio'],['foraFolha','Fora folha']];
+    const fg=document.createElement('div'); fg.className='field-grid';
+    const _updAuto=()=>{ const cc=_adminCalcPessoa(m);
+      const ff=fg.querySelector('.am-fer'); if(ff) ff.value='R$ '+_adminFmt(cc.ferias);
+      const fi=fg.querySelector('.am-inss'); if(fi) fi.value='R$ '+_adminFmt(cc.inss);
+      const ct=fg.querySelector('.am-tot'); if(ct) ct.textContent='R$ '+_adminFmt(cc.total);
+      div.querySelector('.p-total').textContent='R$ '+_adminFmt(cc.total); };
+    fields.forEach(([k,lab])=>{ const f=document.createElement('div'); f.className='field'; f.innerHTML='<label>'+lab+'</label>';
+      const inp=document.createElement('input'); inp.type='number'; inp.value=(m[k]!=null?m[k]:'');
+      inp.oninput=()=>{ m[k]=parseFloat(inp.value)||0; if(m._refreshPeric)m._refreshPeric(); _updAuto(); salvarSecaoAdmin('pessoal'); };
+      f.appendChild(inp); fg.appendChild(f); });
+    const riscoSel=document.createElement('div'); riscoSel.className='field'; riscoSel.style.gridColumn='1/-1'; riscoSel.innerHTML='<label>Adicional de risco</label>';
+    const rsel=document.createElement('select'); rsel.className='p-sel'; rsel.style.fontSize='.76rem';
+    [['none','Nenhum'],['insalubridade','Insalubridade (valor fixo)'],['periculosidade','Periculosidade (30% auto)']].forEach(([v,t])=>{ const o=document.createElement('option'); o.value=v; o.textContent=t; if((m.tipoRisco||'none')===v)o.selected=true; rsel.appendChild(o); });
+    riscoSel.appendChild(rsel); fg.appendChild(riscoSel);
+    const riscoField=document.createElement('div'); riscoField.style.gridColumn='1/-1';
+    function renderRiscoField(){ const tipo=m.tipoRisco||'none';
+      if(tipo==='insalubridade'){ riscoField.className='field'; riscoField.innerHTML='<label>Valor insalubridade (R$)</label>';
+        const i2=document.createElement('input'); i2.type='number'; i2.value=m.insalubridade||0; i2.oninput=()=>{ m.insalubridade=parseFloat(i2.value)||0; _updAuto(); salvarSecaoAdmin('pessoal'); }; riscoField.appendChild(i2); }
+      else if(tipo==='periculosidade'){ riscoField.className='field auto'; riscoField.innerHTML='<label>Periculosidade 30% (auto)</label><input class="peric-out" value="R$ '+_adminFmt(_adminPericValor(m))+'" readonly>'; }
+      else { riscoField.className='field'; riscoField.innerHTML=''; } }
+    rsel.onchange=()=>{ m.tipoRisco=rsel.value; renderRiscoField(); _updAuto(); salvarSecaoAdmin('pessoal'); }; renderRiscoField(); fg.appendChild(riscoField);
+    m._refreshPeric=()=>{ const out=riscoField.querySelector('.peric-out'); if(out)out.value='R$ '+_adminFmt(_adminPericValor(m)); };
+    const fFer=document.createElement('div'); fFer.className='field auto'; fFer.innerHTML='<label>13º/Férias (auto)</label><input class="am-fer" value="R$ '+_adminFmt(c.ferias)+'" readonly>'; fg.appendChild(fFer);
+    const fInss=document.createElement('div'); fInss.className='field auto'; fInss.innerHTML='<label>INSS/Outros (auto)</label><input class="am-inss" value="R$ '+_adminFmt(c.inss)+'" readonly>'; fg.appendChild(fInss);
+    const cl=document.createElement('div'); cl.className='calc-line'; cl.innerHTML='<span class="lab">Custo total mensal (c/ encargos)</span><span class="val mono am-tot" style="color:var(--rebar2)">R$ '+_adminFmt(c.total)+'</span>'; fg.appendChild(cl);
+    body.appendChild(fg);
+    const act=document.createElement('div'); act.className='p-actions';
+    const btn=document.createElement('button'); btn.className='btn-remove'; btn.textContent='🗑 Remover';
+    btn.onclick=()=>{ if(confirm('Remover '+(m.nome||'esta pessoa')+'?')){ DAdmin.pessoal=_adminArr(DAdmin.pessoal); DAdmin.pessoal.splice(i,1); salvarSecaoAdmin('pessoal'); _adminAbaPessoal(box); } };
+    act.appendChild(btn); body.appendChild(act);
+    div.appendChild(body); wrap.appendChild(div);
+  });
+  const tot=document.createElement('div'); tot.className='maq-dep-res'; tot.textContent='Total pessoal: R$ '+_adminFmt(adminTotalPessoal())+'/mês'; box.appendChild(tot);
+  const add=document.createElement('button'); add.className='maq-add'; add.textContent='+ Adicionar pessoa';
+  add.onclick=()=>{ DAdmin.pessoal=_adminArr(DAdmin.pessoal); DAdmin.pessoal.push({nome:'',funcao:'',salario:0,extras50:0,extras100:0,va:0,anuenio:0,quinquenio:0,foraFolha:0,tipoRisco:'none',insalubridade:0,_open:true}); salvarSecaoAdmin('pessoal'); _adminAbaPessoal(box); };
+  box.appendChild(add);
+}
+
+// ---------- DESPESAS (mês a mês, por categoria, incluir/excluir) ----------
+function _adminAbaDespesas(box){
+  const {map, ordem}=_adminItensPorCat();
+  const desp=(DAdmin.despesas||{})[_adminMes]||{};
+  let h='<div class="maq-nota">Lance as despesas administrativas do mês. Use "+ item" para incluir um gasto que não está na lista, ou o ✕ para remover um que você não usa.</div>';
+  h+='<div style="margin-bottom:10px">'+_adminSeletorMes()+'</div>';
+  ordem.forEach(cat=>{
+    h+='<div class="maq-sub">'+cat+'</div>';
+    h+='<table class="frete-tbl"><tbody>';
+    map[cat].forEach(nome=>{
+      const key=_adminItemKey(nome); const v=desp[key];
+      h+='<tr><td style="width:60%">'+nome+'</td>';
+      h+='<td class="c"><input class="admin-desp" data-key="'+key+'" data-nome="'+String(nome).replace(/"/g,'&quot;')+'" type="number" placeholder="R$" value="'+(v!=null?v:'')+'" style="width:110px"></td>';
+      h+='<td class="r"><button class="admin-del-item" data-nome="'+String(nome).replace(/"/g,'&quot;')+'" title="remover item" style="background:transparent;border:none;color:var(--txt3);cursor:pointer">✕</button></td></tr>';
+    });
+    h+='<tr><td colspan="3"><button class="admin-add-item maq-mini" data-cat="'+String(cat).replace(/"/g,'&quot;')+'">+ item nesta categoria</button></td></tr>';
+    h+='</tbody></table>';
+  });
+  h+='<div class="maq-dep-res">Despesas do mês: R$ '+_adminFmt(adminDespesasMes(_adminMes))+'</div>';
+  box.innerHTML=h;
+  _adminBindMes(box);
+  const _mesObj=()=>{ if(!DAdmin.despesas)DAdmin.despesas={}; if(!DAdmin.despesas[_adminMes])DAdmin.despesas[_adminMes]={}; return DAdmin.despesas[_adminMes]; };
+  box.querySelectorAll('.admin-desp').forEach(inp=>{
+    inp.oninput=()=>{ const o=_mesObj(); const val=parseFloat(inp.value); if(isNaN(val)||val===0){ delete o[inp.dataset.key]; } else { o[inp.dataset.key]=val; } salvarSecaoAdmin('despesas');
+      const tot=box.querySelector('.maq-dep-res'); if(tot) tot.textContent='Despesas do mês: R$ '+_adminFmt(adminDespesasMes(_adminMes)); };
+  });
+  box.querySelectorAll('.admin-add-item').forEach(btn=>{
+    btn.onclick=()=>{ const nome=prompt('Nome do novo item de despesa ('+btn.dataset.cat+'):'); if(!nome) return;
+      DAdmin.extraCats=_adminArr(DAdmin.extraCats); DAdmin.extraCats.push({cat:btn.dataset.cat, nome:nome.trim()}); salvarSecaoAdmin('extraCats');
+      // se estava na lista de excluídos, tira de lá
+      DAdmin.excluidos=_adminArr(DAdmin.excluidos).filter(n=>n!==nome.trim()); salvarSecaoAdmin('excluidos');
+      _adminAbaDespesas(box); };
+  });
+  box.querySelectorAll('.admin-del-item').forEach(btn=>{
+    btn.onclick=()=>{ const nome=btn.dataset.nome; if(!confirm('Remover o item "'+nome+'" da lista?')) return;
+      // se é extra, remove dos extras; senão adiciona aos excluídos
+      const eraExtra=_adminArr(DAdmin.extraCats).some(e=>e&&e.nome===nome);
+      if(eraExtra){ DAdmin.extraCats=_adminArr(DAdmin.extraCats).filter(e=>!(e&&e.nome===nome)); salvarSecaoAdmin('extraCats'); }
+      else { DAdmin.excluidos=_adminArr(DAdmin.excluidos); if(!DAdmin.excluidos.includes(nome)) DAdmin.excluidos.push(nome); salvarSecaoAdmin('excluidos'); }
+      _adminAbaDespesas(box); };
+  });
+}
+
+// ---------- FATURAMENTO (mês a mês, com/sem nota) ----------
+function _adminAbaFaturamento(box){
+  const f=adminFatMes(_adminMes);
+  let h='<div class="maq-nota">Faturamento <b>bruto</b> do mês. Com nota e sem nota separados — o admin se dilui sobre o total, mas os dois servem ao preço final (a diferença de imposto vem depois).</div>';
+  h+='<div style="margin-bottom:10px">'+_adminSeletorMes()+'</div>';
+  h+='<div class="maq-field"><label>Faturamento bruto COM nota (R$)</label><input class="admin-fat" data-k="nota" type="number" value="'+(f.nota||'')+'"></div>';
+  h+='<div class="maq-field"><label>Faturamento bruto SEM nota (R$)</label><input class="admin-fat" data-k="semNota" type="number" value="'+(f.semNota||'')+'"></div>';
+  h+='<div class="maq-card"><div class="maq-card-rod"><div><span>Faturamento total do mês</span></div><div><b>R$ '+_adminFmt(f.total)+'</b></div></div></div>';
+  h+='<div class="maq-card"><div class="maq-card-rod"><div><span>% Admin deste mês (custo ÷ faturamento)</span></div><div><b>'+_adminPct(adminPctMes(_adminMes))+'%</b></div></div></div>';
+  box.innerHTML=h;
+  _adminBindMes(box);
+  const _mesObj=()=>{ if(!DAdmin.faturamento)DAdmin.faturamento={}; if(!DAdmin.faturamento[_adminMes])DAdmin.faturamento[_adminMes]={}; return DAdmin.faturamento[_adminMes]; };
+  box.querySelectorAll('.admin-fat').forEach(inp=>{
+    inp.oninput=()=>{ const o=_mesObj(); o[inp.dataset.k]=parseFloat(inp.value)||0; salvarSecaoAdmin('faturamento'); };
+    inp.onblur=()=>_adminRenderMantendoScroll();
+  });
+}
+
+// ---------- HISTÓRICO ----------
+function _adminAbaHistorico(box){
+  const meses=adminMesesComDados();
+  const MESN=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  const lbl=(m)=>{ const [y,mm]=m.split('-'); return MESN[+mm-1]+'/'+y.slice(2); };
+  let h='<div class="maq-nota">Evolução do custo administrativo e do % sobre o faturamento, mês a mês. Bom pra ver o que está crescendo.</div>';
+  if(!meses.length){ h+='<div class="maq-aviso" style="border:1px solid var(--line);border-radius:9px">Nenhum mês lançado ainda.</div>'; box.innerHTML=h; return; }
+  h+='<table class="frete-tbl"><thead><tr><th>Mês</th><th class="r">Custo admin</th><th class="r">Faturamento</th><th class="r">% Admin</th></tr></thead><tbody>';
+  let custoAnt=null;
+  meses.forEach(m=>{
+    const c=adminCustoMes(m), ft=adminFatMes(m).total, p=adminPctMes(m);
+    let seta=''; if(custoAnt!=null && custoAnt>0){ const dif=(c-custoAnt)/custoAnt*100; if(Math.abs(dif)>=0.5) seta=' <small style="color:'+(dif>0?'#e0603c':'#4a9')+'">'+(dif>0?'▲':'▼')+Math.abs(Math.round(dif))+'%</small>'; }
+    h+='<tr><td>'+lbl(m)+'</td><td class="r">R$ '+_adminFmt(c)+seta+'</td><td class="r">R$ '+_adminFmt(ft)+'</td><td class="r">'+_adminPct(p)+'%</td></tr>';
+    custoAnt=c;
+  });
+  h+='</tbody></table>';
+  box.innerHTML=h;
 }
 
 // ===================================================================
