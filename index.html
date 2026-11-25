@@ -938,7 +938,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v130</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v133</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -2383,7 +2383,7 @@ function _frotaCustoMedioEquip(nomeEquip){
 function _maqRegistrarAjudas(){
   if(!window.AJUDAS_ALL) window.AJUDAS_ALL={};
   Object.assign(window.AJUDAS_ALL, {
-  preco_final:{t:'Preço Final', c:'<p>Junta todos os custos de cada produto — <b>matéria-prima + mão de obra + máquina + molde + frete-base</b> — e calcula o <b>preço mínimo</b> pra não ter prejuízo, usando a fórmula de <i>gross-up</i>:</p><p style="font-family:monospace;font-size:.8rem;background:var(--surf2);padding:8px;border-radius:6px">Preço = Custo ÷ (1 − PIS/Cofins − ICMS − Admin − Lucro/(1−IR))</p><p><b>Com nota</b> aplica ICMS, PIS/Cofins e IR. <b>Sem nota</b> tira esses impostos (preço menor). Admin vem do módulo Admin (média móvel sobre o faturamento).</p><p>Digite seu <b>preço de tabela atual</b> em cada produto pra ver a margem real e se você está vendendo abaixo do mínimo (⚠).</p>'},
+  preco_final:{t:'Preço Final', c:'<p>Junta todos os custos de cada produto — <b>matéria-prima + mão de obra + máquina + molde + frete-base</b> — e calcula o <b>preço mínimo</b> pra não ter prejuízo, usando a fórmula de <i>gross-up</i>:</p><p style="font-family:monospace;font-size:.8rem;background:var(--surf2);padding:8px;border-radius:6px">Preço = Custo ÷ (1 − PIS/Cofins − ICMS − Admin − Lucro/(1−IRPJ−CSLL))</p><p><b>Com nota</b> aplica ICMS, PIS/Cofins, IRPJ e CSLL. <b>Sem nota</b> tira esses impostos (preço menor). IRPJ (25%) e CSLL (9%) incidem sobre o lucro — por isso o lucro efetivo é maior que o lucro-alvo. Admin vem do módulo Admin (média móvel sobre o faturamento).</p><p>Digite seu <b>preço de tabela atual</b> em cada produto pra ver a margem real e se você está vendendo abaixo do mínimo (⚠).</p>'},
   maq_resumo:{t:'Custo de máquina por setor', c:'<p>Cada máquina tem um custo mensal formado por 4 partes: <b>energia</b>, <b>depreciação</b>, <b>gastos diretos</b> e <b>gastos gerais</b>.</p><p>Esse total é dividido pela produção do setor (em toneladas) para dar o <b>custo por tonelada</b> — que depois entra no preço de cada peça conforme o peso dela.</p><p>A produção usada é a <b>MÉDIA da produção real</b> lançada na M.O. (como a máquina faz um produto por vez, não somamos capacidades em paralelo). Quanto mais meses lançados, mais estável fica a média. Setor sem produção lançada não calcula custo/tonelada até você cadastrar.</p>'},
   maq_energia:{t:'Energia', c:'<p>A conta de luz é dividida entre os setores em duas partes:</p><p><b>Demanda</b> (a parte fixa que você paga pela potência contratada) é rateada pela <b>potência instalada</b> de cada máquina.</p><p><b>Consumo</b> (a energia efetivamente usada) é rateado por <b>potência × horas</b> de operação.</p><p>Informe a conta média paga, o % que é demanda, e a potência (kW) e horas/mês de cada máquina.</p>'},
   maq_deprec:{t:'Depreciação', c:'<p>É a reserva mensal para repor a máquina no futuro. Mesmo uma máquina velha e quitada continua depreciando pelo <b>valor de reposição</b> — assim você junta o dinheiro para trocá-la quando precisar.</p><p><b>Valor fixo:</b> você informa direto o R$/mês.</p><p><b>Por reposição:</b> informe quanto custaria repor a máquina hoje e a vida útil em anos; o app calcula o R$/mês (reposição ÷ vida ÷ 12).</p><p>As empilhadeiras servem todas as máquinas, então são rateadas por KG entre todas. Cada central é rateada por KG só entre as máquinas que ela abastece (a lista vem da aba Mão de obra → "esta central abastece quais máquinas").</p>'},
@@ -7428,16 +7428,40 @@ const PRECO_DEFAULT = {
     pisCofins: 9.25, // %
     icmsBlocos: 7,   // % blocos/canaletas
     icmsOutros: 12,  // % demais
-    ir: 34           // % IR sobre o lucro
+    irpj: 25,        // % IRPJ sobre o lucro (15% + 10% adicional, Lucro Real acima de R$20mil/mês)
+    csll: 9          // % CSLL sobre o lucro
   }
 };
 
 function _precoId(p){ return 'p'+(p.id!=null?String(p.id):p.nome); }
 
 // ---- ICMS por categoria (blocos e canaletas = 7%, resto = 12%) ----
-function _precoIcmsCat(categoria){
-  const c=(categoria||'').toLowerCase();
-  if(c.indexOf('bloco')>=0 || c.indexOf('canaleta')>=0) return (DPreco.params.icmsBlocos||7)/100;
+// categoria tributária do produto, pra decidir o ICMS.
+// Os produtos da matéria-prima têm categoria vazia, então usamos a CATEGORIA DO TRAÇO
+// (Blocos, Canaletas, Tubos, Fossas, Lajes...) + o nome do produto (p/ pegar MEIO BLOCO).
+// Regra do Matheus: bloco, canaleta e meio bloco = 7%; demais = 12%.
+function _precoCategoriaTributaria(p){
+  let cat='';
+  try{
+    const Dmp = (typeof D!=='undefined' && D) ? D : window.__mpD;
+    if(Dmp && Dmp.tracos && p && p.traco!=null){
+      const t=Dmp.tracos.find(x=>x.id===p.traco);
+      if(t && t.categoria) cat=t.categoria;
+    }
+  }catch(e){}
+  if(!cat) cat=(p&&(p.categoria||p.familia))||'';
+  return cat;
+}
+function _precoEhBlocoCanaleta(p){
+  const cat=_precoCategoriaTributaria(p).toLowerCase();
+  const nome=((p&&p.nome)||'').toLowerCase();
+  // bloco (inclui meio bloco), canaleta
+  if(cat.indexOf('bloco')>=0 || cat.indexOf('canaleta')>=0) return true;
+  if(nome.indexOf('bloco')>=0 || nome.indexOf('canaleta')>=0) return true; // pega MEIO BLOCO pelo nome
+  return false;
+}
+function _precoIcmsCat(p){
+  if(_precoEhBlocoCanaleta(p)) return (DPreco.params.icmsBlocos||7)/100;
   return (DPreco.params.icmsOutros||12)/100;
 }
 
@@ -7524,15 +7548,15 @@ function precoCustoProduto(p){
 // comNota=true aplica impostos; comNota=false zera impostos (ICMS/PisCofins/IR).
 // adminPct e fretePct vêm como fração (0..1). frete JÁ está no custo como R$ embutido,
 // então NÃO entra como % aqui — o frete-base é custo, não percentual. (Mantido 0.)
-function precoGrossUp(custo, categoria, comNota){
+function precoGrossUp(custo, prod, comNota){
   const P=DPreco.params;
   const lucro=(parseFloat(DPreco.lucro)||0)/100;
-  const ir=(P.ir||0)/100;
+  const ir=((P.irpj||0)+(P.csll||0))/100; // IRPJ + CSLL incidem juntos sobre o lucro
   const adminPct=_precoAdminFrac();
   let pis=0, icms=0, irEf=lucro/(1-ir);
   if(comNota){
     pis=(P.pisCofins||0)/100;
-    icms=_precoIcmsCat(categoria);
+    icms=_precoIcmsCat(prod);
   } else {
     // sem nota: sem ICMS e sem PIS/Cofins; lucro sem gross-up de IR (não há IR sobre o que não tem nota)
     irEf=lucro;
@@ -7560,10 +7584,23 @@ function _precoProdutos(){
 // invalida os caches (chamar ao abrir a aba, pra refletir edições de outros módulos)
 function _precoInvalidaCache(){ _precoMoCache=null; _precoMaqCache=null; }
 
+// Garante que as vars LOCAIS D (matéria-prima) e Dmo (M.O.) estejam preenchidas —
+// elas são o que custoProdutoEm() e calcSetores() usam. A pré-carga enche window.__mpD/__moD,
+// mas não as locais (que só são setadas ao abrir Material/M.O.). Sem isso, MP e MO vêm R$0.
+function _precoSincronizarDados(){
+  try{
+    if((typeof D==='undefined' || !D || !D.produtos || !D.produtos.length) && window.__mpD){ D = window.__mpD; }
+  }catch(e){ try{ if(window.__mpD) D = window.__mpD; }catch(_){} }
+  try{
+    if((typeof Dmo==='undefined' || !Dmo || !Dmo.produtos) && window.__moD){ Dmo = window.__moD; }
+  }catch(e){ try{ if(window.__moD) Dmo = window.__moD; }catch(_){} }
+}
+
 // ====================== RENDER ======================
 function initPrecoFinal(container){
   if(container) _precoContainer=container;
   _precoGarantirDados();
+  _precoSincronizarDados();
   _precoInvalidaCache();
   renderPreco();
 }
@@ -7577,6 +7614,7 @@ function _precoGarantirDados(){
 
 function renderPreco(){
   const c=_precoContainer; if(!c) return;
+  _precoSincronizarDados(); _precoInvalidaCache();
   if(_precoDetalhe!=null){ return _precoRenderDetalhe(c); }
   const prods=_precoProdutos();
   const adminPct=_precoAdminFrac()*100;
@@ -7590,7 +7628,8 @@ function renderPreco(){
   h+='<div class="maq-field"><label>PIS/Cofins (%)</label><input id="preco-pis" type="number" step="0.01" value="'+(DPreco.params.pisCofins||0)+'"></div>';
   h+='<div class="maq-field"><label>ICMS blocos/canaletas (%)</label><input id="preco-icmsb" type="number" step="0.5" value="'+(DPreco.params.icmsBlocos||0)+'"></div>';
   h+='<div class="maq-field"><label>ICMS demais (%)</label><input id="preco-icmso" type="number" step="0.5" value="'+(DPreco.params.icmsOutros||0)+'"></div>';
-  h+='<div class="maq-field"><label>IR sobre lucro (%)</label><input id="preco-ir" type="number" step="0.5" value="'+(DPreco.params.ir||0)+'"></div>';
+  h+='<div class="maq-field"><label>IRPJ sobre lucro (%)</label><input id="preco-irpj" type="number" step="0.5" value="'+(DPreco.params.irpj||0)+'"></div>';
+  h+='<div class="maq-field"><label>CSLL sobre lucro (%)</label><input id="preco-csll" type="number" step="0.5" value="'+(DPreco.params.csll||0)+'"></div>';
   h+='<div class="maq-field"><label>Admin (% do faturamento)</label><input type="text" value="'+_precoFmt(adminPct)+'%" disabled title="vem do módulo Admin (média móvel)"></div>';
   h+='</div></div>';
 
@@ -7606,8 +7645,8 @@ function renderPreco(){
   lista.forEach(p=>{
     const id=_precoId(p);
     const custo=precoCustoProduto(p).total;
-    const gN=precoGrossUp(custo, p.categoria, true);
-    const gS=precoGrossUp(custo, p.categoria, false);
+    const gN=precoGrossUp(custo, p, true);
+    const gS=precoGrossUp(custo, p, false);
     const tabela=parseFloat((DPreco.tabela||{})[id])||0;
     // margem real do preço de tabela: (tabela - custo) / tabela
     let margemTxt='—', margemCor='var(--txt3)';
@@ -7642,7 +7681,8 @@ function _precoBind(c){
   upd('#preco-pis','pisCofins',DPreco.params);
   upd('#preco-icmsb','icmsBlocos',DPreco.params);
   upd('#preco-icmso','icmsOutros',DPreco.params);
-  upd('#preco-ir','ir',DPreco.params);
+  upd('#preco-irpj','irpj',DPreco.params);
+  upd('#preco-csll','csll',DPreco.params);
   const b=c.querySelector('#preco-busca');
   if(b) b.oninput=()=>{ _precoBusca=b.value; const pos=b.selectionStart; renderPreco(); const nb=_precoContainer.querySelector('#preco-busca'); if(nb){ nb.focus(); try{nb.setSelectionRange(pos,pos);}catch(e){} } };
   c.querySelectorAll('.preco-lin').forEach(tr=>{ tr.onclick=()=>{ _precoDetalhe=tr.dataset.id; renderPreco(); }; });
@@ -7658,14 +7698,16 @@ function _precoRenderDetalhe(c){
   if(!p){ _precoDetalhe=null; return renderPreco(); }
   const id=_precoId(p);
   const comp=precoCustoProduto(p);
-  const gN=precoGrossUp(comp.total, p.categoria, true);
-  const gS=precoGrossUp(comp.total, p.categoria, false);
+  const gN=precoGrossUp(comp.total, p, true);
+  const gS=precoGrossUp(comp.total, p, false);
   const tabela=parseFloat((DPreco.tabela||{})[id])||0;
 
   let h='<div class="module-view">';
   h+='<button class="maq-mini" id="preco-voltar" style="margin-bottom:10px">← voltar</button>';
   h+='<div class="maq-head"><div class="maq-head-t">'+(p.nome||id)+'</div></div>';
-  h+='<div class="maq-head-sub">Categoria: '+(p.categoria||'—')+' · Peso: '+_precoFmt(p.pesoPeca||0)+' kg</div>';
+  const _catTrib=_precoCategoriaTributaria(p)||p.familia||'—';
+  const _icmsP=(_precoIcmsCat(p)*100);
+  h+='<div class="maq-head-sub">Categoria: '+_catTrib+' · Peso: '+_precoFmt(p.pesoPeca||0)+' kg · ICMS '+_precoFmt(_icmsP)+'%</div>';
 
   // composição do custo
   h+='<div class="maq-card"><div class="maq-card-cab"><span class="maq-card-nome">Composição do custo</span></div>';
