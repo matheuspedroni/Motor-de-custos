@@ -938,7 +938,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v125</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v127</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -2798,20 +2798,30 @@ const MAQ_CC_MAP = {
 // Centros de custo tipo-máquina que o Matheus mandou NÃO importar.
 const MAQ_CC_ELIMINA = ['maq. bloco 1 - mab 2000','vibrados/prensas 60/40','máquina tubos calha','maquina tubos calha'];
 
+// normaliza texto p/ comparação: minúsculo, sem acentos e sem o char de substituição (�),
+// pra funcionar mesmo se o CSV vier em Latin-1/Windows-1252 mal decodificado.
+function _normTxt(s){
+  return String(s||'').toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g,'') // tira acentos
+    .replace(/�/g,'')  // tira o � de encoding quebrado
+    .replace(/\s+/g,' ').trim();
+}
+// versão do mapa de centro de custo normalizada (sem acento), p/ casar com qualquer encoding
+const MAQ_CC_MAP_N = (function(){ const o={}; for(const k in MAQ_CC_MAP) o[_normTxt(k)]=MAQ_CC_MAP[k]; return o; })();
 // Classifica uma linha do CSV para o importador de MÁQUINA.
 // Retorna {destino: '<setor>' | 'geral' | 'ignorar'}
 function _maqClassificaGasto(dre, cc, conta){
-  const r=(dre||'').toLowerCase().trim();
-  const c=(cc||'').toLowerCase().trim();
-  const co=(conta||'').toLowerCase().trim();
+  const r=_normTxt(dre);
+  const c=_normTxt(cc);
+  const co=_normTxt(conta);
   // imobilizado -> depreciação (já existe)
   if(r==='imobilizado' || co.indexOf('imobilizado')>=0) return {destino:'ignorar'};
   // matéria-prima e frete de compras -> já no custo do produto
-  if(co.indexOf('matéria prima')>=0 || co.indexOf('materia prima')>=0 || co==='frete compras') return {destino:'ignorar'};
+  if(co.indexOf('materia prima')>=0 || co==='frete compras') return {destino:'ignorar'};
   // só gastos de produção que sejam manutenção ou uso/consumo da máquina
-  if(r==='gastos produção' || r==='gastos producao'){
-    if(co==='manutenção' || co==='manutencao' || co==='uso e consumo'){
-      if(MAQ_CC_MAP[c]) return {destino:MAQ_CC_MAP[c]};
+  if(r==='gastos producao'){
+    if(co==='manutencao' || co==='uso e consumo'){
+      if(MAQ_CC_MAP_N[c]) return {destino:MAQ_CC_MAP_N[c]};
       if(c==='geral') return {destino:'geral'};
       return {destino:'ignorar'}; // CC eliminado ou sem mapa
     }
@@ -2828,7 +2838,7 @@ function _maqProcessarCsvMaq(texto){
   const linhas=texto.split(/\r?\n/).filter(l=>l.trim().length);
   if(!linhas.length) return null;
   const h0=linhas[0];
-  const sep=(h0.split(';').length>h0.split(',').length)?';':',';
+  const sep=_detectaSep(h0);
   const hdr=_adminCsvLinha(linhas[0], sep).map(x=>x.trim().toLowerCase());
   const col=(nomes)=>{ for(const n of nomes){ const i=hdr.findIndex(h=>h.includes(n)); if(i>=0) return i; } return -1; };
   const ci={ dre:col(['dre']), cc:col(['centro de custo','centro','custo']), conta:col(['conta']), desc:col(['descri','descr']), mes:col(['compet','mês','mes']), val:col(['valor']) };
@@ -2872,9 +2882,7 @@ function _maqAbaImportar(box){
   inp.onchange=()=>{
     const f=inp.files&&inp.files[0]; if(!f) return;
     box.querySelector('#maq-csv-nome').textContent=f.name;
-    const rd=new FileReader();
-    rd.onload=()=>{ try{ _maqImportPrev=_maqProcessarCsvMaq(String(rd.result||'')); _maqRenderPreviaMaq(box); }catch(e){ box.querySelector('#maq-import-prev').innerHTML='<div class="maq-aviso" style="border:1px solid var(--line);border-radius:9px">Erro ao ler o arquivo: '+(e&&e.message||e)+'</div>'; } };
-    rd.readAsText(f, 'UTF-8');
+    _lerArquivoTexto(f, (txt)=>{ try{ _maqImportPrev=_maqProcessarCsvMaq(txt||''); _maqRenderPreviaMaq(box); }catch(e){ box.querySelector('#maq-import-prev').innerHTML='<div class="maq-aviso" style="border:1px solid var(--line);border-radius:9px">Erro ao ler o arquivo: '+(e&&e.message||e)+'</div>'; } });
   };
   if(_maqImportPrev) _maqRenderPreviaMaq(box);
 }
@@ -7226,6 +7234,30 @@ function _adminParseMes(v){
   return null;
 }
 // parse de uma linha CSV respeitando aspas
+// lê um arquivo de texto detectando a codificação: tenta UTF-8; se vier com caractere
+// inválido (�), relê como Windows-1252/Latin-1 (padrão do Excel brasileiro).
+function _lerArquivoTexto(file, cb){
+  const rd=new FileReader();
+  rd.onload=()=>{
+    const buf=rd.result;
+    let txt='';
+    try{ txt=new TextDecoder('utf-8',{fatal:false}).decode(buf); }catch(e){ txt=''; }
+    if(txt.indexOf('�')>=0){
+      // caractere de substituição presente -> provavelmente não é UTF-8; relê como Windows-1252
+      try{ const alt=new TextDecoder('windows-1252').decode(buf); if(alt.indexOf('�')<0 || alt.length>=txt.length) txt=alt; }catch(e){}
+    }
+    cb(txt);
+  };
+  rd.readAsArrayBuffer(file);
+}
+// detecta o separador do CSV/TSV pela linha de cabeçalho: tab, ponto-e-vírgula ou vírgula (o que mais aparece)
+function _detectaSep(h){
+  const cont=(ch)=>h.split(ch).length-1;
+  const t=cont('\t'), pv=cont(';'), v=cont(',');
+  if(t>=pv && t>=v && t>0) return '\t';
+  if(pv>=v && pv>0) return ';';
+  return ',';
+}
 function _adminCsvLinha(linha, sep){
   const out=[]; let cur=''; let q=false;
   for(let i=0;i<linha.length;i++){ const ch=linha[i];
@@ -7240,7 +7272,7 @@ function _adminProcessarCsv(texto){
   const linhas=texto.split(/\r?\n/).filter(l=>l.trim().length);
   if(!linhas.length) return null;
   const h0=linhas[0];
-  const sep = (h0.split(';').length > h0.split(',').length) ? ';' : ',';
+  const sep = _detectaSep(h0);
   const hdr=_adminCsvLinha(linhas[0], sep).map(x=>x.trim().toLowerCase());
   // localiza colunas por nome aproximado
   const col=(nomes)=>{ for(const n of nomes){ const i=hdr.findIndex(h=>h.includes(n)); if(i>=0) return i; } return -1; };
@@ -7275,9 +7307,7 @@ function _adminAbaImportar(box){
   inp.onchange=()=>{
     const f=inp.files&&inp.files[0]; if(!f) return;
     box.querySelector('#admin-csv-nome').textContent=f.name;
-    const rd=new FileReader();
-    rd.onload=()=>{ try{ _adminImportPrev=_adminProcessarCsv(String(rd.result||'')); _adminRenderPrevia(box); }catch(e){ box.querySelector('#admin-import-prev').innerHTML='<div class="maq-aviso" style="border:1px solid var(--line);border-radius:9px">Erro ao ler o arquivo: '+(e&&e.message||e)+'</div>'; } };
-    rd.readAsText(f, 'UTF-8');
+    _lerArquivoTexto(f, (txt)=>{ try{ _adminImportPrev=_adminProcessarCsv(txt||''); _adminRenderPrevia(box); }catch(e){ box.querySelector('#admin-import-prev').innerHTML='<div class="maq-aviso" style="border:1px solid var(--line);border-radius:9px">Erro ao ler o arquivo: '+(e&&e.message||e)+'</div>'; } });
   };
   if(_adminImportPrev) _adminRenderPrevia(box);
 }
