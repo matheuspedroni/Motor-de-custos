@@ -938,7 +938,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v123</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v124</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -7040,11 +7040,44 @@ function _adminAbaPessoal(box){
 }
 
 // ---------- DESPESAS (mês a mês, por categoria, incluir/excluir) ----------
+let _adminDespManual=false; // controla se a grade de lançamento à mão está aberta
 function _adminAbaDespesas(box){
   const {map, ordem}=_adminItensPorCat();
   const desp=(DAdmin.despesas||{})[_adminMes]||{};
-  let h='<div class="maq-nota">Lance as despesas administrativas do mês. Use "+ item" para incluir um gasto que não está na lista, ou o ✕ para remover um que você não usa.</div>';
+  const KIMP='iImportado_da_planilha';
+  const impMes=parseFloat(desp[KIMP])||0;
+  // total lançado à mão no mês (tudo menos o importado)
+  const manualMes=Object.keys(desp).reduce((s,k)=>k===KIMP?s:s+(parseFloat(desp[k])||0),0);
+  // meses que têm valor importado
+  const mesesImp=Object.keys(DAdmin.despesas||{}).filter(m=>{ const o=DAdmin.despesas[m]||{}; return (parseFloat(o[KIMP])||0)>0; }).sort();
+  const MESN=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  const lbl=(m)=>{ if(!/^\d{4}-\d{2}/.test(m)) return m; const [y,mm]=m.split('-'); return MESN[+mm-1]+'/'+y.slice(2); };
+
+  let h='<div class="maq-nota">As despesas administrativas vêm da <b>planilha</b> (aba Importar). Aqui você vê o que foi importado e, se precisar, lança algo à mão.</div>';
   h+='<div style="margin-bottom:10px">'+_adminSeletorMes()+'</div>';
+
+  // resumo do mês selecionado
+  h+='<div class="maq-card">';
+  h+='<div class="frete-lin"><span>📊 Importado da planilha ('+lbl(_adminMes)+')</span><b>R$ '+_adminFmt(impMes)+'</b></div>';
+  if(manualMes>0) h+='<div class="frete-lin"><span>✍️ Lançado à mão</span><b>R$ '+_adminFmt(manualMes)+'</b></div>';
+  h+='<div class="maq-card-rod"><div><span>Total de despesas do mês</span></div><div><b>R$ '+_adminFmt(adminDespesasMes(_adminMes))+'</b></div></div>';
+  h+='</div>';
+  if(impMes<=0) h+='<div class="maq-aviso" style="border:1px solid var(--line);border-radius:9px">Este mês ainda não tem nada importado. Vá na aba <b>Importar</b> e suba a planilha, ou lance à mão abaixo.</div>';
+
+  // tabela: importado por mês (visão anual)
+  if(mesesImp.length){
+    h+='<div class="maq-card"><div class="maq-card-cab"><span class="maq-card-nome">Importado da planilha — por mês</span></div>';
+    h+='<table class="frete-tbl"><thead><tr><th>Mês</th><th class="r">Admin R$</th></tr></thead><tbody>';
+    mesesImp.forEach(m=>{ const o=DAdmin.despesas[m]||{}; h+='<tr><td>'+lbl(m)+'</td><td class="r">R$ '+_adminFmt(parseFloat(o[KIMP])||0)+'</td></tr>'; });
+    h+='</tbody></table></div>';
+  }
+
+  // botão pra abrir/fechar a grade manual
+  h+='<button class="maq-mini" id="admin-toggle-manual" style="margin:4px 0 10px">'+(_adminDespManual?'▲ fechar lançamento à mão':'+ lançar à mão (itens avulsos)')+'</button>';
+
+  if(_adminDespManual){
+  h+='<div id="admin-grade-manual">';
+  h+='<div class="maq-nota" style="font-size:.72rem">Use só para um gasto que <b>não veio na planilha</b>. O que vem da planilha é controlado pela aba Importar — não precisa digitar aqui.</div>';
   ordem.forEach(cat=>{
     h+='<div class="maq-sub">'+cat+'</div>';
     h+='<table class="frete-tbl"><tbody>';
@@ -7057,13 +7090,16 @@ function _adminAbaDespesas(box){
     h+='<tr><td colspan="3"><button class="admin-add-item maq-mini" data-cat="'+String(cat).replace(/"/g,'&quot;')+'">+ item nesta categoria</button></td></tr>';
     h+='</tbody></table>';
   });
-  h+='<div class="maq-dep-res">Despesas do mês: R$ '+_adminFmt(adminDespesasMes(_adminMes))+'</div>';
+  h+='</div>'; // fecha #admin-grade-manual
+  } // fecha if(_adminDespManual)
   box.innerHTML=h;
   _adminBindMes(box);
+  const _tgl=box.querySelector('#admin-toggle-manual');
+  if(_tgl) _tgl.onclick=()=>{ _adminDespManual=!_adminDespManual; _adminAbaDespesas(box); };
   const _mesObj=()=>{ if(!DAdmin.despesas)DAdmin.despesas={}; if(!DAdmin.despesas[_adminMes])DAdmin.despesas[_adminMes]={}; return DAdmin.despesas[_adminMes]; };
   box.querySelectorAll('.admin-desp').forEach(inp=>{
     inp.oninput=()=>{ const o=_mesObj(); const val=parseFloat(inp.value); if(isNaN(val)||val===0){ delete o[inp.dataset.key]; } else { o[inp.dataset.key]=val; } salvarSecaoAdmin('despesas');
-      const tot=box.querySelector('.maq-dep-res'); if(tot) tot.textContent='Despesas do mês: R$ '+_adminFmt(adminDespesasMes(_adminMes)); };
+      const tot=box.querySelector('.maq-card-rod b'); if(tot) tot.textContent='R$ '+_adminFmt(adminDespesasMes(_adminMes)); };
   });
   box.querySelectorAll('.admin-add-item').forEach(btn=>{
     btn.onclick=()=>{ const nome=prompt('Nome do novo item de despesa ('+btn.dataset.cat+'):'); if(!nome) return;
