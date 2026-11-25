@@ -938,7 +938,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v127</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v128</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -2632,14 +2632,18 @@ function totalGGMaq(){
 }
 function ggParaSetorMaq(setor){
   let total=0;
-  const SET=_maqSet();
+  const SET=_maqSet().filter(s=>!_maqEhCentral(s));
   const horas=DMaq.horasMes||{};
   const pessoasSetor=DMaq.pessoasSetor||{};
   const somaHoras=SET.reduce((a,x)=>a+(horas[x]||0),0);
   const somaPessoas=SET.reduce((a,x)=>a+(pessoasSetor[x]||0),0);
+  // rateio por produção: kg/mês de cada setor (média da M.O.)
+  const kgDe=(s)=> (typeof kgSetorMaq==='function')? (kgSetorMaq(s)||0) : 0;
+  const somaKg=SET.reduce((a,x)=>a+kgDe(x),0);
   const aplica=(g)=>{
     const v=_ggValorMes(g);
     if(!v) return 0;
+    if(g.rateio==='producao'||g.rateio==='produção') return somaKg>0 ? v*(kgDe(setor)/somaKg) : (SET.length?v/SET.length:0);
     if(g.rateio==='horas') return somaHoras>0 ? v*(horas[setor]||0)/somaHoras : 0;
     if(g.rateio==='pessoas') return somaPessoas>0 ? v*(pessoasSetor[setor]||0)/somaPessoas : 0;
     return g.rateio===setor ? v : 0;
@@ -2893,20 +2897,17 @@ function _maqRenderPreviaMaq(box){
   if(prev.erro){ el.innerHTML='<div class="maq-aviso" style="border:1px solid var(--line);border-radius:9px">'+prev.erro+'</div>'; return; }
   const MESN=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
   const lbl=(m)=>{ if(!/^\d{4}-\d{2}/.test(m)) return m; const [y,mm]=m.split('-'); return MESN[+mm-1]+'/'+y.slice(2); };
-  // total por setor (soma dos meses) — valor anual importado direto
   const somaMeses=(obj)=>Object.keys(obj||{}).reduce((a,k)=>a+obj[k],0);
-  const nMeses=(obj)=>Object.keys(obj||{}).filter(k=>/^\d{4}-\d{2}/.test(k)).length;
-  // média mensal = soma ÷ nº de meses distintos com lançamento
-  const mediaMes=(obj)=>{ const n=nMeses(obj); return n?somaMeses(obj)/n:0; };
+  // média mensal EFETIVA = a MESMA média móvel de 6 meses que o app vai aplicar (prévia = realidade)
+  const mediaMes=(obj)=>_mediaMovelMapa(obj||{}, MESES_MEDIA_MOVEL, MES_CORTE_GERAL);
   // rateio do geral
   const rat=_maqPesosRateio();
   const geralTotal=somaMeses(prev.geral);
-  const geralMedia=mediaMes(prev.geral);
+  const geralMedia=mediaMes(prev.geral); // média móvel de 6 meses do Geral
 
-  let h='<div class="maq-card"><div class="maq-card-cab"><span class="maq-card-nome">Prévia — gastos por máquina</span><span class="maq-ton" style="font-size:.82rem">'+prev.nLinhas+' linhas úteis</span></div>';
-  h+='<table class="frete-tbl"><thead><tr><th>Máquina</th><th class="r">Direto (média/mês)</th><th class="r">+ rateio Geral</th><th class="r">Total/mês</th></tr></thead><tbody>';
-  const setoresComValor=Object.keys(prev.porSetor);
-  // monta união: setores com gasto direto OU que recebem rateio
+  let h='<div class="maq-card"><div class="maq-card-cab"><span class="maq-card-nome">Prévia — média móvel 6 meses</span><span class="maq-ton" style="font-size:.82rem">'+prev.nLinhas+' linhas úteis</span></div>';
+  h+='<div class="maq-nota" style="font-size:.7rem">Valores já na média móvel de 6 meses (a partir de ago/2026) — é exatamente o que vai pro custo. <b>Direto</b> fica na máquina; <b>Geral</b> vai rateado pelos gastos gerais.</div>';
+  h+='<table class="frete-tbl"><thead><tr><th>Máquina</th><th class="r">Direto/mês</th><th class="r">Geral rateado/mês</th><th class="r">Total/mês</th></tr></thead><tbody>';
   const todos=rat.setores.slice();
   let somaDiretoMes=0, somaRateioMes=0;
   todos.forEach(s=>{
@@ -2926,39 +2927,42 @@ function _maqRenderPreviaMaq(box){
   // ignorados
   h+='<div class="maq-card"><div class="frete-lin"><span>🏗️ Imobilizado + matéria-prima + outros (ignorados, já contabilizados)</span><b style="color:var(--txt3)">R$ '+_maqFmt(prev.ignorado)+'</b></div></div>';
 
-  h+='<button class="maq-add" id="maq-import-ok">✓ Lançar gastos por máquina (média mensal)</button>';
-  h+='<div class="maq-nota" style="font-size:.7rem">Cada máquina recebe um lançamento "Importado da planilha" por mês. Isso substitui importações anteriores (não duplica). Gastos que você digitou à mão continuam intactos.</div>';
+  h+='<button class="maq-add" id="maq-import-ok">✓ Lançar (direto nas máquinas, Geral nos gastos gerais)</button>';
+  h+='<div class="maq-nota" style="font-size:.7rem">O <b>direto</b> de cada máquina vai pra aba Gastos diretos; o <b>"Geral"</b> vai pra aba Gastos gerais como um item só ("Manutenção geral (planilha)"), rateado por produção. Substitui importações anteriores (não duplica); o que você digitou à mão continua intacto.</div>';
   el.innerHTML=h;
 
   const btn=el.querySelector('#maq-import-ok');
   if(btn) btn.onclick=()=>{
     const nm=prev.meses.length;
-    if(!confirm('Lançar os gastos por máquina de '+nm+' mês(es)? Os valores importados substituem o item "Importado da planilha" de cada máquina/mês.')) return;
-    if(!DMaq.diretos) DMaq.diretos={};
+    if(!confirm('Lançar a importação de '+nm+' mês(es)?\n\n• Gastos DIRETOS → aba Gastos diretos (por máquina)\n• "Geral" → aba Gastos gerais (item único, rateado por produção)\n\nSubstitui a importação anterior.')) return;
     const TAG='Importado da planilha';
-    // para cada setor: remove lançamentos antigos com essa tag, depois insere os novos por mês
-    const rat2=_maqPesosRateio();
-    const setoresAlvo=rat2.setores;
-    setoresAlvo.forEach(s=>{
+    // 1) DIRETOS: só o gasto específico de cada máquina (SEM misturar o Geral)
+    if(!DMaq.diretos) DMaq.diretos={};
+    const SET=_maqSet().filter(s=>!_maqEhCentral(s));
+    SET.forEach(s=>{
       if(!DMaq.diretos[s]) DMaq.diretos[s]=[];
-      // remove importações anteriores
-      DMaq.diretos[s]=_maqArr(DMaq.diretos[s]).filter(g=>!(g&&g.desc===TAG));
-      // junta direto do setor + parcela do geral, por mês
+      DMaq.diretos[s]=_maqArr(DMaq.diretos[s]).filter(g=>!(g&&g.desc===TAG)); // limpa import anterior
       const diretoMes=prev.porSetor[s]||{};
-      const mesesUnion={};
-      Object.keys(diretoMes).forEach(m=>{ if(/^\d{4}-\d{2}/.test(m)) mesesUnion[m]=1; });
-      Object.keys(prev.geral).forEach(m=>{ if(/^\d{4}-\d{2}/.test(m)) mesesUnion[m]=1; });
-      Object.keys(mesesUnion).sort().forEach(m=>{
-        const d=diretoMes[m]||0;
-        const g=prev.geral[m]||0;
-        const parcela=rat2.soma>0 ? g*(rat2.pesos[s]/rat2.soma) : (setoresAlvo.length?g/setoresAlvo.length:0);
-        const total=Math.round((d+parcela)*100)/100;
-        if(total<=0) return;
-        DMaq.diretos[s].push({ data:m+'-15', desc:TAG, valor:total });
+      Object.keys(diretoMes).sort().forEach(m=>{
+        if(!/^\d{4}-\d{2}/.test(m)) return;
+        const v=Math.round((diretoMes[m]||0)*100)/100;
+        if(v<=0) return;
+        DMaq.diretos[s].push({ data:m+'-15', desc:TAG, valor:v });
       });
     });
     salvarSecaoMaq('diretos');
-    alert('Pronto! Lancei os gastos por máquina de '+nm+' mês(es). Veja na aba Gastos diretos (item "Importado da planilha"). Cada máquina mostra a média/mês.');
+    // 2) GERAL: um item único em Gastos gerais, com histórico mensal (vira média móvel 6m), rateado por produção
+    if(!DMaq.gg) DMaq.gg={};
+    const KGER='g_importado_geral';
+    const mensal={};
+    Object.keys(prev.geral).forEach(m=>{ if(/^\d{4}-\d{2}/.test(m)){ const v=Math.round((prev.geral[m]||0)*100)/100; if(v) mensal[m]=v; } });
+    if(Object.keys(mensal).length){
+      DMaq.gg[KGER]={ nome:'Manutenção geral (planilha)', cat:'Instalações fabris', valor:0, rateio:'producao', mensal:mensal };
+    } else {
+      delete DMaq.gg[KGER];
+    }
+    salvarSecaoMaq('gg');
+    alert('Pronto!\n\n• Gastos diretos: valor específico de cada máquina.\n• Gastos gerais: "Manutenção geral (planilha)" rateado por produção.\n\nOs dois usam média móvel de 6 meses.');
     _maqAbaAtual='diretos';
     renderMaq(_maqContainer);
   };
@@ -3277,11 +3281,17 @@ function _maqAbaGerais(box){
 function _maqGGRow(k, g, cust){
   const SET=_maqSet().filter(s=>!_maqEhCentral(s));
   const rat=g.rateio||'horas';
+  const temHist=g && g.mensal && typeof g.mensal==='object' && Object.keys(g.mensal).length;
   let h='<div class="maq-gg">';
   if(cust) h+='<input type="text" class="maq-gg-nome" data-k="'+k+'" placeholder="nome" value="'+(g.nome||'')+'">';
   else h+='<span class="maq-gg-lbl">'+(g.nome||k)+'</span>';
-  h+='<input type="number" class="maq-gg-val" data-k="'+k+'" data-cust="'+(cust?1:0)+'" placeholder="R$" value="'+(g.valor||'')+'">';
-  h+='<select class="maq-gg-rat" data-k="'+k+'" data-cust="'+(cust?1:0)+'"><option value="horas"'+(rat==='horas'?' selected':'')+'>por horas</option><option value="pessoas"'+(rat==='pessoas'?' selected':'')+'>por pessoas</option>';
+  if(temHist){
+    // item com histórico mensal (importado da planilha): valor = média móvel 6m, não editável
+    h+='<span class="maq-gg-val" style="display:inline-flex;align-items:center;justify-content:flex-end;color:var(--txt2)" title="média móvel de 6 meses (importado da planilha)">R$ '+_maqFmt(_ggValorMes(g))+'</span>';
+  } else {
+    h+='<input type="number" class="maq-gg-val" data-k="'+k+'" data-cust="'+(cust?1:0)+'" placeholder="R$" value="'+(g.valor||'')+'">';
+  }
+  h+='<select class="maq-gg-rat" data-k="'+k+'" data-cust="'+(cust?1:0)+'"><option value="producao"'+(rat==='producao'?' selected':'')+'>por produção</option><option value="horas"'+(rat==='horas'?' selected':'')+'>por horas</option><option value="pessoas"'+(rat==='pessoas'?' selected':'')+'>por pessoas</option>';
   SET.forEach(s=>{ h+='<option value="'+s+'"'+(rat===s?' selected':'')+'>→ '+s+'</option>'; });
   h+='</select>';
   if(cust) h+='<button class="maq-gg-del" data-k="'+k+'">×</button>';
