@@ -938,7 +938,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v122</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v123</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -2361,7 +2361,8 @@ function _maqRegistrarAjudas(){
   maq_resumo:{t:'Custo de máquina por setor', c:'<p>Cada máquina tem um custo mensal formado por 4 partes: <b>energia</b>, <b>depreciação</b>, <b>gastos diretos</b> e <b>gastos gerais</b>.</p><p>Esse total é dividido pela produção do setor (em toneladas) para dar o <b>custo por tonelada</b> — que depois entra no preço de cada peça conforme o peso dela.</p><p>A produção usada é a <b>MÉDIA da produção real</b> lançada na M.O. (como a máquina faz um produto por vez, não somamos capacidades em paralelo). Quanto mais meses lançados, mais estável fica a média. Setor sem produção lançada não calcula custo/tonelada até você cadastrar.</p>'},
   maq_energia:{t:'Energia', c:'<p>A conta de luz é dividida entre os setores em duas partes:</p><p><b>Demanda</b> (a parte fixa que você paga pela potência contratada) é rateada pela <b>potência instalada</b> de cada máquina.</p><p><b>Consumo</b> (a energia efetivamente usada) é rateado por <b>potência × horas</b> de operação.</p><p>Informe a conta média paga, o % que é demanda, e a potência (kW) e horas/mês de cada máquina.</p>'},
   maq_deprec:{t:'Depreciação', c:'<p>É a reserva mensal para repor a máquina no futuro. Mesmo uma máquina velha e quitada continua depreciando pelo <b>valor de reposição</b> — assim você junta o dinheiro para trocá-la quando precisar.</p><p><b>Valor fixo:</b> você informa direto o R$/mês.</p><p><b>Por reposição:</b> informe quanto custaria repor a máquina hoje e a vida útil em anos; o app calcula o R$/mês (reposição ÷ vida ÷ 12).</p><p>As empilhadeiras servem todas as máquinas, então são rateadas por KG entre todas. Cada central é rateada por KG só entre as máquinas que ela abastece (a lista vem da aba Mão de obra → "esta central abastece quais máquinas").</p>'},
-  maq_diretos:{t:'Gastos diretos', c:'<p>Gastos específicos de uma máquina: correias, discos, reparos daquele equipamento.</p><p>Lance cada gasto com a <b>data</b> em que aconteceu. O app faz a <b>média mensal</b> — assim uma compra grande feita uma vez não estoura o custo de um único mês, ela se dilui.</p><p><b>Moldes de prensa têm aba própria</b> (Moldes), porque se diluem por peça, não por mês.</p>'},
+  maq_diretos:{t:'Gastos diretos', c:'<p>Gastos específicos de uma máquina: correias, discos, reparos daquele equipamento.</p><p>Lance cada gasto com a <b>data</b> em que aconteceu. O app faz a <b>média mensal</b> — assim uma compra grande feita uma vez não estoura o custo de um único mês, ela se dilui.</p><p>Você pode lançar à mão ou <b>importar da planilha</b> (aba Importar). Os dois convivem.</p><p><b>Moldes de prensa têm aba própria</b> (Moldes), porque se diluem por peça, não por mês.</p>'},
+  maq_importar:{t:'Importar planilha', c:'<p>Lê a <b>mesma planilha de gastos</b> que sua irmã preenche (salva como CSV UTF-8) e lança automaticamente os gastos de <b>manutenção e consumo</b> de cada máquina, como <b>média mensal</b>.</p><p>Pela coluna <b>Centro de Custo</b>, cada gasto vai pra máquina certa. O que for <b>compra de máquina</b> (imobilizado) é ignorado — já está na Depreciação. <b>Matéria-prima</b> também é ignorada — já está no custo do produto.</p><p>Os gastos de produção marcados como <b>"Geral"</b> (sem máquina específica) são rateados entre as máquinas conforme a produção lançada na Mão de Obra.</p>'},
   maq_moldes:{t:'Moldes / Fôrmas', c:'<p>O molde de prensa (bloco, piso, meio-fio…) se gasta pelo <b>uso</b>, não pelo tempo: um molde parado não desgasta. Por isso o custo dele não é por mês, é <b>por peça</b>.</p><p><b>Custo por peça = preço do molde ÷ (vida em ciclos × peças por ciclo)</b>.</p><p>Exemplo: molde de R$ 12.000, vida de 50.000 ciclos, 6 peças por prensada → 300.000 peças → R$ 0,04 por bloco.</p><p>Só produtos de prensa têm molde consumível. Produto sem molde preenchido não gera custo.</p>'},
   maq_gerais:{t:'Gastos gerais', c:'<p>Custos da fábrica que não são de uma máquina só: água, gás, ar comprimido, movimentação interna, instalações.</p><p>Cada item tem um <b>critério de rateio</b>: por horas de operação, por número de pessoas, ou direto para um setor específico.</p>'},
 });
@@ -2712,7 +2713,7 @@ function renderMaq(container){
   const res=calcMaq();
   const SET=_maqSet().filter(s=>!_maqEhCentral(s));
   const abaAtiva=_maqAbaAtual||'resumo'; // mantém a aba aberta ao re-renderizar
-  const ABAS=[['resumo','Resumo'],['energia','Energia'],['deprec','Depreciação'],['diretos','Gastos diretos'],['gerais','Gastos gerais'],['moldes','Moldes']];
+  const ABAS=[['resumo','Resumo'],['energia','Energia'],['deprec','Depreciação'],['diretos','Gastos diretos'],['gerais','Gastos gerais'],['moldes','Moldes'],['importar','Importar']];
   let h='<div id="maq-container" class="module-view">';
   h+='<div class="maq-abas">';
   ABAS.forEach(([k,t])=>{ h+='<button class="maq-aba'+(k===abaAtiva?' on':'')+'" data-aba="'+k+'">'+t+'</button>'; });
@@ -2739,7 +2740,196 @@ function _maqRenderAba(aba, res){
   if(aba==='diretos') return _maqAbaDiretos(box);
   if(aba==='gerais') return _maqAbaGerais(box);
   if(aba==='moldes') return _maqAbaMoldes(box);
+  if(aba==='importar') return _maqAbaImportar(box);
 }
+
+// ===================================================================
+// IMPORTAR PLANILHA POR MÁQUINA (gastos diretos + geral rateado)
+// Lê o MESMO CSV de gastos da irmã e lança os gastos diretos por máquina.
+// Regra (coluna DRE como filtro):
+//   - DRE = Imobilizado  -> ignora (vai pra Depreciação, já existe)
+//   - Matéria Prima / Frete Compras -> ignora (já no custo do produto)
+//   - DRE = Gastos Produção + conta Manutenção/Uso e Consumo:
+//       * Centro de Custo = máquina mapeada -> gasto direto daquela máquina
+//       * Centro de Custo = "Geral" -> rateado entre máquinas pela produção (M.O.)
+//       * Centro de Custo eliminado/sem mapa -> ignora
+// TUDO lançado como MÉDIA mensal (um lançamento agregado por setor/mês).
+// Reutiliza _adminParseNum / _adminParseMes / _adminCsvLinha (globais).
+// ===================================================================
+
+// Mapa Centro de Custo (planilha, minúsculo) -> setor do app. Confirmado pelo Matheus.
+const MAQ_CC_MAP = {
+  'gervasi máq. blocos':'Blocos maquina Gervasi',
+  'gervasi maq. blocos':'Blocos maquina Gervasi',
+  'lkr tgc600':'Tubos maquina LKR',
+  'prensa tubos':'Tubos Maquina Tuber',
+  'maq. bloco 2 - mab 5000':'Blocos maquina PWR',
+  'tubos vibrados':'Tubos vibrados',
+  'fossas':'Fossas',
+  'caixas':'Caixas',
+  'central nova':'Central dosadora 02 (nova)'
+};
+// Centros de custo tipo-máquina que o Matheus mandou NÃO importar.
+const MAQ_CC_ELIMINA = ['maq. bloco 1 - mab 2000','vibrados/prensas 60/40','máquina tubos calha','maquina tubos calha'];
+
+// Classifica uma linha do CSV para o importador de MÁQUINA.
+// Retorna {destino: '<setor>' | 'geral' | 'ignorar'}
+function _maqClassificaGasto(dre, cc, conta){
+  const r=(dre||'').toLowerCase().trim();
+  const c=(cc||'').toLowerCase().trim();
+  const co=(conta||'').toLowerCase().trim();
+  // imobilizado -> depreciação (já existe)
+  if(r==='imobilizado' || co.indexOf('imobilizado')>=0) return {destino:'ignorar'};
+  // matéria-prima e frete de compras -> já no custo do produto
+  if(co.indexOf('matéria prima')>=0 || co.indexOf('materia prima')>=0 || co==='frete compras') return {destino:'ignorar'};
+  // só gastos de produção que sejam manutenção ou uso/consumo da máquina
+  if(r==='gastos produção' || r==='gastos producao'){
+    if(co==='manutenção' || co==='manutencao' || co==='uso e consumo'){
+      if(MAQ_CC_MAP[c]) return {destino:MAQ_CC_MAP[c]};
+      if(c==='geral') return {destino:'geral'};
+      return {destino:'ignorar'}; // CC eliminado ou sem mapa
+    }
+    return {destino:'ignorar'};
+  }
+  return {destino:'ignorar'};
+}
+
+// prévia da importação por máquina
+let _maqImportPrev = null;
+// { porSetor:{setor:{mes:valor}}, geral:{mes:valor}, nLinhas, ignorado, meses:[...] }
+
+function _maqProcessarCsvMaq(texto){
+  const linhas=texto.split(/\r?\n/).filter(l=>l.trim().length);
+  if(!linhas.length) return null;
+  const h0=linhas[0];
+  const sep=(h0.split(';').length>h0.split(',').length)?';':',';
+  const hdr=_adminCsvLinha(linhas[0], sep).map(x=>x.trim().toLowerCase());
+  const col=(nomes)=>{ for(const n of nomes){ const i=hdr.findIndex(h=>h.includes(n)); if(i>=0) return i; } return -1; };
+  const ci={ dre:col(['dre']), cc:col(['centro de custo','centro','custo']), conta:col(['conta']), desc:col(['descri','descr']), mes:col(['compet','mês','mes']), val:col(['valor']) };
+  if(ci.val<0 || ci.cc<0 || ci.dre<0) return {erro:'Não achei as colunas DRE, Centro de Custo e Valor. Confira se é a planilha de gastos completa.'};
+  const porSetor={}; const geral={}; let nLin=0, ignorado=0;
+  const mesesSet={};
+  for(let i=1;i<linhas.length;i++){
+    const campos=_adminCsvLinha(linhas[i], sep);
+    const dre=campos[ci.dre]||'', cc=campos[ci.cc]||'', conta=ci.conta>=0?campos[ci.conta]||'':'';
+    let valRaw=campos[ci.val];
+    if((valRaw==null||String(valRaw).trim()==='')){ for(let j=campos.length-1;j>ci.val;j--){ if(campos[j]&&String(campos[j]).trim()){ valRaw=campos[j]; break; } } }
+    const val=_adminParseNum(valRaw);
+    if(!val) continue;
+    const cls=_maqClassificaGasto(dre, cc, conta);
+    if(cls.destino==='ignorar'){ ignorado+=val; continue; }
+    const mes=ci.mes>=0?_adminParseMes(campos[ci.mes]):null;
+    const mk=mes||'(sem mês)';
+    if(mes) mesesSet[mes]=1;
+    nLin++;
+    if(cls.destino==='geral'){ geral[mk]=(geral[mk]||0)+val; }
+    else { if(!porSetor[cls.destino]) porSetor[cls.destino]={}; porSetor[cls.destino][mk]=(porSetor[cls.destino][mk]||0)+val; }
+  }
+  const meses=Object.keys(mesesSet).sort();
+  return { porSetor, geral, nLinhas:nLin, ignorado, meses, sep };
+}
+
+// rateio do "Geral" entre os setores, proporcional à produção (kg/mês da M.O.)
+function _maqPesosRateio(){
+  const SET=_maqSet().filter(s=>!_maqEhCentral(s));
+  const pesos={}; let soma=0;
+  SET.forEach(s=>{ const kg=(typeof kgSetorMaq==='function')?kgSetorMaq(s):0; pesos[s]=kg; soma+=kg; });
+  return { pesos, soma, setores:SET };
+}
+
+function _maqAbaImportar(box){
+  let h='<div class="maq-nota">Importe a <b>mesma planilha de gastos</b> (CSV UTF-8). O app lê a coluna <b>Centro de Custo</b> e lança os gastos de <b>manutenção/consumo</b> de cada máquina — como <b>média mensal</b>. Compra de máquina (imobilizado) e matéria-prima são ignoradas automaticamente (já estão na Depreciação e no custo do produto). O "Geral" de produção é rateado entre as máquinas pela produção da M.O.</div>';
+  h+='<div class="maq-card"><div style="padding:14px"><label class="maq-mini" style="display:inline-block;cursor:pointer">📁 Escolher arquivo CSV<input type="file" id="maq-csv" accept=".csv,text/csv" style="display:none"></label> <span id="maq-csv-nome" style="font-size:.76rem;color:var(--txt3);margin-left:8px"></span></div></div>';
+  h+='<div id="maq-import-prev"></div>';
+  box.innerHTML=h;
+  const inp=box.querySelector('#maq-csv');
+  inp.onchange=()=>{
+    const f=inp.files&&inp.files[0]; if(!f) return;
+    box.querySelector('#maq-csv-nome').textContent=f.name;
+    const rd=new FileReader();
+    rd.onload=()=>{ try{ _maqImportPrev=_maqProcessarCsvMaq(String(rd.result||'')); _maqRenderPreviaMaq(box); }catch(e){ box.querySelector('#maq-import-prev').innerHTML='<div class="maq-aviso" style="border:1px solid var(--line);border-radius:9px">Erro ao ler o arquivo: '+(e&&e.message||e)+'</div>'; } };
+    rd.readAsText(f, 'UTF-8');
+  };
+  if(_maqImportPrev) _maqRenderPreviaMaq(box);
+}
+
+function _maqRenderPreviaMaq(box){
+  const prev=_maqImportPrev; const el=box.querySelector('#maq-import-prev'); if(!el) return;
+  if(!prev){ el.innerHTML=''; return; }
+  if(prev.erro){ el.innerHTML='<div class="maq-aviso" style="border:1px solid var(--line);border-radius:9px">'+prev.erro+'</div>'; return; }
+  const MESN=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  const lbl=(m)=>{ if(!/^\d{4}-\d{2}/.test(m)) return m; const [y,mm]=m.split('-'); return MESN[+mm-1]+'/'+y.slice(2); };
+  // total por setor (soma dos meses) — valor anual importado direto
+  const somaMeses=(obj)=>Object.keys(obj||{}).reduce((a,k)=>a+obj[k],0);
+  const nMeses=(obj)=>Object.keys(obj||{}).filter(k=>/^\d{4}-\d{2}/.test(k)).length;
+  // média mensal = soma ÷ nº de meses distintos com lançamento
+  const mediaMes=(obj)=>{ const n=nMeses(obj); return n?somaMeses(obj)/n:0; };
+  // rateio do geral
+  const rat=_maqPesosRateio();
+  const geralTotal=somaMeses(prev.geral);
+  const geralMedia=mediaMes(prev.geral);
+
+  let h='<div class="maq-card"><div class="maq-card-cab"><span class="maq-card-nome">Prévia — gastos por máquina</span><span class="maq-ton" style="font-size:.82rem">'+prev.nLinhas+' linhas úteis</span></div>';
+  h+='<table class="frete-tbl"><thead><tr><th>Máquina</th><th class="r">Direto (média/mês)</th><th class="r">+ rateio Geral</th><th class="r">Total/mês</th></tr></thead><tbody>';
+  const setoresComValor=Object.keys(prev.porSetor);
+  // monta união: setores com gasto direto OU que recebem rateio
+  const todos=rat.setores.slice();
+  let somaDiretoMes=0, somaRateioMes=0;
+  todos.forEach(s=>{
+    const dMes=mediaMes(prev.porSetor[s]||{});
+    const parcela=rat.soma>0 ? geralMedia*(rat.pesos[s]/rat.soma) : (rat.setores.length?geralMedia/rat.setores.length:0);
+    if(dMes<=0 && parcela<=0) return;
+    somaDiretoMes+=dMes; somaRateioMes+=parcela;
+    h+='<tr><td>'+s+'</td><td class="r">R$ '+_maqFmt(dMes)+'</td><td class="r" style="color:var(--txt3)">R$ '+_maqFmt(parcela)+'</td><td class="r"><b>R$ '+_maqFmt(dMes+parcela)+'</b></td></tr>';
+  });
+  h+='</tbody><tfoot><tr><td><b>Total</b></td><td class="r"><b>R$ '+_maqFmt(somaDiretoMes)+'</b></td><td class="r"><b>R$ '+_maqFmt(somaRateioMes)+'</b></td><td class="r"><b>R$ '+_maqFmt(somaDiretoMes+somaRateioMes)+'</b></td></tr></tfoot></table></div>';
+
+  // aviso sobre rateio
+  if(geralTotal>0){
+    if(rat.soma<=0) h+='<div class="maq-aviso" style="border:1px solid var(--line);border-radius:9px">⚠️ O "Geral" (R$ '+_maqFmt(geralMedia)+'/mês) seria rateado por produção, mas <b>não há produção lançada na M.O.</b> ainda — por enquanto será dividido igualmente entre as máquinas. Lance a produção na aba Mão de Obra para um rateio mais justo.</div>';
+    else h+='<div class="maq-nota">O "Geral" de produção (manutenção/consumo sem máquina específica, R$ '+_maqFmt(geralMedia)+'/mês) é rateado entre as máquinas proporcional à produção lançada na M.O.</div>';
+  }
+  // ignorados
+  h+='<div class="maq-card"><div class="frete-lin"><span>🏗️ Imobilizado + matéria-prima + outros (ignorados, já contabilizados)</span><b style="color:var(--txt3)">R$ '+_maqFmt(prev.ignorado)+'</b></div></div>';
+
+  h+='<button class="maq-add" id="maq-import-ok">✓ Lançar gastos por máquina (média mensal)</button>';
+  h+='<div class="maq-nota" style="font-size:.7rem">Cada máquina recebe um lançamento "Importado da planilha" por mês. Isso substitui importações anteriores (não duplica). Gastos que você digitou à mão continuam intactos.</div>';
+  el.innerHTML=h;
+
+  const btn=el.querySelector('#maq-import-ok');
+  if(btn) btn.onclick=()=>{
+    const nm=prev.meses.length;
+    if(!confirm('Lançar os gastos por máquina de '+nm+' mês(es)? Os valores importados substituem o item "Importado da planilha" de cada máquina/mês.')) return;
+    if(!DMaq.diretos) DMaq.diretos={};
+    const TAG='Importado da planilha';
+    // para cada setor: remove lançamentos antigos com essa tag, depois insere os novos por mês
+    const rat2=_maqPesosRateio();
+    const setoresAlvo=rat2.setores;
+    setoresAlvo.forEach(s=>{
+      if(!DMaq.diretos[s]) DMaq.diretos[s]=[];
+      // remove importações anteriores
+      DMaq.diretos[s]=_maqArr(DMaq.diretos[s]).filter(g=>!(g&&g.desc===TAG));
+      // junta direto do setor + parcela do geral, por mês
+      const diretoMes=prev.porSetor[s]||{};
+      const mesesUnion={};
+      Object.keys(diretoMes).forEach(m=>{ if(/^\d{4}-\d{2}/.test(m)) mesesUnion[m]=1; });
+      Object.keys(prev.geral).forEach(m=>{ if(/^\d{4}-\d{2}/.test(m)) mesesUnion[m]=1; });
+      Object.keys(mesesUnion).sort().forEach(m=>{
+        const d=diretoMes[m]||0;
+        const g=prev.geral[m]||0;
+        const parcela=rat2.soma>0 ? g*(rat2.pesos[s]/rat2.soma) : (setoresAlvo.length?g/setoresAlvo.length:0);
+        const total=Math.round((d+parcela)*100)/100;
+        if(total<=0) return;
+        DMaq.diretos[s].push({ data:m+'-15', desc:TAG, valor:total });
+      });
+    });
+    salvarSecaoMaq('diretos');
+    alert('Pronto! Lancei os gastos por máquina de '+nm+' mês(es). Veja na aba Gastos diretos (item "Importado da planilha"). Cada máquina mostra a média/mês.');
+    _maqAbaAtual='diretos';
+    renderMaq(_maqContainer);
+  };
+}
+
 
 // ===== MOLDES / FÔRMAS (custo por peça, só produtos de prensa) =====
 // Molde se gasta pelo USO, não pelo tempo. Custo/peça = preço ÷ (vida em ciclos × peças por ciclo).
