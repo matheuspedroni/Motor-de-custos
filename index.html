@@ -938,7 +938,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v119</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v122</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -3011,15 +3011,35 @@ function _maqAbaDiretos(box){
 }
 
 // GASTOS GERAIS: itens com rateio (horas/pessoas/setor direto)
+// chave estável de um item de GG padrão (prefixo g_ p/ nunca virar array no Firebase)
+function _ggKey(cat, nome){ return 'g_'+String(cat+'__'+nome).replace(/[^a-zA-Z0-9]/g,'_'); }
+// garante que os itens padrão das categorias existam em DMaq.gg (idempotente, valor 0)
+function _maqGarantirGGPadrao(){
+  if(!DMaq.gg) DMaq.gg={};
+  const cats=(DMAQ_DEFAULT.categoriasGG||[]);
+  cats.forEach(c=>{ (c.itens||[]).forEach(nome=>{
+    const k=_ggKey(c.cat, nome);
+    if(!DMaq.gg[k]) DMaq.gg[k]={nome:nome, cat:c.cat, valor:0, rateio:'horas'};
+    else if(!DMaq.gg[k].cat) DMaq.gg[k].cat=c.cat; // completa categoria em itens antigos
+  }); });
+}
 function _maqAbaGerais(box){
+  _maqGarantirGGPadrao();
   let h='<div class="maq-head"><div class="maq-head-t">Gastos gerais</div><span class="help" onclick="abrirAjuda(&#39;maq_gerais&#39;)">?</span></div>';
+  h+='<div class="maq-head-sub">Custos da fábrica que não são de uma máquina só. Preencha os que você tem; deixe zerado os que não usa. Cada um é rateado por toda a produção (padrão: por horas).</div>';
   h+='<div class="maq-tot-gg">Total: R$ '+_maqFmt(totalGGMaq())+'/mês</div>';
   const gg=DMaq.gg||{};
-  const chaves=Object.keys(gg);
-  chaves.forEach(k=>{
-    const g=gg[k];
-    h+=_maqGGRow(k, g, false);
+  // agrupa por categoria, na ordem do default
+  const cats=(DMAQ_DEFAULT.categoriasGG||[]).map(c=>c.cat);
+  const porCat={}; const semCat=[];
+  Object.keys(gg).forEach(k=>{ const g=gg[k]; const c=g.cat||'Outros'; if(cats.includes(c)){ (porCat[c]=porCat[c]||[]).push([k,g]); } else { (porCat[c]=porCat[c]||[]).push([k,g]); if(!cats.includes(c)&&!semCat.includes(c)) semCat.push(c); } });
+  cats.concat(semCat.filter(c=>!cats.includes(c))).forEach(cat=>{
+    if(!porCat[cat] || !porCat[cat].length) return;
+    h+='<div class="maq-sub">'+cat+'</div>';
+    porCat[cat].forEach(([k,g])=>{ h+=_maqGGRow(k, g, false); });
   });
+  // personalizados
+  if(_maqArr(DMaq.ggCustom).length){ h+='<div class="maq-sub">Personalizados</div>'; }
   _maqArr(DMaq.ggCustom).forEach((g,idx)=>{ h+=_maqGGRow(idx, g, true); });
   h+='<button class="maq-mini" id="maq-add-gg">+ item personalizado</button>';
   box.innerHTML=h;
@@ -6680,7 +6700,7 @@ function _adminMerge(sec,val){
 function _adminRenderMantendoScroll(){ const sc=window.scrollY; const c=document.getElementById('admin-container'); if(!c) return; try{ runAdmin(c); }catch(e){ console.error('admin render', e); } window.scrollTo(0,sc); }
 
 // ---------- RENDER ----------
-const ADMIN_ABAS=[['resumo','Resumo'],['pessoal','Pessoal'],['despesas','Despesas'],['faturamento','Faturamento'],['historico','Histórico']];
+const ADMIN_ABAS=[['resumo','Resumo'],['pessoal','Pessoal'],['despesas','Despesas'],['faturamento','Faturamento'],['importar','Importar'],['historico','Histórico']];
 function runAdmin(container){
   if(!container) return;
   let h='<div class="maq-head"><div class="maq-head-t">Administrativo</div></div>';
@@ -6695,6 +6715,7 @@ function runAdmin(container){
   else if(_adminAba==='pessoal') _adminAbaPessoal(body);
   else if(_adminAba==='despesas') _adminAbaDespesas(body);
   else if(_adminAba==='faturamento') _adminAbaFaturamento(body);
+  else if(_adminAba==='importar') _adminAbaImportar(body);
   else if(_adminAba==='historico') _adminAbaHistorico(body);
 }
 
@@ -6887,6 +6908,176 @@ function _adminAbaFaturamento(box){
     inp.oninput=()=>{ const o=_mesObj(); o[inp.dataset.k]=parseFloat(inp.value)||0; salvarSecaoAdmin('faturamento'); };
     inp.onblur=()=>_adminRenderMantendoScroll();
   });
+}
+
+// ---------- IMPORTAR PLANILHA (CSV) ----------
+// Lê o CSV de gastos, classifica cada linha (admin/relevar/imobilizado) pela descrição,
+// e lança o total ADMIN de cada mês na aba Despesas. Detecta separador e número BR automaticamente.
+let _adminImportPrev = null; // prévia: { meses:{YYYY-MM:{admin,relevar,imob,duvida}}, duvidas:[], linhas:N }
+
+// --- classificador: mesma regra combinada com o Matheus (memória classificacao-gastos-admin) ---
+function _adminClassifica(desc, conta, dre){
+  const d=(desc||'').toLowerCase(), c=(conta||'').toLowerCase(), r=(dre||'').toLowerCase();
+  // OBRA / IMOBILIZADO (não é despesa)
+  const obra=['pavilh','constru','serralheria','piso polido','material de constru','topogr','parte elétrica geral','estacas','brita e afins','calhas refeit','corte das colunas','colunas do dep','tintas para pintar','pintura de','material elétrico pav','lonas'];
+  if(obra.some(k=>d.includes(k))) return 'imob';
+  if(r==='imobilizado' || c.includes('consórcio')) return 'imob';
+  // RELEVAR (já no app)
+  if(r==='matéria prima' || c.includes('matéria prima') || c.includes('materia prima')) return 'relevar';
+  if(r==='impostos') return 'relevar';
+  const imp=['irrf','jcp',' csl','pis e cofins','icms','iss ','ir eleonardo','ir rural','itr','fgts','inss'];
+  if(imp.some(k=>d.includes(k))) return 'relevar';
+  if(r==='mo produção' || r==='mo frete' || r==='mo extra') return 'relevar';
+  if(r==='gastos produção') return 'relevar'; // tudo de produção já está no app (máquina/FROTA/consumo)
+  if(c.includes('energia elétrica') || c.includes('energia eletrica')) return 'relevar';
+  if(c.includes('combustível') || c.includes('combustivel') || c.includes('combustíveis')) return 'relevar';
+  const epi=['epi','uniforme','botina'];
+  if(epi.some(k=>d.includes(k))) return 'relevar';
+  const frota=['retroescavadeira','máquina de tubos','peças máquina','caminhão','tacógrafo'];
+  if(frota.some(k=>d.includes(k))) return 'relevar';
+  if(c==='manutenção' && r==='gastos produção') return 'relevar';
+  if(c.includes('frete compras')) return 'relevar';
+  if(r==='revenda') return 'relevar';
+  // pedágio de COMPRAS (cimento) = relevar; pedágio de VENDAS = admin
+  if((d.includes('pedágio')||d.includes('pedagio')) && (d.includes('crédito')||d.includes('credito')||d.includes('cimento')||r==='administrativo')) return 'relevar';
+  if((d.includes('pedágio')||d.includes('pedagio')) && r==='frete vendas') return 'admin';
+  // ADMIN
+  if(r==='frete vendas') return 'relevar'; // o resto do frete vendas (combustível/manut.) já no FROTA
+  if(r==='sócios' || c.includes('retirada sócios') || d.includes('salário')&&r==='sócios') return 'admin';
+  if(c.includes('plano saúde') || c.includes('plano de saúde') || d.includes('plano')&&r==='sócios') return 'admin';
+  if(r==='financeiro' || c.includes('taxas cartão') || c.includes('tarifas banc')) return 'admin';
+  if(r==='administrativo') return 'admin';
+  return 'duvida';
+}
+
+// parse de número no formato BR (1.234,56) ou US (1234.56)
+function _adminParseNum(s){
+  if(s==null) return 0;
+  s=String(s).trim().replace(/r\$|\s/gi,'');
+  if(!s) return 0;
+  // se tem vírgula E ponto: o último separador é o decimal
+  if(s.indexOf(',')>=0 && s.indexOf('.')>=0){
+    if(s.lastIndexOf(',')>s.lastIndexOf('.')) s=s.replace(/\./g,'').replace(',', '.'); // BR
+    else s=s.replace(/,/g,''); // US
+  } else if(s.indexOf(',')>=0){ s=s.replace(/\./g,'').replace(',','.'); } // só vírgula = decimal BR
+  const n=parseFloat(s); return isFinite(n)?n:0;
+}
+// mês de competência -> 'YYYY-MM'
+function _adminParseMes(v){
+  if(v==null) return null;
+  const s=String(v).trim();
+  // ISO ou data
+  let m=s.match(/(\d{4})-(\d{2})/); if(m) return m[1]+'-'+m[2];
+  m=s.match(/(\d{1,2})\/(\d{4})/); if(m) return m[2]+'-'+String(m[1]).padStart(2,'0');
+  m=s.match(/(\d{2})\/(\d{2})\/(\d{4})/); if(m) return m[3]+'-'+m[2];
+  // nome do mês
+  const MESN={jan:'01',fev:'02',mar:'03',abr:'04',mai:'05',jun:'06',jul:'07',ago:'08',set:'09',out:'10',nov:'11',dez:'12'};
+  m=s.toLowerCase().match(/([a-z]{3})[^0-9]*(\d{2,4})/); if(m && MESN[m[1]]){ let y=m[2]; if(y.length===2)y='20'+y; return y+'-'+MESN[m[1]]; }
+  return null;
+}
+// parse de uma linha CSV respeitando aspas
+function _adminCsvLinha(linha, sep){
+  const out=[]; let cur=''; let q=false;
+  for(let i=0;i<linha.length;i++){ const ch=linha[i];
+    if(q){ if(ch==='"'){ if(linha[i+1]==='"'){ cur+='"'; i++; } else q=false; } else cur+=ch; }
+    else { if(ch==='"') q=true; else if(ch===sep){ out.push(cur); cur=''; } else cur+=ch; }
+  }
+  out.push(cur); return out;
+}
+// processa o texto do CSV -> prévia
+function _adminProcessarCsv(texto){
+  // detecta separador: conta ; vs , na primeira linha de cabeçalho
+  const linhas=texto.split(/\r?\n/).filter(l=>l.trim().length);
+  if(!linhas.length) return null;
+  const h0=linhas[0];
+  const sep = (h0.split(';').length > h0.split(',').length) ? ';' : ',';
+  const hdr=_adminCsvLinha(linhas[0], sep).map(x=>x.trim().toLowerCase());
+  // localiza colunas por nome aproximado
+  const col=(nomes)=>{ for(const n of nomes){ const i=hdr.findIndex(h=>h.includes(n)); if(i>=0) return i; } return -1; };
+  const ci={ dre:col(['dre']), conta:col(['conta']), desc:col(['descri','descr']), mes:col(['compet','mês','mes']), val:col(['valor']) };
+  if(ci.desc<0 || ci.val<0) return {erro:'Não achei as colunas Descrição e Valor no arquivo. Confira se é a planilha de gastos.'};
+  const meses={}; const duvidas={}; let nLinhas=0;
+  for(let i=1;i<linhas.length;i++){
+    const campos=_adminCsvLinha(linhas[i], sep);
+    const desc=campos[ci.desc]||'', conta=ci.conta>=0?campos[ci.conta]||'':'', dre=ci.dre>=0?campos[ci.dre]||'':'';
+    // pega a última coluna de valor não vazia (planilha tem 2 colunas "Valor")
+    let valRaw=campos[ci.val];
+    if((valRaw==null||String(valRaw).trim()==='') ){ for(let j=campos.length-1;j>ci.val;j--){ if(campos[j]&&String(campos[j]).trim()){ valRaw=campos[j]; break; } } }
+    const val=_adminParseNum(valRaw);
+    if(!val) continue;
+    const mes=ci.mes>=0?_adminParseMes(campos[ci.mes]):null;
+    const cls=_adminClassifica(desc, conta, dre);
+    nLinhas++;
+    const mk=mes||'(sem mês)';
+    if(!meses[mk]) meses[mk]={admin:0,relevar:0,imob:0,duvida:0};
+    meses[mk][cls]+=val;
+    if(cls==='duvida'){ const k=desc.slice(0,40)||'(sem descrição)'; duvidas[k]=(duvidas[k]||0)+val; }
+  }
+  return { meses, duvidas, nLinhas, sep };
+}
+
+function _adminAbaImportar(box){
+  let h='<div class="maq-nota">Importe a planilha de gastos (a mesma que sua irmã preenche). No Excel, salve como <b>CSV UTF-8</b> antes de subir. O app classifica cada gasto automaticamente e lança só o que é <b>administrativo</b> nos meses certos — você confere antes de confirmar.</div>';
+  h+='<div class="maq-card"><div style="padding:14px"><label class="maq-mini" style="display:inline-block;cursor:pointer">📁 Escolher arquivo CSV<input type="file" id="admin-csv" accept=".csv,text/csv" style="display:none"></label> <span id="admin-csv-nome" style="font-size:.76rem;color:var(--txt3);margin-left:8px"></span></div></div>';
+  h+='<div id="admin-import-prev"></div>';
+  box.innerHTML=h;
+  const inp=box.querySelector('#admin-csv');
+  inp.onchange=()=>{
+    const f=inp.files&&inp.files[0]; if(!f) return;
+    box.querySelector('#admin-csv-nome').textContent=f.name;
+    const rd=new FileReader();
+    rd.onload=()=>{ try{ _adminImportPrev=_adminProcessarCsv(String(rd.result||'')); _adminRenderPrevia(box); }catch(e){ box.querySelector('#admin-import-prev').innerHTML='<div class="maq-aviso" style="border:1px solid var(--line);border-radius:9px">Erro ao ler o arquivo: '+(e&&e.message||e)+'</div>'; } };
+    rd.readAsText(f, 'UTF-8');
+  };
+  if(_adminImportPrev) _adminRenderPrevia(box);
+}
+
+function _adminRenderPrevia(box){
+  const prev=_adminImportPrev; const el=box.querySelector('#admin-import-prev'); if(!el) return;
+  if(!prev){ el.innerHTML=''; return; }
+  if(prev.erro){ el.innerHTML='<div class="maq-aviso" style="border:1px solid var(--line);border-radius:9px">'+prev.erro+'</div>'; return; }
+  const MESN=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  const lbl=(m)=>{ if(!/^\d{4}-\d{2}/.test(m)) return m; const [y,mm]=m.split('-'); return MESN[+mm-1]+'/'+y.slice(2); };
+  const meses=Object.keys(prev.meses).filter(m=>/^\d{4}-\d{2}/.test(m)).sort();
+  let totAdmin=0, totRel=0, totImob=0, totDuv=0;
+  Object.values(prev.meses).forEach(v=>{ totAdmin+=v.admin; totRel+=v.relevar; totImob+=v.imob; totDuv+=v.duvida; });
+  let h='<div class="maq-card"><div class="maq-card-cab"><span class="maq-card-nome">Prévia da classificação</span><span class="maq-ton" style="font-size:.82rem">'+prev.nLinhas+' linhas</span></div>';
+  h+='<div class="frete-lin"><span>🏢 Admin (vai ser lançado)</span><b>R$ '+_adminFmt(totAdmin)+'</b></div>';
+  h+='<div class="frete-lin"><span>✅ Relevar (já no app)</span><b style="color:var(--txt3)">R$ '+_adminFmt(totRel)+'</b></div>';
+  h+='<div class="frete-lin"><span>🏗️ Imobilizado/obra</span><b style="color:var(--txt3)">R$ '+_adminFmt(totImob)+'</b></div>';
+  if(totDuv>0) h+='<div class="frete-lin"><span>❓ Dúvida (não classificado)</span><b style="color:#e0a040">R$ '+_adminFmt(totDuv)+'</b></div>';
+  h+='</div>';
+  // admin por mês
+  h+='<div class="maq-card"><div class="maq-card-cab"><span class="maq-card-nome">Admin por mês (o que vai ser lançado)</span></div>';
+  h+='<table class="frete-tbl"><thead><tr><th>Mês</th><th class="r">Admin R$</th></tr></thead><tbody>';
+  meses.forEach(m=>{ const a=prev.meses[m].admin; if(a>0) h+='<tr><td>'+lbl(m)+'</td><td class="r">R$ '+_adminFmt(a)+'</td></tr>'; });
+  h+='</tbody></table></div>';
+  // dúvidas
+  const duv=Object.keys(prev.duvidas).sort((a,b)=>prev.duvidas[b]-prev.duvidas[a]);
+  if(duv.length){
+    h+='<div class="maq-card"><div class="maq-card-cab"><span class="maq-card-nome">❓ Não classificados</span></div>';
+    h+='<div class="maq-nota">Estes não entraram em nenhum balde — ficam de fora do admin. Se algum for admin, me avise que ajusto a regra.</div>';
+    h+='<table class="frete-tbl"><tbody>';
+    duv.slice(0,15).forEach(k=>{ h+='<tr><td>'+k+'</td><td class="r">R$ '+_adminFmt(prev.duvidas[k])+'</td></tr>'; });
+    h+='</tbody></table></div>';
+  }
+  // botão confirmar
+  h+='<button class="maq-add" id="admin-import-ok">✓ Lançar o admin de cada mês nas Despesas</button>';
+  h+='<div class="maq-nota" style="font-size:.7rem">Isso vai substituir o valor de despesas de cada mês importado por um item único "Importado da planilha". O pessoal fixo (Pessoal) não é afetado.</div>';
+  el.innerHTML=h;
+  const btn=el.querySelector('#admin-import-ok');
+  if(btn) btn.onclick=()=>{
+    if(!confirm('Lançar o admin de '+meses.length+' mês(es) nas Despesas? Os valores importados substituem o item "Importado da planilha" de cada mês.')) return;
+    if(!DAdmin.despesas) DAdmin.despesas={};
+    const chave='iImportado_da_planilha';
+    meses.forEach(m=>{ const a=prev.meses[m].admin; if(a<=0) return; if(!DAdmin.despesas[m]) DAdmin.despesas[m]={}; DAdmin.despesas[m][chave]=Math.round(a*100)/100; });
+    salvarSecaoAdmin('despesas');
+    // adiciona o item "Importado da planilha" à lista de itens (categoria Outros) p/ aparecer na aba Despesas
+    DAdmin.extraCats=_adminArr(DAdmin.extraCats);
+    if(!DAdmin.extraCats.some(e=>e&&e.nome==='Importado da planilha')){ DAdmin.extraCats.push({cat:'Outros', nome:'Importado da planilha'}); salvarSecaoAdmin('extraCats'); }
+    alert('Pronto! Lancei o admin de '+meses.length+' mês(es). Veja na aba Despesas (item "Importado da planilha") e no Histórico.');
+    _adminAba='historico'; runAdmin(document.getElementById('admin-container'));
+  };
 }
 
 // ---------- HISTÓRICO ----------
