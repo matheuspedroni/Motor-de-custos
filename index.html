@@ -938,7 +938,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v124</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v125</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -2331,6 +2331,24 @@ function _frotaCustoMesEquip(nomeEquip, mes){
 // MÉDIA MÓVEL de 5 meses FECHADOS (exclui o mês corrente) de combustível+manutenção do equipamento
 // Mês a partir do qual os dados do FROTA são considerados confiáveis (jun/jul são incompletos → ignorados)
 const FROTA_MES_CORTE='2026-08';
+// Janela de média móvel usada em TUDO (admin, diretos de máquina, gerais): 6 meses
+// fechados (exclui o mês corrente), nunca antes do corte de agosto/2026.
+const MES_CORTE_GERAL='2026-08';
+const MESES_MEDIA_MOVEL=6;
+// retorna os meses 'YYYY-MM' da janela: até N meses fechados antes de hoje, >= corte.
+function _janelaMeses(n, corte){
+  n = n||MESES_MEDIA_MOVEL; corte = corte||MES_CORTE_GERAL;
+  const hoje=new Date(); const out=[];
+  for(let i=1;i<=n;i++){ const d=new Date(hoje.getFullYear(), hoje.getMonth()-i, 1); const m=d.toISOString().slice(0,7); if(m>=corte) out.push(m); }
+  return out;
+}
+// média móvel de um mapa {mes:valor} na janela (só meses com dado dentro dela)
+function _mediaMovelMapa(mapaMes, n, corte){
+  const jan=_janelaMeses(n, corte);
+  const comDado=jan.filter(m=>(parseFloat(mapaMes[m])||0)!==0);
+  if(!comDado.length) return 0;
+  return comDado.reduce((a,m)=>a+(parseFloat(mapaMes[m])||0),0)/comDado.length;
+}
 function _frotaCustoMedioEquip(nomeEquip){
   const fd=window.__frotaD; if(!fd) return 0;
   const alvo=_frotaNorm(nomeEquip);
@@ -2361,7 +2379,7 @@ function _maqRegistrarAjudas(){
   maq_resumo:{t:'Custo de máquina por setor', c:'<p>Cada máquina tem um custo mensal formado por 4 partes: <b>energia</b>, <b>depreciação</b>, <b>gastos diretos</b> e <b>gastos gerais</b>.</p><p>Esse total é dividido pela produção do setor (em toneladas) para dar o <b>custo por tonelada</b> — que depois entra no preço de cada peça conforme o peso dela.</p><p>A produção usada é a <b>MÉDIA da produção real</b> lançada na M.O. (como a máquina faz um produto por vez, não somamos capacidades em paralelo). Quanto mais meses lançados, mais estável fica a média. Setor sem produção lançada não calcula custo/tonelada até você cadastrar.</p>'},
   maq_energia:{t:'Energia', c:'<p>A conta de luz é dividida entre os setores em duas partes:</p><p><b>Demanda</b> (a parte fixa que você paga pela potência contratada) é rateada pela <b>potência instalada</b> de cada máquina.</p><p><b>Consumo</b> (a energia efetivamente usada) é rateado por <b>potência × horas</b> de operação.</p><p>Informe a conta média paga, o % que é demanda, e a potência (kW) e horas/mês de cada máquina.</p>'},
   maq_deprec:{t:'Depreciação', c:'<p>É a reserva mensal para repor a máquina no futuro. Mesmo uma máquina velha e quitada continua depreciando pelo <b>valor de reposição</b> — assim você junta o dinheiro para trocá-la quando precisar.</p><p><b>Valor fixo:</b> você informa direto o R$/mês.</p><p><b>Por reposição:</b> informe quanto custaria repor a máquina hoje e a vida útil em anos; o app calcula o R$/mês (reposição ÷ vida ÷ 12).</p><p>As empilhadeiras servem todas as máquinas, então são rateadas por KG entre todas. Cada central é rateada por KG só entre as máquinas que ela abastece (a lista vem da aba Mão de obra → "esta central abastece quais máquinas").</p>'},
-  maq_diretos:{t:'Gastos diretos', c:'<p>Gastos específicos de uma máquina: correias, discos, reparos daquele equipamento.</p><p>Lance cada gasto com a <b>data</b> em que aconteceu. O app faz a <b>média mensal</b> — assim uma compra grande feita uma vez não estoura o custo de um único mês, ela se dilui.</p><p>Você pode lançar à mão ou <b>importar da planilha</b> (aba Importar). Os dois convivem.</p><p><b>Moldes de prensa têm aba própria</b> (Moldes), porque se diluem por peça, não por mês.</p>'},
+  maq_diretos:{t:'Gastos diretos', c:'<p>Gastos específicos de uma máquina: correias, discos, reparos daquele equipamento.</p><p>Lance cada gasto com a <b>data</b> em que aconteceu. O app faz a <b>média móvel de 6 meses</b> (a partir de agosto/2026) — assim uma compra grande feita uma vez não estoura o custo de um único mês, ela se dilui.</p><p>Você pode lançar à mão ou <b>importar da planilha</b> (aba Importar). Os dois convivem.</p><p><b>Moldes de prensa têm aba própria</b> (Moldes), porque se diluem por peça, não por mês.</p>'},
   maq_importar:{t:'Importar planilha', c:'<p>Lê a <b>mesma planilha de gastos</b> que sua irmã preenche (salva como CSV UTF-8) e lança automaticamente os gastos de <b>manutenção e consumo</b> de cada máquina, como <b>média mensal</b>.</p><p>Pela coluna <b>Centro de Custo</b>, cada gasto vai pra máquina certa. O que for <b>compra de máquina</b> (imobilizado) é ignorado — já está na Depreciação. <b>Matéria-prima</b> também é ignorada — já está no custo do produto.</p><p>Os gastos de produção marcados como <b>"Geral"</b> (sem máquina específica) são rateados entre as máquinas conforme a produção lançada na Mão de Obra.</p>'},
   maq_moldes:{t:'Moldes / Fôrmas', c:'<p>O molde de prensa (bloco, piso, meio-fio…) se gasta pelo <b>uso</b>, não pelo tempo: um molde parado não desgasta. Por isso o custo dele não é por mês, é <b>por peça</b>.</p><p><b>Custo por peça = preço do molde ÷ (vida em ciclos × peças por ciclo)</b>.</p><p>Exemplo: molde de R$ 12.000, vida de 50.000 ciclos, 6 peças por prensada → 300.000 peças → R$ 0,04 por bloco.</p><p>Só produtos de prensa têm molde consumível. Produto sem molde preenchido não gera custo.</p>'},
   maq_gerais:{t:'Gastos gerais', c:'<p>Custos da fábrica que não são de uma máquina só: água, gás, ar comprimido, movimentação interna, instalações.</p><p>Cada item tem um <b>critério de rateio</b>: por horas de operação, por número de pessoas, ou direto para um setor específico.</p>'},
@@ -2596,13 +2614,20 @@ function diretoSetorMaq(s){
   if(!arr.length) return 0;
   const meses={};
   arr.forEach(g=>{ const m=(g.data||'').slice(0,7); meses[m]=(meses[m]||0)+(g.valor||0); });
-  const ms=Object.keys(meses);
-  return ms.length ? ms.reduce((a,m)=>a+meses[m],0)/ms.length : 0;
+  // média móvel de 6 meses fechados, a partir do corte de agosto/2026
+  return _mediaMovelMapa(meses, MESES_MEDIA_MOVEL, MES_CORTE_GERAL);
+}
+// valor mensal efetivo de um item de gasto geral:
+// se tem histórico mensal (g.mensal {mes:valor}, ex.: importado da planilha) -> média móvel 6 meses;
+// senão usa o valor fixo digitado (g.valor), tratado como valor mensal típico.
+function _ggValorMes(g){
+  if(g && g.mensal && typeof g.mensal==='object'){ const mm=_mediaMovelMapa(g.mensal, MESES_MEDIA_MOVEL, MES_CORTE_GERAL); if(mm) return mm; }
+  return parseFloat(g&&g.valor)||0;
 }
 function totalGGMaq(){
   let t=0; const gg=DMaq.gg||{};
-  Object.values(gg).forEach(g=>t+=g.valor||0);
-  _maqArr(DMaq.ggCustom).forEach(g=>t+=g.valor||0);
+  Object.values(gg).forEach(g=>t+=_ggValorMes(g));
+  _maqArr(DMaq.ggCustom).forEach(g=>t+=_ggValorMes(g));
   return t;
 }
 function ggParaSetorMaq(setor){
@@ -2613,10 +2638,11 @@ function ggParaSetorMaq(setor){
   const somaHoras=SET.reduce((a,x)=>a+(horas[x]||0),0);
   const somaPessoas=SET.reduce((a,x)=>a+(pessoasSetor[x]||0),0);
   const aplica=(g)=>{
-    if(!g.valor) return 0;
-    if(g.rateio==='horas') return somaHoras>0 ? g.valor*(horas[setor]||0)/somaHoras : 0;
-    if(g.rateio==='pessoas') return somaPessoas>0 ? g.valor*(pessoasSetor[setor]||0)/somaPessoas : 0;
-    return g.rateio===setor ? g.valor : 0;
+    const v=_ggValorMes(g);
+    if(!v) return 0;
+    if(g.rateio==='horas') return somaHoras>0 ? v*(horas[setor]||0)/somaHoras : 0;
+    if(g.rateio==='pessoas') return somaPessoas>0 ? v*(pessoasSetor[setor]||0)/somaPessoas : 0;
+    return g.rateio===setor ? v : 0;
   };
   Object.values(DMaq.gg||{}).forEach(g=>total+=aplica(g));
   _maqArr(DMaq.ggCustom).forEach(g=>total+=aplica(g));
@@ -6722,7 +6748,7 @@ function _freteAbaLongo(box){
 // % admin = média móvel de 5 meses do custo ÷ faturamento total (com+sem nota).
 // ===================================================================
 const ADMIN_SECOES = ['pessoal','despesas','faturamento','extraCats'];
-const ADMIN_MES_MEDIA = 5; // média móvel de 5 meses fechados
+const ADMIN_MES_MEDIA = 6; // média móvel de 6 meses fechados (igual diretos/gerais de máquina)
 
 // categorias e itens padrão das despesas administrativas (o usuário pode incluir/excluir)
 const ADMIN_CATS_PADRAO = [
@@ -6819,11 +6845,9 @@ function adminMesesComDados(){
   Object.keys(DAdmin.faturamento||{}).forEach(m=>s.add(m));
   return Array.from(s).sort();
 }
-// MÉDIA MÓVEL de 5 meses FECHADOS (exclui o mês corrente): custo, faturamento e %
+// MÉDIA MÓVEL de 6 meses FECHADOS (exclui o mês corrente), a partir do corte de agosto/2026: custo, faturamento e %
 function adminMediaMovel(){
-  const hoje=new Date(); const mesCorrente=hoje.toISOString().slice(0,7);
-  const meses=[];
-  for(let i=1;i<=ADMIN_MES_MEDIA;i++){ const d=new Date(hoje.getFullYear(), hoje.getMonth()-i, 1); meses.push(d.toISOString().slice(0,7)); }
+  const meses=_janelaMeses(ADMIN_MES_MEDIA, MES_CORTE_GERAL);
   // só meses que têm faturamento lançado (sem faturamento não dá pra tirar %)
   const comDados=meses.filter(m=>adminFatMes(m).total>0);
   if(!comDados.length) return {custo:0, fat:0, pct:0, meses:[]};
