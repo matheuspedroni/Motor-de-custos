@@ -938,7 +938,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v133</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v134</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -7596,13 +7596,56 @@ function _precoSincronizarDados(){
   }catch(e){ try{ if(window.__moD) Dmo = window.__moD; }catch(_){} }
 }
 
+// Carrega TODOS os dados de custo direto do Firebase para D e Dmo — sem precisar abrir as abas.
+// A pré-carga só traz produtos/__moD; faltam tracos, compras, aço, embalagem, preços (matéria-prima)
+// e as seções da M.O. — e SEM eles custoProdutoEm/custoTracoEm/calcSetores retornam 0.
+async function _precoCarregarCustos(){
+  const temFB = (typeof db!=='undefined' && db && typeof fb!=='undefined' && fb);
+  const listaDe=(mapa)=> mapa ? Object.keys(mapa).sort((a,b)=>(+a)-(+b)).map(k=>mapa[k]) : null;
+  // ---- matéria-prima: garante D e carrega todas as coleções ----
+  try{
+    if(typeof D==='undefined' || !D){ D = (window.__mpD) ? window.__mpD : (typeof D_DEFAULT!=='undefined'?JSON.parse(JSON.stringify(D_DEFAULT)):{produtos:[]}); }
+    else if(window.__mpD && window.__mpD!==D){ D = window.__mpD; }
+    if(temFB && !DEMO){
+      const get=(p)=> new Promise((res)=>{ try{ fb.onValue(fb.ref(db,'custos/mp/'+p), s=>res(s&&s.exists&&s.exists()?s.val():null), ()=>res(null), {onlyOnce:true}); }catch(e){ res(null); } });
+      const [tr,pr,ag,ac,emb,co,pa,pe] = await Promise.all([get('tracos'),get('produtos'),get('agregados'),get('aco'),get('embalagem'),get('compras'),get('precosAco'),get('precosEmb')]);
+      if(tr) D.tracos=listaDe(tr);
+      if(pr) D.produtos=listaDe(pr);
+      if(ag) D.agregados=ag;
+      if(ac) D.aco=listaDe(ac);
+      if(emb) D.embalagem=listaDe(emb);
+      if(co) D.compras=co;
+      if(pa) D.precosAco=pa;
+      if(pe) D.precosEmb=pe;
+    } else {
+      // DEMO: tenta o bloco do localStorage
+      try{ const raw=localStorage.getItem('pedroni:custos/mp_bloco'); if(raw){ Object.assign(D, JSON.parse(raw)); } }catch(e){}
+    }
+    window.__mpD = D;
+  }catch(e){ console.warn('preço: carga mp', e&&e.message); }
+  // ---- M.O.: garante Dmo e carrega todas as seções ----
+  try{
+    if(typeof Dmo==='undefined' || !Dmo){ Dmo = (window.__moD) ? window.__moD : (typeof DMO_DEFAULT!=='undefined'?JSON.parse(JSON.stringify(DMO_DEFAULT)):{}); }
+    else if(window.__moD && window.__moD!==Dmo){ Dmo = window.__moD; }
+    const SECOES=['pessoas','produtos','tipoLanc','jornada','diasIdeal','indiretos','epis','familias','centrais','prodReal','consumo'];
+    if(temFB && !DEMO){
+      for(const s of SECOES){
+        try{ const snap=await new Promise((res)=>{ try{ fb.onValue(fb.ref(db,'custos/mo/'+s), r=>res(r), ()=>res(null), {onlyOnce:true}); }catch(e){ res(null); } }); if(snap&&snap.exists&&snap.exists()) Dmo[s]= (typeof _moNormalizaSecao==='function')?_moNormalizaSecao(s,snap.val()):snap.val(); }catch(e){}
+      }
+    }
+    window.__moD = Dmo;
+  }catch(e){ console.warn('preço: carga mo', e&&e.message); }
+}
+
 // ====================== RENDER ======================
 function initPrecoFinal(container){
   if(container) _precoContainer=container;
   _precoGarantirDados();
   _precoSincronizarDados();
   _precoInvalidaCache();
-  renderPreco();
+  renderPreco(); // desenha já (pode vir com custo 0 se os dados ainda não chegaram)
+  // carrega TODOS os dados de custo (tracos, compras, aço, emb, preços, seções da M.O.) e re-renderiza
+  (async()=>{ try{ await _precoCarregarCustos(); _precoInvalidaCache(); if(document.getElementById('preco-container')) renderPreco(); }catch(e){ console.warn('preço carga', e&&e.message); } })();
 }
 
 function _precoGarantirDados(){
