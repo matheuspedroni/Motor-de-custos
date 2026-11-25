@@ -938,7 +938,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v118</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v119</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -6570,6 +6570,12 @@ function salvarSecaoAdmin(sec){
 // ---------- CÁLCULO ----------
 // custo de uma pessoa admin = mesma fórmula da M.O. (salário+extras+VA+...+13º/férias+INSS)
 function _adminCalcPessoa(mm){
+  // Pró-labore: custo é só o valor base, SEM 13º/férias/INSS patronal e sem extras/VA (valor cheio)
+  if(mm && mm.tipo==='prolabore'){
+    const val=parseFloat(mm.salario)||0;
+    return {total: val, ferias:0, inss:0, peric:0};
+  }
+  // CLT (padrão): salário + extras + VA + ... + 13º/férias + INSS patronal
   const p={ salario:parseFloat(mm&&mm.salario)||0, extras50:parseFloat(mm&&mm.extras50)||0, extras100:parseFloat(mm&&mm.extras100)||0,
     va:parseFloat(mm&&mm.va)||0, anuenio:parseFloat(mm&&mm.anuenio)||0, quinquenio:parseFloat(mm&&mm.quinquenio)||0,
     foraFolha:parseFloat(mm&&mm.foraFolha)||0, tipoRisco:(mm&&mm.tipoRisco)||'none', insalubridade:parseFloat(mm&&mm.insalubridade)||0 };
@@ -6761,13 +6767,35 @@ function _adminAbaPessoal(box){
     const fIn=document.createElement('input'); fIn.className='nome-in'; fIn.value=m.funcao||''; fIn.placeholder='ex.: contador, vendedor, sócio';
     fIn.oninput=()=>{ m.funcao=fIn.value; salvarSecaoAdmin('pessoal'); };
     fr.appendChild(fIn); body.appendChild(fr);
-    const fields=[['salario','Salário base'],['extras50','Extras 50%'],['extras100','Extras 100%'],['va','Vale-alimentação'],['anuenio','Anuênio'],['quinquenio','Quinquênio'],['foraFolha','Fora folha']];
+    // tipo de contratação: CLT (com encargos) ou Pró-labore (valor cheio, sem encargos)
+    const tr=document.createElement('div'); tr.className='nome-row'; tr.innerHTML='<label>Tipo de contratação</label>';
+    const tsel=document.createElement('select'); tsel.className='p-sel';
+    [['clt','CLT (com 13º, férias, INSS)'],['prolabore','Pró-labore (valor cheio, sem encargos)']].forEach(([v,t])=>{ const o=document.createElement('option'); o.value=v; o.textContent=t; if((m.tipo||'clt')===v)o.selected=true; tsel.appendChild(o); });
+    tsel.onchange=()=>{ m.tipo=tsel.value; salvarSecaoAdmin('pessoal'); _adminAbaPessoal(box); };
+    tr.appendChild(tsel); body.appendChild(tr);
+    const ehPro = (m.tipo==='prolabore');
     const fg=document.createElement('div'); fg.className='field-grid';
     const _updAuto=()=>{ const cc=_adminCalcPessoa(m);
       const ff=fg.querySelector('.am-fer'); if(ff) ff.value='R$ '+_adminFmt(cc.ferias);
       const fi=fg.querySelector('.am-inss'); if(fi) fi.value='R$ '+_adminFmt(cc.inss);
       const ct=fg.querySelector('.am-tot'); if(ct) ct.textContent='R$ '+_adminFmt(cc.total);
       div.querySelector('.p-total').textContent='R$ '+_adminFmt(cc.total); };
+    if(ehPro){
+      // pró-labore: só o valor da retirada
+      const f=document.createElement('div'); f.className='field'; f.style.gridColumn='1/-1'; f.innerHTML='<label>Valor do pró-labore (retirada mensal)</label>';
+      const inp=document.createElement('input'); inp.type='number'; inp.value=(m.salario!=null?m.salario:'');
+      inp.oninput=()=>{ m.salario=parseFloat(inp.value)||0; _updAuto(); salvarSecaoAdmin('pessoal'); };
+      f.appendChild(inp); fg.appendChild(f);
+      const cl=document.createElement('div'); cl.className='calc-line'; cl.innerHTML='<span class="lab">Custo total mensal</span><span class="val mono am-tot" style="color:var(--rebar2)">R$ '+_adminFmt(c.total)+'</span>'; fg.appendChild(cl);
+      body.appendChild(fg);
+      const act=document.createElement('div'); act.className='p-actions';
+      const btn=document.createElement('button'); btn.className='btn-remove'; btn.textContent='🗑 Remover';
+      btn.onclick=()=>{ if(confirm('Remover '+(m.nome||'esta pessoa')+'?')){ DAdmin.pessoal=_adminArr(DAdmin.pessoal); DAdmin.pessoal.splice(i,1); salvarSecaoAdmin('pessoal'); _adminAbaPessoal(box); } };
+      act.appendChild(btn); body.appendChild(act);
+      div.appendChild(body); wrap.appendChild(div);
+      return; // não renderiza os campos CLT
+    }
+    const fields=[['salario','Salário base'],['extras50','Extras 50%'],['extras100','Extras 100%'],['va','Vale-alimentação'],['anuenio','Anuênio'],['quinquenio','Quinquênio'],['foraFolha','Fora folha']];
     fields.forEach(([k,lab])=>{ const f=document.createElement('div'); f.className='field'; f.innerHTML='<label>'+lab+'</label>';
       const inp=document.createElement('input'); inp.type='number'; inp.value=(m[k]!=null?m[k]:'');
       inp.oninput=()=>{ m[k]=parseFloat(inp.value)||0; if(m._refreshPeric)m._refreshPeric(); _updAuto(); salvarSecaoAdmin('pessoal'); };
@@ -6796,7 +6824,7 @@ function _adminAbaPessoal(box){
   });
   const tot=document.createElement('div'); tot.className='maq-dep-res'; tot.textContent='Total pessoal: R$ '+_adminFmt(adminTotalPessoal())+'/mês'; box.appendChild(tot);
   const add=document.createElement('button'); add.className='maq-add'; add.textContent='+ Adicionar pessoa';
-  add.onclick=()=>{ DAdmin.pessoal=_adminArr(DAdmin.pessoal); DAdmin.pessoal.push({nome:'',funcao:'',salario:0,extras50:0,extras100:0,va:0,anuenio:0,quinquenio:0,foraFolha:0,tipoRisco:'none',insalubridade:0,_open:true}); salvarSecaoAdmin('pessoal'); _adminAbaPessoal(box); };
+  add.onclick=()=>{ DAdmin.pessoal=_adminArr(DAdmin.pessoal); DAdmin.pessoal.push({nome:'',funcao:'',tipo:'clt',salario:0,extras50:0,extras100:0,va:0,anuenio:0,quinquenio:0,foraFolha:0,tipoRisco:'none',insalubridade:0,_open:true}); salvarSecaoAdmin('pessoal'); _adminAbaPessoal(box); };
   box.appendChild(add);
 }
 
