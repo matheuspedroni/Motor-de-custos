@@ -938,7 +938,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v128</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v129</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -3276,6 +3276,7 @@ function _maqAbaGerais(box){
   box.querySelectorAll('.maq-gg-rat').forEach(sel=>{ sel.onchange=()=>{ const k=sel.dataset.k, cust=sel.dataset.cust==='1'; if(cust){ DMaq.ggCustom[+k].rateio=sel.value; } else { if(!DMaq.gg[k])DMaq.gg[k]={}; DMaq.gg[k].rateio=sel.value; } salvarSecaoMaq(cust?'ggCustom':'gg'); }; });
   box.querySelectorAll('.maq-gg-nome').forEach(i=>{ i.oninput=()=>{ DMaq.ggCustom[+i.dataset.k].nome=i.value; salvarSecaoMaq('ggCustom'); }; });
   box.querySelectorAll('.maq-gg-del').forEach(b=>{ b.onclick=()=>{ DMaq.ggCustom.splice(+b.dataset.k,1); salvarSecaoMaq('ggCustom'); _maqAbaGerais(box); }; });
+  box.querySelectorAll('.maq-gg-del-imp').forEach(b=>{ b.onclick=()=>{ if(!confirm('Remover "Manutenção geral (planilha)"? Isso apaga o Geral importado dos gastos gerais. Você pode reimportar a planilha depois.')) return; delete DMaq.gg[b.dataset.k]; salvarSecaoMaq('gg'); _maqAbaGerais(box); }; });
   box.querySelector('#maq-add-gg').onclick=()=>{ if(!DMaq.ggCustom)DMaq.ggCustom=[]; DMaq.ggCustom.push({nome:'',valor:0,rateio:'horas'}); salvarSecaoMaq('ggCustom'); _maqAbaGerais(box); };
 }
 function _maqGGRow(k, g, cust){
@@ -3295,6 +3296,7 @@ function _maqGGRow(k, g, cust){
   SET.forEach(s=>{ h+='<option value="'+s+'"'+(rat===s?' selected':'')+'>→ '+s+'</option>'; });
   h+='</select>';
   if(cust) h+='<button class="maq-gg-del" data-k="'+k+'">×</button>';
+  else if(temHist) h+='<button class="maq-gg-del maq-gg-del-imp" data-k="'+k+'" title="remover a importação da planilha">×</button>';
   h+='</div>';
   return h;
 }
