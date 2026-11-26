@@ -938,7 +938,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v140</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v141</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -7930,17 +7930,29 @@ function _precoReRenderLeve(){ renderPreco(); }
 
 // ====================== DETALHE DE UM PRODUTO ======================
 function _precoRenderDetalhe(c){
-  const prods=_precoProdutos();
-  const p=prods.find(x=>_precoId(x)===_precoDetalhe);
+  const prodsAll=_precoProdutos();
+  // lista FILTRADA (respeita a busca) — a navegação anterior/próximo anda nela
+  const busca=(_precoBusca||'').toLowerCase();
+  const lista=prodsAll.filter(x=>!busca || (x.nome||'').toLowerCase().includes(busca));
+  const idx=lista.findIndex(x=>_precoId(x)===_precoDetalhe);
+  const p = idx>=0 ? lista[idx] : prodsAll.find(x=>_precoId(x)===_precoDetalhe);
   if(!p){ _precoDetalhe=null; return renderPreco(); }
   const id=_precoId(p);
   const comp=precoCustoProduto(p);
   const gN=precoGrossUp(comp.total, p, true);
   const gS=precoGrossUp(comp.total, p, false);
   const tabela=parseFloat((DPreco.tabela||{})[id])||0;
+  const temAnt = idx>0;
+  const temProx = idx>=0 && idx<lista.length-1;
 
   let h='<div class="module-view">';
-  h+='<button class="maq-mini" id="preco-voltar" style="margin-bottom:10px">← voltar</button>';
+  // barra de navegação: voltar · anterior/próximo · posição
+  h+='<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap">';
+  h+='<button class="maq-mini" id="preco-voltar">← lista</button>';
+  h+='<button class="maq-mini" id="preco-ant"'+(temAnt?'':' disabled style="opacity:.4;cursor:default"')+'>‹ Anterior</button>';
+  h+='<button class="maq-mini" id="preco-prox"'+(temProx?'':' disabled style="opacity:.4;cursor:default"')+'>Próximo ›</button>';
+  if(idx>=0) h+='<span style="font-size:.72rem;color:var(--txt3);margin-left:auto">'+(idx+1)+' de '+lista.length+'</span>';
+  h+='</div>';
   h+='<div class="maq-head"><div class="maq-head-t">'+(p.nome||id)+'</div></div>';
   const _catTrib=_precoCategoriaTributaria(p)||p.familia||'—';
   const _icmsP=(_precoIcmsCat(p)*100);
@@ -7996,6 +8008,8 @@ function _precoRenderDetalhe(c){
   c.innerHTML=h;
 
   c.querySelector('#preco-voltar').onclick=()=>{ _precoDetalhe=null; renderPreco(); };
+  const _bAnt=c.querySelector('#preco-ant'); if(_bAnt && temAnt) _bAnt.onclick=()=>{ _precoDetalhe=_precoId(lista[idx-1]); c.scrollTop=0; _precoRenderDetalhe(c); };
+  const _bProx=c.querySelector('#preco-prox'); if(_bProx && temProx) _bProx.onclick=()=>{ _precoDetalhe=_precoId(lista[idx+1]); c.scrollTop=0; _precoRenderDetalhe(c); };
   const t=c.querySelector('#preco-tabela');
   if(t){
     t.oninput=()=>{ if(!DPreco.tabela)DPreco.tabela={}; const v=parseFloat(t.value); if(isNaN(v)||v===0) delete DPreco.tabela[id]; else DPreco.tabela[id]=v; salvarSecaoPreco(); };
