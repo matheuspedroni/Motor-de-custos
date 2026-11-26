@@ -938,7 +938,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v139</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v140</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -2849,22 +2849,24 @@ let _maqImportPrev = null;
 function _maqProcessarCsvMaq(texto){
   const linhas=texto.split(/\r?\n/).filter(l=>l.trim().length);
   if(!linhas.length) return null;
-  const h0=linhas[0];
-  const sep=_detectaSep(h0);
-  const hdr=_adminCsvLinha(linhas[0], sep).map(x=>x.trim().toLowerCase());
-  const col=(nomes)=>{ for(const n of nomes){ const i=hdr.findIndex(h=>h.includes(n)); if(i>=0) return i; } return -1; };
-  const ci={ dre:col(['dre']), cc:col(['centro de custo','centro','custo']), conta:col(['conta']), desc:col(['descri','descr']), mes:col(['compet','mês','mes']), val:col(['valor']) };
-  if(ci.val<0 || ci.cc<0 || ci.dre<0) return {erro:'Não achei as colunas DRE, Centro de Custo e Valor. Confira se é a planilha de gastos completa.'};
+  const cab=_acharCabecalho(linhas);
+  const sep=cab.sep, hdr=cab.hdr, inicio=cab.idx+1;
+  const col=(nomes)=>{ for(const n of nomes){ const i=hdr.findIndex(h=>h.indexOf(n)>=0); if(i>=0) return i; } return -1; };
+  const ci={ tipo:col(['tipo']), dre:col(['dre']), cc:col(['centro de custo','centro','custo']), conta:col(['conta','categoria']), desc:col(['descri','descr']), mes:col(['compet','mes','data']), val:col(['valor']) };
+  const formatoNovo = ci.tipo>=0; // planilha nova tem coluna "Tipo"
+  if(ci.val<0 || ci.cc<0 || (!formatoNovo && ci.dre<0)) return {erro:'Não achei as colunas de Centro de Custo e Valor. Confira se é a planilha de gastos (nova com coluna Tipo, ou a antiga com DRE).'};
   const porSetor={}; const geral={}; let nLin=0, ignorado=0;
   const mesesSet={};
-  for(let i=1;i<linhas.length;i++){
+  for(let i=inicio;i<linhas.length;i++){
     const campos=_adminCsvLinha(linhas[i], sep);
-    const dre=campos[ci.dre]||'', cc=campos[ci.cc]||'', conta=ci.conta>=0?campos[ci.conta]||'':'';
+    const cc=campos[ci.cc]||'', conta=ci.conta>=0?campos[ci.conta]||'':'';
     let valRaw=campos[ci.val];
     if((valRaw==null||String(valRaw).trim()==='')){ for(let j=campos.length-1;j>ci.val;j--){ if(campos[j]&&String(campos[j]).trim()){ valRaw=campos[j]; break; } } }
     const val=_adminParseNum(valRaw);
     if(!val) continue;
-    const cls=_maqClassificaGasto(dre, cc, conta);
+    let cls;
+    if(formatoNovo){ cls=_maqClassificaTipo(campos[ci.tipo]||'', cc); }
+    else { cls=_maqClassificaGasto(campos[ci.dre]||'', cc, conta); }
     if(cls.destino==='ignorar'){ ignorado+=val; continue; }
     const mes=ci.mes>=0?_adminParseMes(campos[ci.mes]):null;
     const mk=mes||'(sem mês)';
@@ -2874,7 +2876,23 @@ function _maqProcessarCsvMaq(texto){
     else { if(!porSetor[cls.destino]) porSetor[cls.destino]={}; porSetor[cls.destino][mk]=(porSetor[cls.destino][mk]||0)+val; }
   }
   const meses=Object.keys(mesesSet).sort();
-  return { porSetor, geral, nLinhas:nLin, ignorado, meses, sep };
+  return { porSetor, geral, nLinhas:nLin, ignorado, meses, sep, formatoNovo };
+}
+// classificador da planilha NOVA (coluna Tipo): Admin/Máquina/Geral/Ignorar.
+// Na planilha nova o Centro de Custo JÁ É o nome do setor do app (veio do dropdown),
+// então usa direto; se não casar com um setor, tenta o mapa antigo como fallback.
+function _maqClassificaTipo(tipo, cc){
+  const t=_normTxt(tipo), c=_normTxt(cc);
+  if(t==='maquina' || t==='máquina'){
+    // procura um setor do app cujo nome normalizado bata com o centro de custo
+    const setores=(typeof _maqSet==='function')?_maqSet().filter(s=>!_maqEhCentral(s)):[];
+    const hit=setores.find(s=>_normTxt(s)===c);
+    if(hit) return {destino:hit};
+    if(MAQ_CC_MAP_N[c]) return {destino:MAQ_CC_MAP_N[c]}; // fallback mapa antigo
+    return {destino:'ignorar'}; // máquina não reconhecida (ex: eliminada)
+  }
+  if(t==='geral') return {destino:'geral'};
+  return {destino:'ignorar'}; // Admin e Ignorar não entram na máquina
 }
 
 // rateio do "Geral" entre os setores, proporcional à produção (kg/mês da M.O.)
@@ -7292,36 +7310,57 @@ function _adminCsvLinha(linha, sep){
   }
   out.push(cur); return out;
 }
+// Acha a linha de cabeçalho (a planilha nova tem título nas linhas 1-2 e cabeçalho na 3).
+// Procura nas primeiras 8 linhas a que tem 'valor' + ('tipo' OU 'dre' OU 'centro'). Retorna {idx, sep, hdr}.
+function _acharCabecalho(linhas){
+  for(let i=0;i<Math.min(8,linhas.length);i++){
+    const sep=_detectaSep(linhas[i]);
+    const hdr=_adminCsvLinha(linhas[i], sep).map(x=>_normTxt(x));
+    const tem=(n)=>hdr.some(h=>h.indexOf(n)>=0);
+    if(tem('valor') && (tem('tipo')||tem('dre')||tem('centro'))){ return {idx:i, sep, hdr}; }
+  }
+  // fallback: primeira linha
+  const sep=_detectaSep(linhas[0]);
+  return {idx:0, sep, hdr:_adminCsvLinha(linhas[0], sep).map(x=>_normTxt(x))};
+}
 // processa o texto do CSV -> prévia
 function _adminProcessarCsv(texto){
-  // detecta separador: conta ; vs , na primeira linha de cabeçalho
   const linhas=texto.split(/\r?\n/).filter(l=>l.trim().length);
   if(!linhas.length) return null;
-  const h0=linhas[0];
-  const sep = _detectaSep(h0);
-  const hdr=_adminCsvLinha(linhas[0], sep).map(x=>x.trim().toLowerCase());
-  // localiza colunas por nome aproximado
-  const col=(nomes)=>{ for(const n of nomes){ const i=hdr.findIndex(h=>h.includes(n)); if(i>=0) return i; } return -1; };
-  const ci={ dre:col(['dre']), conta:col(['conta']), desc:col(['descri','descr']), mes:col(['compet','mês','mes']), val:col(['valor']) };
-  if(ci.desc<0 || ci.val<0) return {erro:'Não achei as colunas Descrição e Valor no arquivo. Confira se é a planilha de gastos.'};
+  const cab=_acharCabecalho(linhas);
+  const sep=cab.sep, hdr=cab.hdr, inicio=cab.idx+1;
+  const col=(nomes)=>{ for(const n of nomes){ const i=hdr.findIndex(h=>h.indexOf(n)>=0); if(i>=0) return i; } return -1; };
+  const ci={ tipo:col(['tipo']), dre:col(['dre']), cc:col(['centro de custo','centro']), conta:col(['conta','categoria']), desc:col(['descri','descr']), mes:col(['compet','mes','data']), val:col(['valor']) };
+  const formatoNovo = ci.tipo>=0;
+  if(ci.val<0 || (!formatoNovo && ci.desc<0)) return {erro:'Não achei as colunas de Valor (e Tipo ou Descrição). Confira se é a planilha de gastos.'};
   const meses={}; const duvidas={}; let nLinhas=0;
-  for(let i=1;i<linhas.length;i++){
+  for(let i=inicio;i<linhas.length;i++){
     const campos=_adminCsvLinha(linhas[i], sep);
-    const desc=campos[ci.desc]||'', conta=ci.conta>=0?campos[ci.conta]||'':'', dre=ci.dre>=0?campos[ci.dre]||'':'';
-    // pega a última coluna de valor não vazia (planilha tem 2 colunas "Valor")
+    const desc=ci.desc>=0?campos[ci.desc]||'':'', conta=ci.conta>=0?campos[ci.conta]||'':'', dre=ci.dre>=0?campos[ci.dre]||'':'';
     let valRaw=campos[ci.val];
     if((valRaw==null||String(valRaw).trim()==='') ){ for(let j=campos.length-1;j>ci.val;j--){ if(campos[j]&&String(campos[j]).trim()){ valRaw=campos[j]; break; } } }
     const val=_adminParseNum(valRaw);
     if(!val) continue;
     const mes=ci.mes>=0?_adminParseMes(campos[ci.mes]):null;
-    const cls=_adminClassifica(desc, conta, dre);
+    let cls;
+    if(formatoNovo){ cls=_adminClassificaTipo(campos[ci.tipo]||''); }
+    else { cls=_adminClassifica(desc, conta, dre); }
     nLinhas++;
     const mk=mes||'(sem mês)';
     if(!meses[mk]) meses[mk]={admin:0,relevar:0,imob:0,duvida:0};
     meses[mk][cls]+=val;
-    if(cls==='duvida'){ const k=desc.slice(0,40)||'(sem descrição)'; duvidas[k]=(duvidas[k]||0)+val; }
+    if(cls==='duvida'){ const k=(desc||conta).slice(0,40)||'(sem descrição)'; duvidas[k]=(duvidas[k]||0)+val; }
   }
-  return { meses, duvidas, nLinhas, sep };
+  return { meses, duvidas, nLinhas, sep, formatoNovo };
+}
+// classificador da planilha NOVA (coluna Tipo) para o importador ADMIN:
+// Admin -> admin; Geral/Máquina -> relevar (entram nos outros módulos); Ignorar -> imob (fora).
+function _adminClassificaTipo(tipo){
+  const t=_normTxt(tipo);
+  if(t==='admin') return 'admin';
+  if(t==='geral' || t==='maquina' || t==='máquina') return 'relevar'; // vão pro módulo Máquina
+  if(t==='ignorar') return 'imob'; // fora do custo (imobilizado, matéria-prima, etc.)
+  return 'duvida';
 }
 
 function _adminAbaImportar(box){
