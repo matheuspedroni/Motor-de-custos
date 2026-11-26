@@ -938,7 +938,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v138</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v139</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -7699,6 +7699,33 @@ function precoGrossUp(custo, prod, comNota){
   return { preco: custo/denom, denom, pis, icms, adminPct, lucroEf:irEf };
 }
 
+// MARGEM a partir do PREÇO DE VENDA (o inverso do gross-up):
+// você digita o preço, o app diz quanto sobra líquido (depois de TODOS os impostos) e a margem.
+// comNota: desconta PIS/Cofins + ICMS + Admin + IRPJ/CSLL sobre o lucro.
+// sem nota: desconta só Admin (sem PIS/Cofins/ICMS/IRPJ/CSLL).
+function _precoMargemDePreco(custo, prod, precoVenda, comNota){
+  const P=DPreco.params;
+  const preco=parseFloat(precoVenda)||0;
+  if(preco<=0) return null;
+  const ir=((P.irpj||0)+(P.csll||0))/100;
+  const adminPct=_precoAdminFrac();
+  let pis=0, icms=0;
+  if(comNota){ pis=(P.pisCofins||0)/100; icms=_precoIcmsCat(prod); }
+  // impostos sobre a venda + admin (todos % sobre o preço de venda) + custo
+  const impVenda = preco*(pis+icms);
+  const admin = preco*adminPct;
+  const lucroBruto = preco - impVenda - admin - custo; // antes de IRPJ/CSLL
+  // IRPJ/CSLL incidem sobre o lucro, e só quando há nota (sem nota não tem base tributável)
+  const irpjCsll = comNota ? Math.max(0, lucroBruto)*ir : 0;
+  const lucroLiq = lucroBruto - irpjCsll;
+  return {
+    preco, custo, impVenda, admin, lucroBruto, irpjCsll, lucroLiq,
+    margemLiq: preco>0 ? lucroLiq/preco*100 : 0,
+    margemBruta: preco>0 ? lucroBruto/preco*100 : 0,
+    pis, icms, adminPct, ir
+  };
+}
+
 // admin como fração do faturamento (média móvel) — da função do módulo Admin
 function _precoAdminFrac(){
   try{
@@ -7800,7 +7827,7 @@ function renderPreco(){
 
   // painel de parâmetros
   h+='<div class="maq-card"><div class="maq-card-cab"><span class="maq-card-nome">Parâmetros</span></div><div style="padding:10px;display:grid;grid-template-columns:1fr 1fr;gap:10px">';
-  h+='<div class="maq-field"><label>Lucro-alvo (%)</label><input id="preco-lucro" type="number" step="0.5" value="'+(DPreco.lucro||0)+'"></div>';
+  h+='<div class="maq-field"><label>Lucro-alvo (%) — só p/ o preço sugerido</label><input id="preco-lucro" type="number" step="0.5" value="'+(DPreco.lucro||0)+'"></div>';
   h+='<div class="maq-field"><label>PIS/Cofins (%)</label><input id="preco-pis" type="number" step="0.01" value="'+(DPreco.params.pisCofins||0)+'"></div>';
   h+='<div class="maq-field"><label>ICMS blocos/canaletas (%)</label><input id="preco-icmsb" type="number" step="0.5" value="'+(DPreco.params.icmsBlocos||0)+'"></div>';
   h+='<div class="maq-field"><label>ICMS demais (%)</label><input id="preco-icmso" type="number" step="0.5" value="'+(DPreco.params.icmsOutros||0)+'"></div>';
@@ -7816,36 +7843,31 @@ function renderPreco(){
   const busca=(_precoBusca||'').toLowerCase();
   const lista=prods.filter(p=>!busca || (p.nome||'').toLowerCase().includes(busca));
   h+='<div class="maq-card" style="padding:0;overflow-x:auto"><table class="frete-tbl" style="min-width:560px"><thead><tr>';
-  h+='<th>Produto</th><th class="r">Custo</th><th class="r">Mín c/ nota</th><th class="r">Mín s/ nota</th><th class="r">Tabela</th><th class="r">Margem</th></tr></thead><tbody>';
-  if(!lista.length){ h+='<tr><td colspan="6" style="text-align:center;color:var(--txt3);padding:16px">Nenhum produto. Abra a aba Material primeiro, ou ajuste a busca.</td></tr>'; }
+  h+='<th>Produto</th><th class="r">Custo</th><th class="r">Preço venda</th><th class="r">Margem c/nota</th><th class="r">Margem s/nota</th></tr></thead><tbody>';
+  if(!lista.length){ h+='<tr><td colspan="5" style="text-align:center;color:var(--txt3);padding:16px">Nenhum produto. Abra a aba Material primeiro, ou ajuste a busca.</td></tr>'; }
   lista.forEach(p=>{
     const id=_precoId(p);
     const custo=precoCustoProduto(p).total;
-    const gN=precoGrossUp(custo, p, true);
-    const gS=precoGrossUp(custo, p, false);
-    const tabela=parseFloat((DPreco.tabela||{})[id])||0;
-    // margem real do preço de tabela: (tabela - custo) / tabela
-    let margemTxt='—', margemCor='var(--txt3)';
-    if(tabela>0 && custo>0){
-      const margem=(tabela-custo)/tabela*100;
-      margemCor = margem<0 ? '#e0603c' : (margem<10?'#e0a040':'#4a9');
-      margemTxt=_precoFmt(margem)+'%';
+    const preco=parseFloat((DPreco.tabela||{})[id])||0;
+    const corM=(v)=> v<0?'#e0603c':(v<8?'#e0a040':'#4a9');
+    let mNtxt='—', mStxt='—', mNcor='var(--txt3)', mScor='var(--txt3)', prejuizo=false;
+    if(preco>0 && custo>0){
+      const mN=_precoMargemDePreco(custo, p, preco, true);
+      const mS=_precoMargemDePreco(custo, p, preco, false);
+      mNtxt=_precoFmt(mN.margemLiq)+'%'; mNcor=corM(mN.margemLiq);
+      mStxt=_precoFmt(mS.margemLiq)+'%'; mScor=corM(mS.margemLiq);
+      prejuizo = mN.lucroLiq<0;
     }
-    const pN = gN.erro? '—' : 'R$ '+_precoFmt(gN.preco);
-    const pS = gS.erro? '—' : 'R$ '+_precoFmt(gS.preco);
-    // alerta se tabela < mínimo com nota (vendendo no prejuízo)
-    const abaixo = tabela>0 && !gN.erro && tabela < gN.preco;
-    h+='<tr class="preco-lin" data-id="'+id+'" style="cursor:pointer'+(abaixo?';background:rgba(224,96,60,.08)':'')+'">';
-    h+='<td>'+(p.nome||id)+(abaixo?' <span title="tabela abaixo do mínimo com nota" style="color:#e0603c">⚠</span>':'')+'</td>';
+    h+='<tr class="preco-lin" data-id="'+id+'" style="cursor:pointer'+(prejuizo?';background:rgba(224,96,60,.08)':'')+'">';
+    h+='<td>'+(p.nome||id)+(prejuizo?' <span title="prejuízo com nota" style="color:#e0603c">⚠</span>':'')+'</td>';
     h+='<td class="r">R$ '+_precoFmt(custo)+'</td>';
-    h+='<td class="r"><b>'+pN+'</b></td>';
-    h+='<td class="r" style="color:var(--txt2)">'+pS+'</td>';
-    h+='<td class="r">'+(tabela>0?'R$ '+_precoFmt(tabela):'<span style="color:var(--txt3)">—</span>')+'</td>';
-    h+='<td class="r" style="color:'+margemCor+'">'+margemTxt+'</td>';
+    h+='<td class="r">'+(preco>0?'R$ '+_precoFmt(preco):'<span style="color:var(--txt3)">—</span>')+'</td>';
+    h+='<td class="r" style="color:'+mNcor+'"><b>'+mNtxt+'</b></td>';
+    h+='<td class="r" style="color:'+mScor+'">'+mStxt+'</td>';
     h+='</tr>';
   });
   h+='</tbody></table></div>';
-  h+='<div class="maq-nota" style="font-size:.72rem">Clique num produto para ver a composição do custo e lançar o preço de tabela atual. ⚠ = preço de tabela abaixo do mínimo com nota.</div>';
+  h+='<div class="maq-nota" style="font-size:.72rem">Clique num produto para digitar o preço de venda e ver a margem líquida detalhada. ⚠ = prejuízo com nota nesse preço.</div>';
   h+='</div>';
   c.innerHTML=h;
   _precoBind(c);
@@ -7909,15 +7931,26 @@ function _precoRenderDetalhe(c){
   }
   h+='</div>';
 
-  // preço de tabela atual + comparação
-  h+='<div class="maq-card"><div class="maq-card-cab"><span class="maq-card-nome">Seu preço de tabela</span></div><div style="padding:10px">';
-  h+='<div class="maq-field"><label>Preço de tabela atual (R$)</label><input id="preco-tabela" type="number" step="0.01" value="'+(tabela||'')+'" placeholder="digite seu preço"></div>';
+  // SEU PREÇO DE VENDA → margem líquida (com e sem nota)
+  h+='<div class="maq-card"><div class="maq-card-cab"><span class="maq-card-nome">Seu preço de venda → margem</span></div><div style="padding:10px">';
+  h+='<div class="maq-field"><label>Preço de venda (R$)</label><input id="preco-tabela" type="number" step="0.01" value="'+(tabela||'')+'" placeholder="digite o preço que você vende"></div>';
   if(tabela>0 && comp.total>0){
-    const margemReal=(tabela-comp.total)/tabela*100;
-    const vsMinN = !gN.erro ? (tabela-gN.preco) : null;
-    h+='<div class="frete-lin"><span>Margem real sobre o custo</span><b style="color:'+(margemReal<0?'#e0603c':'#4a9')+'">'+_precoFmt(margemReal)+'%</b></div>';
-    if(vsMinN!=null) h+='<div class="frete-lin"><span>vs. mínimo com nota</span><b style="color:'+(vsMinN<0?'#e0603c':'#4a9')+'">'+(vsMinN<0?'−':'+')+'R$ '+_precoFmt(Math.abs(vsMinN))+'</b></div>';
-    if(!gN.erro && tabela<gN.preco) h+='<div class="maq-aviso" style="border:1px solid #e0603c;border-radius:9px;margin-top:8px">⚠ Seu preço de tabela está <b>abaixo</b> do mínimo com nota — nesse produto, vendendo com nota você não cobre custo + impostos + lucro-alvo.</div>';
+    const mN=_precoMargemDePreco(comp.total, p, tabela, true);
+    const mS=_precoMargemDePreco(comp.total, p, tabela, false);
+    const corM=(v)=> v<0?'#e0603c':(v<8?'#e0a040':'#4a9');
+    h+='<table class="frete-tbl" style="margin-top:4px"><thead><tr><th></th><th class="r">Com nota</th><th class="r">Sem nota</th></tr></thead><tbody>';
+    h+='<tr><td>Preço de venda</td><td class="r">R$ '+_precoFmt(mN.preco)+'</td><td class="r">R$ '+_precoFmt(mS.preco)+'</td></tr>';
+    h+='<tr><td style="color:var(--txt3)">(−) Custo</td><td class="r" style="color:var(--txt3)">R$ '+_precoFmt(mN.custo)+'</td><td class="r" style="color:var(--txt3)">R$ '+_precoFmt(mS.custo)+'</td></tr>';
+    h+='<tr><td style="color:var(--txt3)">(−) PIS/Cofins + ICMS</td><td class="r" style="color:var(--txt3)">R$ '+_precoFmt(mN.impVenda)+'</td><td class="r" style="color:var(--txt3)">—</td></tr>';
+    h+='<tr><td style="color:var(--txt3)">(−) Admin</td><td class="r" style="color:var(--txt3)">R$ '+_precoFmt(mN.admin)+'</td><td class="r" style="color:var(--txt3)">R$ '+_precoFmt(mS.admin)+'</td></tr>';
+    h+='<tr><td style="color:var(--txt3)">(−) IRPJ + CSLL</td><td class="r" style="color:var(--txt3)">R$ '+_precoFmt(mN.irpjCsll)+'</td><td class="r" style="color:var(--txt3)">—</td></tr>';
+    h+='<tr style="border-top:2px solid var(--line)"><td><b>Lucro líquido</b></td><td class="r"><b style="color:'+corM(mN.lucroLiq)+'">R$ '+_precoFmt(mN.lucroLiq)+'</b></td><td class="r"><b style="color:'+corM(mS.lucroLiq)+'">R$ '+_precoFmt(mS.lucroLiq)+'</b></td></tr>';
+    h+='<tr><td><b>Margem líquida</b></td><td class="r"><b style="color:'+corM(mN.margemLiq)+'">'+_precoFmt(mN.margemLiq)+'%</b></td><td class="r"><b style="color:'+corM(mS.margemLiq)+'">'+_precoFmt(mS.margemLiq)+'%</b></td></tr>';
+    h+='</tbody></table>';
+    if(mN.lucroLiq<0) h+='<div class="maq-aviso" style="border:1px solid #e0603c;border-radius:9px;margin-top:8px">⚠ Com nota, nesse preço você tem <b>prejuízo</b> (o custo + impostos passam do preço de venda).</div>';
+    h+='<div class="maq-nota" style="font-size:.7rem;margin-top:6px">Margem líquida = o que sobra no seu bolso depois de custo, impostos e IRPJ/CSLL. Sem nota não paga PIS/Cofins, ICMS nem IRPJ/CSLL.</div>';
+  } else {
+    h+='<div class="maq-nota" style="font-size:.72rem">Digite o preço que você vende este produto pra ver quanto sobra líquido e a margem — com e sem nota.</div>';
   }
   h+='</div></div>';
   h+='</div>';
