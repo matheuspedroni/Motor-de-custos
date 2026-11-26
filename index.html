@@ -938,7 +938,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v148</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v149</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -1585,9 +1585,42 @@ async function migrarNomes2611(){
   await fb.set(flagRef,{em:Date.now(), alteracoes:n});
   console.log('Troca de nomes + produtos LKR (26/11) aplicada:', n, 'alterações');
 }
+
+// ===================================================================
+// TUBOS → TUBO (26/11/2026, 2ª troca) — roda UMA vez no Firebase.
+// Regra: nome que começa com "TUBOS " passa a "TUBO " e espaços duplos viram simples.
+// Atualiza produtos, traços, M.O. e produção lançada. Marca custos/migracoes/tubo_singular.
+// ===================================================================
+function _renTubo(n){ return (n && /^TUBOS\s/i.test(n)) ? ('TUBO '+String(n).slice(6)).replace(/\s+/g,' ').trim() : n; }
+async function migrarTuboSingular(){
+  const flagRef=fb.ref(db,'custos/migracoes/tubo_singular');
+  if((await fb.get(flagRef)).exists()) return;
+  const A=x=>Array.isArray(x)?x:(x&&typeof x==='object'?Object.keys(x).sort((a,b)=>(+a)-(+b)).map(k=>x[k]):[]);
+  let n=0;
+  const P=(await fb.get(fb.ref(db,'custos/mp/produtos'))).val()||{};
+  for(const k of Object.keys(P)){ const p=P[k]; if(!p) continue; const nn=_renTubo(p.nome); if(nn!==p.nome){ await fb.set(fb.ref(db,'custos/mp/produtos/'+k+'/nome'), nn); n++; } }
+  const T=(await fb.get(fb.ref(db,'custos/mp/tracos'))).val()||{};
+  for(const k of Object.keys(T)){ const t=T[k]; if(!t) continue; let mud=false;
+    const nn=_renTubo(t.nome); if(nn!==t.nome){ t.nome=nn; mud=true; }
+    if(t.produtos){ const a=A(t.produtos), b=a.map(_renTubo); if(JSON.stringify(a)!==JSON.stringify(b)){ t.produtos=b; mud=true; } }
+    if(mud){ await fb.set(fb.ref(db,'custos/mp/tracos/'+k), t); n++; } }
+  let MP=(await fb.get(fb.ref(db,'custos/mo/produtos'))).val();
+  if(MP){ MP=_desanitizeKeys(MP); let mud=false;
+    for(const s in MP){ const a=A(MP[s]); a.forEach(p=>{ if(p){ const nn=_renTubo(p.nome); if(nn!==p.nome){ p.nome=nn; mud=true; } } }); MP[s]=a; }
+    if(mud){ await fb.set(fb.ref(db,'custos/mo/produtos'), _sanitizeKeys(MP)); n++; } }
+  let PR=(await fb.get(fb.ref(db,'custos/mo/prodReal'))).val();
+  if(PR){ PR=_desanitizeKeys(PR); let mud=false;
+    for(const s in PR){ const o=PR[s]||{}, novo={};
+      for(const nm in o){ const nn=_renTubo(nm); if(nn!==nm) mud=true; novo[nn]=novo[nn]?A(novo[nn]).concat(A(o[nm])):o[nm]; }
+      PR[s]=novo; }
+    if(mud){ await fb.set(fb.ref(db,'custos/mo/prodReal'), _sanitizeKeys(PR)); n++; } }
+  await fb.set(flagRef,{em:Date.now(), alteracoes:n});
+  console.log('TUBOS → TUBO aplicado:', n, 'alterações');
+}
 async function initAuth(){
   FIREBASE_OK = await loadFirebase();
   DEMO = !FIREBASE_OK;
+  if(FIREBASE_OK){ try{ await migrarTuboSingular(); }catch(e){ console.error('migração tubo', e); alert('Não consegui aplicar a troca TUBOS → TUBO: '+e.message); } }
   if(FIREBASE_OK){ try{ await migrarNomes2611(); }catch(e){ console.error('migração 26/11', e); alert('Não consegui aplicar a troca de nomes / produtos novos: '+e.message); } }
 
   // Login desativado: abre direto no app com um usuário local padrão.
