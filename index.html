@@ -938,7 +938,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v147</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v148</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -1526,9 +1526,69 @@ let demoUser = null;
 // ===================================================================
 // AUTENTICAÇÃO
 // ===================================================================
+// ===================================================================
+// TROCA DE NOMES + PRODUTOS NOVOS LKR (26/11/2026) — roda UMA vez no Firebase.
+// Mesma lista do app Gestão. Renomeia (produtos, traços, M.O., produção lançada)
+// e cria os tubos novos na Tubos maquina LKR com traço próprio copiado do
+// TUBOS DN 600 PB ARMADO PA1. Marca custos/migracoes/nomes_2611.
+// ===================================================================
+const RENOMEAR_2611 = {"BLOCOS 14": "BLOCO ESTRUTURAL 14x19x39", "BLOCOS 19": "BLOCO ESTRUTURAL 19x19x39", "BLOCO 11,5": "BLOCO 11,5x19x39", "BLOCO 09": "BLOCO 9x19x39", "MEIO BLOCO 14": "MEIO BLOCO 14x19x19", "MEIO BLOCO 19": "MEIO BLOCO 19x19x19", "CANALETA 14": "CANALETA 14x19x39", "CANALETA 19": "CANALETA 19x19x39", "PISO GRAMA": "PISO GRAMA 33x33x8", "MEIO FIO": "MEIO FIO 10x12x30x100", "TUBOS DN 400 PB  ARMADO": "TUBO DN 400 PB PA1"};
+const NOVOS_LKR_2611 = ["TUBO DN 400 PB PS1", "TUBO DN 400 PB PA2", "TUBO DN 300 PB PA1", "TUBO DN 300 PB PA2", "TUBO DN 300 PB PS1"];
+const _nk = s => String(s||'').toUpperCase().replace(/\s+/g,' ').trim();
+const _REN2611 = Object.fromEntries(Object.entries(RENOMEAR_2611).map(([a,b])=>[_nk(a),b]));
+function _ren2611(n){ return (n && _REN2611[_nk(n)]) || n; }
+function _arr2611(x){ return Array.isArray(x)?x:(x&&typeof x==='object'?Object.keys(x).sort((a,b)=>(+a)-(+b)).map(k=>x[k]):[]); }
+async function migrarNomes2611(){
+  const flagRef=fb.ref(db,'custos/migracoes/nomes_2611');
+  if((await fb.get(flagRef)).exists()) return;
+  let n=0;
+  // ---- produtos (renomeia)
+  const P=(await fb.get(fb.ref(db,'custos/mp/produtos'))).val()||{};
+  const lista=Object.keys(P).map(k=>({k, p:P[k]})).filter(x=>x.p);
+  for(const {k,p} of lista){ const nn=_ren2611(p.nome); if(nn!==p.nome){ await fb.set(fb.ref(db,'custos/mp/produtos/'+k+'/nome'), nn); p.nome=nn; n++; } }
+  // ---- traços (renomeia)
+  const T=(await fb.get(fb.ref(db,'custos/mp/tracos'))).val()||{};
+  for(const k of Object.keys(T)){ const t=T[k]; if(!t) continue; let mud=false;
+    const nn=_ren2611(t.nome); if(nn!==t.nome){ t.nome=nn; mud=true; }
+    if(t.produtos){ const a=_arr2611(t.produtos), b=a.map(_ren2611); if(JSON.stringify(a)!==JSON.stringify(b)){ t.produtos=b; mud=true; } }
+    if(mud){ await fb.set(fb.ref(db,'custos/mp/tracos/'+k), t); n++; } }
+  // ---- M.O. produtos por setor + produção lançada
+  let MP=(await fb.get(fb.ref(db,'custos/mo/produtos'))).val(); MP=MP?_desanitizeKeys(MP):null;
+  let moMud=false;
+  if(MP){ for(const s in MP){ const a=_arr2611(MP[s]); a.forEach(p=>{ if(p){ const nn=_ren2611(p.nome); if(nn!==p.nome){ p.nome=nn; moMud=true; } } }); MP[s]=a; } }
+  let PR=(await fb.get(fb.ref(db,'custos/mo/prodReal'))).val();
+  if(PR){ PR=_desanitizeKeys(PR); let mud=false;
+    for(const s in PR){ const o=PR[s]||{}, novo={};
+      for(const nm in o){ const nn=_ren2611(nm); if(nn!==nm) mud=true; novo[nn]=novo[nn]?_arr2611(novo[nn]).concat(_arr2611(o[nm])):o[nm]; }
+      PR[s]=novo; }
+    if(mud){ await fb.set(fb.ref(db,'custos/mo/prodReal'), _sanitizeKeys(PR)); n++; } }
+  // ---- produtos novos (só cria se ainda não existir)
+  const existe=new Set(lista.map(x=>_nk(x.p.nome)));
+  const modelo=lista.find(x=>_nk(x.p.nome)===_nk('TUBOS DN 600 PB ARMADO PA1'));
+  const tModelo=modelo ? (_arr2611(T).length, T[modelo.p.traco] || Object.values(T).find(t=>t&&t.id===modelo.p.traco)) : null;
+  let proxP=Math.max(-1,...lista.map(x=>+x.p.id||+x.k||0))+1;
+  let proxT=Math.max(0,...Object.keys(T).map(k=>+k||0),...Object.values(T).filter(Boolean).map(t=>+t.id||0))+1;
+  // setor da M.O. onde está o tubo modelo (Tubos maquina LKR)
+  let setorLKR='Tubos maquina LKR', moModelo=null;
+  if(MP){ for(const s in MP){ const m=_arr2611(MP[s]).find(p=>p&&_nk(p.nome)===_nk('TUBOS DN 600 PB ARMADO PA1')); if(m){ setorLKR=s; moModelo=m; break; } } }
+  for(const nome of NOVOS_LKR_2611){
+    if(existe.has(_nk(nome))) continue;
+    const idT=proxT++, idP=proxP++;
+    if(tModelo){ const t=JSON.parse(JSON.stringify(tModelo)); t.id=idT; t.nome=nome; t.produtos=[nome]; t.tipoTraco='individual'; t.grupoOrigem='copiado de '+(modelo.p.nome); t.categoria=t.categoria||'Tubos';
+      await fb.set(fb.ref(db,'custos/mp/tracos/'+idT), t); }
+    const p={id:idP, nome, familia:(modelo&&modelo.p.familia)||'Prensa Tubos', pesoPeca:0, traco:tModelo?idT:((modelo&&modelo.p.traco)||0), aco:{}, moAcoTubo:0, embRateado:{}, custoAcoAtual:0, custoEmbAtual:0, novo:true};
+    await fb.set(fb.ref(db,'custos/mp/produtos/'+idP), p);
+    if(MP){ if(!MP[setorLKR]) MP[setorLKR]=[]; MP[setorLKR]=_arr2611(MP[setorLKR]); MP[setorLKR].push({nome, pessoas:(moModelo&&moModelo.pessoas)||0, ocup:(moModelo&&moModelo.ocup)||1, prodDia:0, moAtual:0, novo:true}); moMud=true; }
+    existe.add(_nk(nome)); n++;
+  }
+  if(MP && moMud){ await fb.set(fb.ref(db,'custos/mo/produtos'), _sanitizeKeys(MP)); n++; }
+  await fb.set(flagRef,{em:Date.now(), alteracoes:n});
+  console.log('Troca de nomes + produtos LKR (26/11) aplicada:', n, 'alterações');
+}
 async function initAuth(){
   FIREBASE_OK = await loadFirebase();
   DEMO = !FIREBASE_OK;
+  if(FIREBASE_OK){ try{ await migrarNomes2611(); }catch(e){ console.error('migração 26/11', e); alert('Não consegui aplicar a troca de nomes / produtos novos: '+e.message); } }
 
   // Login desativado: abre direto no app com um usuário local padrão.
   if(!LOGIN_ATIVO){
