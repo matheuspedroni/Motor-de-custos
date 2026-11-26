@@ -938,7 +938,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v146</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v147</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -7580,9 +7580,14 @@ function _precoIcmsCat(p){
 let _precoMoCache=null;
 // custo da M.O. por pessoa (replica calcPessoa — função pura, sem deps de módulo)
 function _precoCalcPessoa(p){
-  const risco=p.tipoRisco||p._tipo2||''; // tipoRisco não persiste; só pega periculosidade/insalubridade pelos campos
-  const peric = (/renato/i.test(p.nome||'')) ? ((p.salario||0)+(p.extras50||0)+(p.extras100||0))*0.30 : 0;
-  const insal = (p.insalubridade||0)>0 ? (p.insalubridade||0) : 0;
+  // REGRA IDÊNTICA à aba M.O. (linha ~4985): tipoRisco é inferido com if/else if —
+  // Renato = periculosidade (e insalubridade NÃO entra); senão, insalubridade>0 = insalubridade.
+  // Antes eu somava os DOIS no Renato, inflando a folha em ~R$648 e desviando centavos no custo.
+  let tipoRisco='none';
+  if(/renato/i.test(p.nome||'')) tipoRisco='periculosidade';
+  else if((p.insalubridade||0)>0) tipoRisco='insalubridade';
+  const peric = tipoRisco==='periculosidade' ? ((p.salario||0)+(p.extras50||0)+(p.extras100||0))*0.30 : 0;
+  const insal = tipoRisco==='insalubridade' ? (p.insalubridade||0) : 0;
   const totalMes=(p.salario||0)+(p.va||0)+(p.quinquenio||0)+(p.anuenio||0)+insal+peric+(p.extras50||0)+(p.extras100||0)+(p.foraFolha||0);
   const ferias=(((p.salario||0)+(p.extras50||0)+(p.extras100||0))/3)*2.33;
   const inss=ferias*0.26;
@@ -7673,6 +7678,37 @@ function _precoMoPeca(nomeProduto){
   }catch(e){ console.warn('_precoMoPeca', e&&e.message); }
   return 0;
 }
+
+// DEBUG M.O.: decompõe o custo de M.O. de um produto pelo nome, pra comparar com a aba M.O.
+// Uso no console: __moDebug('ANEL DE CONCRETO C/ FUNDO Ø2,16 x1,60')
+window.__moDebug = function(nomeProduto){
+  const MO=window.__moD; if(!MO||!MO.produtos){ console.log('sem __moD'); return; }
+  const jornada=parseFloat(MO.jornada)||8.8, diasIdeal=parseFloat(MO.diasIdeal)||22;
+  const FAM=MO.familias||Object.keys(MO.produtos);
+  const folha={}, nP={}; FAM.forEach(f=>{folha[f]=0;nP[f]=0;});
+  (MO.pessoas||[]).forEach(p=>{
+    const c=_precoCalcPessoa(p); const tipo=p.tipo||p._tipo||'fixo'; const fam=p.fam||p._fam||FAM[0];
+    if(tipo==='fixo'){ if(folha[fam]!=null){ folha[fam]+=c; nP[fam]+=1; } }
+    else { const rat=p.rateios||p._rateios||{}; const soma=FAM.reduce((s,f)=>s+(rat[f]||0),0)||1; FAM.forEach(f=>{ const pct=(rat[f]||0)/soma; if(folha[f]!=null){ folha[f]+=c*pct; if(pct>0) nP[f]+=pct; } }); }
+  });
+  const extraCentral=_precoRateioCentrais(MO, FAM, folha);
+  for(const f of FAM){
+    const prod=(MO.produtos[f]||[]).find(x=>x&&x.nome===nomeProduto);
+    if(prod){
+      const central=_precoEhCentral(f);
+      const folhaEfetiva=central?0:(folha[f]+(extraCentral[f]||0));
+      const indireto=_precoIndiretoSetor(MO,f);
+      const custoSetor=folhaEfetiva+indireto;
+      const horasSetor=nP[f]*diasIdeal*jornada;
+      const custoHora=horasSetor>0?custoSetor/horasSetor:0;
+      const moPeca=prod.prodDia>0?((parseFloat(prod.pessoas)||0)*(parseFloat(prod.ocup)||0)*jornada*custoHora)/prod.prodDia:0;
+      const out={produto:prod.nome, setor:f, folhaSetor:+folha[f].toFixed(2), deCentral:+(extraCentral[f]||0).toFixed(2), epiIndireto:+indireto.toFixed(2), custoSetor:+custoSetor.toFixed(2), nPessoas:+nP[f].toFixed(3), horasSetor:+horasSetor.toFixed(1), custoHora:+custoHora.toFixed(4), prod_pessoas:prod.pessoas, prod_ocup:prod.ocup, prod_prodDia:prod.prodDia, moPeca:+moPeca.toFixed(3)};
+      console.log('=== DEBUG M.O.', prod.nome, '==='); console.table?console.table(out):console.log(out); console.log(JSON.stringify(out,null,2));
+      return out;
+    }
+  }
+  console.log('produto não encontrado na M.O.:', nomeProduto);
+};
 
 // ---- custo de máquina por peça (porTon do setor × peso em ton) ----
 let _precoMaqCache=null;
