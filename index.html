@@ -938,7 +938,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v142</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v144</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -1728,7 +1728,7 @@ function toggleUserMenu(){
         if(v!=null) backup.mp[c]=v;
       }
       // M.O.: cada seção em custos/mo/<secao>
-      const moSecs=['pessoas','produtos','tipoLanc','jornada','diasIdeal','indiretos','epis','familias','centrais','prodReal','consumo'];
+      const moSecs=['pessoas','produtos','tipoLanc','jornada','diasIdeal','indiretos','epis','familias','centrais','prodReal','consumo','salHist'];
       for(const s of moSecs){
         let v = await lerNuvem('custos/mo/'+s);
         if(v===undefined){
@@ -4805,7 +4805,7 @@ function salvarMO(){
 }
 async function initMaoDeObra(container){
   moReady = false;
-  const SECOES=['pessoas','produtos','tipoLanc','jornada','diasIdeal','indiretos','epis','familias','centrais','prodReal','consumo'];
+  const SECOES=['pessoas','produtos','tipoLanc','jornada','diasIdeal','indiretos','epis','familias','centrais','prodReal','consumo','salHist'];
   // carrega cada seção de custos/mo/<secao>; se não existir, tenta o bloco antigo (migração); senão DEFAULT
   Dmo = JSON.parse(JSON.stringify(DMO_DEFAULT));
   if(DEMO || !db){
@@ -5000,6 +5000,22 @@ const pessoas = Dmo.pessoas.map((p,i)=>{
   Object.defineProperty(p,'_rateios',{configurable:true,enumerable:false,get(){return p.rateios;},set(v){p.rateios=v;}});
   return p;
 });
+// ---------- HISTÓRICO SALARIAL por colaborador ----------
+// Dmo.salHist = { "Nome": [ {data:'YYYY-MM-DD', de, para} ] }
+function registrarSalHist(p, de, para){
+  de=parseFloat(de)||0; para=parseFloat(para)||0;
+  if(Math.abs(de-para)<0.005) return; // nada mudou
+  if(!Dmo.salHist) Dmo.salHist={};
+  const chave=p.nome||('#'+(p._idx!=null?p._idx:''));
+  if(!Dmo.salHist[chave]) Dmo.salHist[chave]=[];
+  const hoje=new Date().toISOString().slice(0,10);
+  const lista=Dmo.salHist[chave];
+  // se já houve lançamento hoje, atualiza o "para" (evita 3 linhas numa edição só)
+  const ult=lista[lista.length-1];
+  if(ult && ult.data===hoje){ ult.para=para; }
+  else { lista.push({data:hoje, de, para}); }
+  salvarSecaoMO('salHist');
+}
 // grava a alocação (setor/tipo/rateios) da pessoa no objeto real do Dmo
 function gravarAlocPessoa(p){
   // p JÁ é o objeto real do Dmo (v35), então p._fam/_tipo/_rateios (aliases) já gravaram em fam/tipo/rateios.
@@ -5675,11 +5691,57 @@ function novaPessoa(){
   return {nome:'',salario:0,extras50:0,extras100:0,foraFolha:0,va:0,quinquenio:0,anuenio:0,insalubridade:0,periculosidade:0,tipoRisco:'none',
           _idx:Date.now(),_open:true,_tipo:'fixo',_fam:FAM[0],_rateios:{}};
 }
+// ---------- MODAL: histórico salarial de todos os colaboradores ----------
+function abrirHistSalarial(){
+  const hist=Dmo.salHist||{};
+  const fmtD=(d)=>{ try{ const [a,m,di]=d.split('-'); return di+'/'+m+'/'+a; }catch(e){ return d; } };
+  const nomesComHist=Object.keys(hist).filter(n=>Array.isArray(hist[n])&&hist[n].length);
+  let body='';
+  if(!nomesComHist.length){
+    body='<div style="color:var(--txt3);text-align:center;padding:24px">Nenhuma variação salarial registrada ainda.<br><span style="font-size:.8rem">Toda vez que você alterar o <b>salário base</b> de um colaborador, a mudança (de → para, com a data) aparece aqui automaticamente.</span></div>';
+  } else {
+    // ordena por nome
+    nomesComHist.sort((a,b)=>a.localeCompare(b));
+    nomesComHist.forEach(nome=>{
+      const lista=[...hist[nome]].sort((a,b)=>a.data.localeCompare(b.data));
+      const atual=lista[lista.length-1];
+      const primeiro=lista[0];
+      const varTotal=(atual.para-primeiro.de);
+      const pctTotal=primeiro.de>0?(varTotal/primeiro.de*100):0;
+      body+='<div style="margin-bottom:18px;border:1px solid var(--line);border-radius:10px;overflow:hidden">';
+      body+='<div style="background:var(--surf2);padding:9px 12px;display:flex;justify-content:space-between;align-items:center"><b>'+nome+'</b>';
+      body+='<span style="font-size:.78rem;color:'+(varTotal>=0?'#4a9':'#e0603c')+'">'+(varTotal>=0?'▲':'▼')+' R$ '+fmt(Math.abs(varTotal))+' ('+(varTotal>=0?'+':'')+pctTotal.toFixed(1)+'%) desde '+fmtD(primeiro.data)+'</span></div>';
+      body+='<table class="frete-tbl" style="width:100%;font-size:.82rem"><thead><tr><th>Data</th><th class="r">De</th><th class="r">Para</th><th class="r">Variação</th></tr></thead><tbody>';
+      lista.forEach(l=>{
+        const d=l.para-l.de; const pct=l.de>0?(d/l.de*100):0;
+        body+='<tr><td>'+fmtD(l.data)+'</td><td class="r">R$ '+fmt(l.de)+'</td><td class="r"><b>R$ '+fmt(l.para)+'</b></td>';
+        body+='<td class="r" style="color:'+(d>=0?'#4a9':'#e0603c')+'">'+(d>=0?'+':'')+'R$ '+fmt(d)+' <span style="font-size:.72rem">('+(d>=0?'+':'')+pct.toFixed(1)+'%)</span></td></tr>';
+      });
+      body+='</tbody></table></div>';
+    });
+  }
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:flex-start;justify-content:center;padding:24px;overflow:auto';
+  ov.innerHTML='<div style="background:var(--surf);border-radius:14px;max-width:620px;width:100%;padding:18px;box-shadow:0 10px 40px rgba(0,0,0,.4)">'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px"><div style="font-size:1.05rem;font-weight:700">📈 Histórico salarial</div>'+
+    '<button id="hs-fechar" style="border:none;background:var(--surf2);color:var(--txt);border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:1rem">✕</button></div>'+
+    '<div style="font-size:.74rem;color:var(--txt3);margin-bottom:12px">Só o <b>salário base</b> é rastreado. Encargos, VA e adicionais seguem os valores atuais.</div>'+
+    body+'</div>';
+  ov.onclick=(e)=>{ if(e.target===ov) document.body.removeChild(ov); };
+  document.body.appendChild(ov);
+  ov.querySelector('#hs-fechar').onclick=()=>{ document.body.removeChild(ov); };
+}
+
 function renderPessoas(){
   const wrap=document.getElementById('pessoas'); wrap.innerHTML='';
+  const barra=document.createElement('div'); barra.style.cssText='display:flex;gap:8px;flex-wrap:wrap;align-items:center';
   const add=document.createElement('button');add.className='add-pessoa';add.innerHTML='<span style="font-size:1rem">+</span> Adicionar colaborador';
   add.onclick=()=>{const np=novaPessoa();pessoas.push(np);Dmo.pessoas.push(np);salvarSecaoMO('pessoas');renderPessoas();recalc();};
-  wrap.appendChild(add);
+  barra.appendChild(add);
+  const bHist=document.createElement('button'); bHist.className='add-pessoa'; bHist.style.cssText='background:var(--surf2);border:1px solid var(--line)'; bHist.innerHTML='📈 Histórico salarial';
+  bHist.onclick=()=>abrirHistSalarial();
+  barra.appendChild(bHist);
+  wrap.appendChild(barra);
   pessoas.forEach((p)=>{
     const c=calcPessoa(p);
     const div=document.createElement('div');div.className='pessoa'+(p._open?' open':'');
@@ -5714,7 +5776,13 @@ function renderPessoas(){
     const fg=document.createElement('div');fg.className='field-grid';
     fields.forEach(([key,lab])=>{const f=document.createElement('div');f.className='field';f.innerHTML=`<label>${lab}</label>`;
       const inp=document.createElement('input');inp.type='number';inp.value=p[key];
-      inp.oninput=()=>{p[key]=parseFloat(inp.value)||0;if(p._refreshPeric)p._refreshPeric();updHead(div,p);salvarSecaoMO('pessoas');recalc();};f.appendChild(inp);fg.appendChild(f);});
+      inp.oninput=()=>{p[key]=parseFloat(inp.value)||0;if(p._refreshPeric)p._refreshPeric();updHead(div,p);salvarSecaoMO('pessoas');recalc();};
+      // salário base: registra variação no histórico ao sair do campo (não a cada tecla)
+      if(key==='salario'){
+        inp.onfocus=()=>{ inp.dataset.sal0=String(parseFloat(inp.value)||0); };
+        inp.onblur=()=>{ const de=parseFloat(inp.dataset.sal0||'NaN'); const para=parseFloat(inp.value)||0; if(!isNaN(de)) registrarSalHist(p, de, para); };
+      }
+      f.appendChild(inp);fg.appendChild(f);});
     // risco
     const riscoSel=document.createElement('div');riscoSel.className='field';riscoSel.style.gridColumn='1/-1';riscoSel.innerHTML=`<label>Adicional de risco</label>`;
     const rsel=document.createElement('select');rsel.className='p-sel';rsel.style.fontSize='.76rem';
@@ -7459,6 +7527,8 @@ let DPreco = null; // { tabela:{prodId:preco}, lucro, params:{...} }
 let _precoContainer = null;
 let _precoBusca = '';
 let _precoDetalhe = null; // id do produto aberto no detalhe
+let _precoView = 'tabela'; // 'tabela' | 'historico'
+let _precoHistProd = null; // id do produto aberto no detalhe do histórico
 
 const PRECO_DEFAULT = {
   tabela: {},        // preço de tabela atual por produto (digitado)
@@ -7683,13 +7753,19 @@ function _precoMpPeca(p){
   try{
     const D = window.__mpD; if(!D) return 0;
     const hoje=new Date().toISOString().slice(0,10);
-    // 1) concreto (traço)
+    // 1) concreto (traço) — IGUAL à aba Traços: custoPeca = custoTraco / pesoBatida × pesoPeca.
+    //    pesoBatida = soma dos SÓLIDOS (aditivos são ML, não entram no peso). A aba divide por
+    //    pesoBatida, NÃO pelo campo salvo t.pesoTraco — por isso antes dava diferença de centavos.
     let mp=0;
     const t=(D.tracos||[]).find(x=>x.id===p.traco);
-    if(t && t.pesoTraco>0){
-      let custoTraco=0;
-      _PRECO_KEYS.forEach(k=>{ const q=(t.materiais&&t.materiais[k])||0; if(q) custoTraco+=q*_precoCustoUnitEm(D,k,hoje); });
-      mp=(custoTraco/t.pesoTraco)*(p.pesoPeca||0);
+    if(t){
+      const SOLIDOS=['areiaInd','granilha','pedrisco','brita','areiaNat','cimento'];
+      let pesoBatida=0; SOLIDOS.forEach(k=>{ pesoBatida+=parseFloat((t.materiais&&t.materiais[k]))||0; });
+      if(pesoBatida>0){
+        let custoTraco=0;
+        _PRECO_KEYS.forEach(k=>{ const q=(t.materiais&&t.materiais[k])||0; if(q) custoTraco+=q*_precoCustoUnitEm(D,k,hoje); });
+        mp=(custoTraco/pesoBatida)*(p.pesoPeca||0);
+      }
     }
     // 2) aço — igual custoAco(p): usa os preços VIGENTES D.precosAco[tipo] (por nome do aço)
     let aco=0;
@@ -7846,7 +7922,7 @@ function initPrecoFinal(container){
   _precoInvalidaCache();
   renderPreco(); // desenha já (pode vir com custo 0 se os dados ainda não chegaram)
   // carrega TODOS os dados de custo (tracos, compras, aço, emb, preços, seções da M.O.) e re-renderiza
-  (async()=>{ try{ await _precoCarregarCustos(); _precoInvalidaCache(); if(document.getElementById('preco-container')) renderPreco(); }catch(e){ console.warn('preço carga', e&&e.message); } })();
+  (async()=>{ try{ await _precoCarregarCustos(); _precoInvalidaCache(); _precoTirarFotoMes(false); if(document.getElementById('preco-container')) renderPreco(); }catch(e){ console.warn('preço carga', e&&e.message); } })();
 }
 
 function _precoGarantirDados(){
@@ -7854,17 +7930,152 @@ function _precoGarantirDados(){
   if(!DPreco.tabela) DPreco.tabela={};
   if(!DPreco.params) DPreco.params=JSON.parse(JSON.stringify(PRECO_DEFAULT.params));
   if(DPreco.lucro==null) DPreco.lucro=PRECO_DEFAULT.lucro;
+  if(!DPreco.historico) DPreco.historico={}; // { 'YYYY-MM': { prodId:{nome,custo,preco,margemN,margemS,lucroN,lucroS} } }
+}
+
+// ---------- HISTÓRICO: foto mensal automática de custo/margem por produto ----------
+function _precoMesAtual(){ return new Date().toISOString().slice(0,7); }
+
+// Tira uma foto de TODOS os produtos no mês corrente (custo + margens c/ e s/ nota).
+// Só grava se o mês ainda não tem foto (1 foto por mês, automática ao abrir a aba).
+// forcar=true regrava a foto do mês (usado pelo botão "atualizar foto de hoje").
+function _precoTirarFotoMes(forcar){
+  _precoGarantirDados();
+  const mes=_precoMesAtual();
+  if(DPreco.historico[mes] && !forcar) return false;
+  const prods=_precoProdutos();
+  if(!prods.length) return false; // dados ainda não carregaram; não grava foto vazia
+  const foto={};
+  prods.forEach(p=>{
+    const id=_precoId(p);
+    let custo=0; try{ custo=precoCustoProduto(p).total; }catch(e){ custo=0; }
+    const preco=parseFloat((DPreco.tabela||{})[id])||0;
+    let margemN=null, margemS=null, lucroN=null, lucroS=null;
+    if(preco>0 && custo>0){
+      const mN=_precoMargemDePreco(custo, p, preco, true);
+      const mS=_precoMargemDePreco(custo, p, preco, false);
+      if(mN){ margemN=Math.round(mN.margemLiq*100)/100; lucroN=Math.round(mN.lucroLiq*100)/100; }
+      if(mS){ margemS=Math.round(mS.margemLiq*100)/100; lucroS=Math.round(mS.lucroLiq*100)/100; }
+    }
+    foto[id]={ nome:(p.nome||id), custo:Math.round(custo*100)/100, preco, margemN, margemS, lucroN, lucroS };
+  });
+  DPreco.historico[mes]=foto;
+  salvarSecaoPreco('historico');
+  return true;
+}
+
+// barra de abas Tabela | Histórico
+function _precoAbasHtml(ativa){
+  const ab=(id,txt)=>'<button class="preco-aba'+(ativa===id?' on':'')+'" data-aba="'+id+'" style="padding:7px 14px;border-radius:8px;border:1px solid var(--line);background:'+(ativa===id?'var(--acc)':'var(--surf2)')+';color:'+(ativa===id?'#fff':'var(--txt)')+';cursor:pointer;font-weight:600;font-size:.82rem">'+txt+'</button>';
+  return '<div style="display:flex;gap:8px;margin:4px 0 12px">'+ab('tabela','Tabela')+ab('historico','Histórico')+'</div>';
+}
+
+// ordena meses (YYYY-MM) crescente
+function _precoMesesHist(){ return Object.keys(DPreco.historico||{}).sort(); }
+function _precoMesLabel(m){ try{ const [a,me]=m.split('-'); const nomes=['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez']; return nomes[(+me)-1]+'/'+a; }catch(e){ return m; } }
+
+// ===================== HISTÓRICO PREÇO FINAL =====================
+function _precoRenderHistorico(c){
+  _precoGarantirDados();
+  const meses=_precoMesesHist();
+  let h='<div class="module-view"><div class="maq-head"><div class="maq-head-t">Preço Final</div><span class="help" onclick="abrirAjuda(&#39;preco_final&#39;)">?</span></div>';
+  h+='<div class="maq-head-sub">Variação mensal de custo e margem por produto. A foto é tirada automaticamente 1x por mês ao abrir esta aba.</div>';
+  h+=_precoAbasHtml('historico');
+
+  if(!meses.length){
+    h+='<div class="maq-card" style="padding:18px;text-align:center;color:var(--txt3)">Ainda não há fotos no histórico. A primeira é tirada automaticamente assim que os custos carregam. <br><button id="preco-foto-ja" style="margin-top:10px;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--surf2);color:var(--txt);cursor:pointer">📸 Tirar foto de hoje agora</button></div>';
+    h+='</div>'; c.innerHTML=h; _precoBindHist(c); return;
+  }
+
+  // Detalhe de UM produto ao longo do tempo
+  if(_precoHistProd!=null){ return _precoRenderHistDetalhe(c); }
+
+  // Visão geral: para cada produto, custo e margem c/nota no 1º e no último mês + Δ
+  const primeiro=meses[0], ultimo=meses[meses.length-1];
+  const fotoU=DPreco.historico[ultimo]||{};
+  const fotoP=DPreco.historico[primeiro]||{};
+  // ids presentes na última foto
+  const ids=Object.keys(fotoU);
+  const busca=(_precoBusca||'').toLowerCase();
+  const linhas=ids.filter(id=>!busca || ((fotoU[id]&&fotoU[id].nome)||'').toLowerCase().includes(busca))
+                  .sort((a,b)=>((fotoU[a].nome||'').localeCompare(fotoU[b].nome||'')));
+
+  h+='<div class="maq-nota" style="font-size:.74rem;margin-bottom:8px">'+meses.length+' foto(s) · de <b>'+_precoMesLabel(primeiro)+'</b> a <b>'+_precoMesLabel(ultimo)+'</b>. Clique num produto para ver a linha do tempo completa. '+
+     '<button id="preco-foto-ja" style="margin-left:6px;padding:4px 10px;border-radius:7px;border:1px solid var(--line);background:var(--surf2);color:var(--txt);cursor:pointer;font-size:.72rem">📸 Atualizar foto de hoje</button></div>';
+
+  h+='<div style="margin:8px 0"><input id="preco-busca" type="text" placeholder="🔎 buscar produto..." value="'+(_precoBusca||'').replace(/"/g,'&quot;')+'" style="width:100%;padding:9px;border-radius:8px;border:1px solid var(--line);background:var(--surf2);color:var(--txt)"></div>';
+
+  h+='<div class="maq-card" style="padding:0;overflow-x:auto"><table class="frete-tbl" style="min-width:640px"><thead><tr>';
+  h+='<th>Produto</th><th class="r">Custo '+_precoMesLabel(primeiro)+'</th><th class="r">Custo '+_precoMesLabel(ultimo)+'</th><th class="r">Δ custo</th><th class="r">Margem c/nota '+_precoMesLabel(ultimo)+'</th></tr></thead><tbody>';
+  const seta=(d)=> d>0.009?'▲':(d<-0.009?'▼':'=');
+  const corD=(d,inverso)=>{ if(Math.abs(d)<0.009) return 'var(--txt3)'; const sobe=d>0; const bom= inverso? !sobe : sobe; return bom?'#4a9':'#e0603c'; };
+  linhas.forEach(id=>{
+    const u=fotoU[id]||{}; const p0=fotoP[id]||{};
+    const cu=u.custo||0; const c0=(p0.custo!=null)?p0.custo:null;
+    const dC=(c0!=null)?(cu-c0):null;
+    const mN=(u.margemN!=null)?u.margemN:null;
+    h+='<tr class="preco-hist-lin" data-id="'+id+'" style="cursor:pointer">';
+    h+='<td>'+(u.nome||id)+'</td>';
+    h+='<td class="r">'+(c0!=null?'R$ '+_precoFmt(c0):'<span style="color:var(--txt3)">—</span>')+'</td>';
+    h+='<td class="r">R$ '+_precoFmt(cu)+'</td>';
+    h+='<td class="r" style="color:'+(dC!=null?corD(dC,true):'var(--txt3)')+'">'+(dC!=null?seta(dC)+' R$ '+_precoFmt(Math.abs(dC)):'—')+'</td>';
+    h+='<td class="r">'+(mN!=null?'<b style="color:'+(mN<0?'#e0603c':(mN<8?'#e0a040':'#4a9'))+'">'+_precoFmt(mN)+'%</b>':'<span style="color:var(--txt3)">—</span>')+'</td>';
+    h+='</tr>';
+  });
+  h+='</tbody></table></div>';
+  h+='<div class="maq-nota" style="font-size:.72rem">Δ custo verde = custo caiu (bom); vermelho = custo subiu.</div>';
+  h+='</div>';
+  c.innerHTML=h; _precoBindHist(c);
+}
+
+function _precoRenderHistDetalhe(c){
+  const meses=_precoMesesHist();
+  const id=_precoHistProd;
+  const nome=(()=>{ for(let i=meses.length-1;i>=0;i--){ const f=DPreco.historico[meses[i]]; if(f&&f[id]&&f[id].nome) return f[id].nome; } return id; })();
+  let h='<div class="module-view"><div class="maq-head"><div class="maq-head-t">Histórico — '+nome+'</div></div>';
+  h+='<div style="margin:4px 0 12px"><button id="preco-hist-voltar" style="padding:7px 14px;border-radius:8px;border:1px solid var(--line);background:var(--surf2);color:var(--txt);cursor:pointer">← voltar ao histórico</button></div>';
+  h+='<div class="maq-card" style="padding:0;overflow-x:auto"><table class="frete-tbl" style="min-width:620px"><thead><tr>';
+  h+='<th>Mês</th><th class="r">Custo</th><th class="r">Preço venda</th><th class="r">Margem c/nota</th><th class="r">Lucro c/nota</th><th class="r">Margem s/nota</th></tr></thead><tbody>';
+  let custoAnt=null;
+  meses.forEach(m=>{
+    const f=DPreco.historico[m]||{}; const r=f[id];
+    if(!r){ h+='<tr><td>'+_precoMesLabel(m)+'</td><td colspan="5" style="color:var(--txt3);text-align:center">(produto não existia nesta foto)</td></tr>'; return; }
+    let deltaTxt='';
+    if(custoAnt!=null && r.custo!=null){ const d=r.custo-custoAnt; if(Math.abs(d)>=0.009){ const sobe=d>0; deltaTxt=' <span style="font-size:.68rem;color:'+(sobe?'#e0603c':'#4a9')+'">('+(sobe?'▲':'▼')+' R$ '+_precoFmt(Math.abs(d))+')</span>'; } }
+    custoAnt=r.custo;
+    const corM=(v)=> v==null?'var(--txt3)':(v<0?'#e0603c':(v<8?'#e0a040':'#4a9'));
+    h+='<tr><td><b>'+_precoMesLabel(m)+'</b></td>';
+    h+='<td class="r">R$ '+_precoFmt(r.custo)+deltaTxt+'</td>';
+    h+='<td class="r">'+(r.preco>0?'R$ '+_precoFmt(r.preco):'—')+'</td>';
+    h+='<td class="r" style="color:'+corM(r.margemN)+'">'+(r.margemN!=null?_precoFmt(r.margemN)+'%':'—')+'</td>';
+    h+='<td class="r" style="color:'+corM(r.lucroN)+'">'+(r.lucroN!=null?'R$ '+_precoFmt(r.lucroN):'—')+'</td>';
+    h+='<td class="r" style="color:'+corM(r.margemS)+'">'+(r.margemS!=null?_precoFmt(r.margemS)+'%':'—')+'</td>';
+    h+='</tr>';
+  });
+  h+='</tbody></table></div></div>';
+  c.innerHTML=h;
+  const vb=c.querySelector('#preco-hist-voltar'); if(vb) vb.onclick=()=>{ _precoHistProd=null; renderPreco(); };
+}
+
+function _precoBindHist(c){
+  const fj=c.querySelector('#preco-foto-ja'); if(fj) fj.onclick=()=>{ _precoTirarFotoMes(true); renderPreco(); };
+  const b=c.querySelector('#preco-busca');
+  if(b) b.oninput=()=>{ _precoBusca=b.value; const pos=b.selectionStart; renderPreco(); const nb=_precoContainer.querySelector('#preco-busca'); if(nb){ nb.focus(); try{nb.setSelectionRange(pos,pos);}catch(e){} } };
+  c.querySelectorAll('.preco-aba').forEach(btn=>{ btn.onclick=()=>{ _precoView=btn.dataset.aba; _precoHistProd=null; renderPreco(); }; });
+  c.querySelectorAll('.preco-hist-lin').forEach(tr=>{ tr.onclick=()=>{ _precoHistProd=tr.dataset.id; renderPreco(); }; });
 }
 
 function renderPreco(){
   const c=_precoContainer; if(!c) return;
   _precoSincronizarDados(); _precoInvalidaCache();
   if(_precoDetalhe!=null){ return _precoRenderDetalhe(c); }
+  if(_precoView==='historico'){ return _precoRenderHistorico(c); }
   const prods=_precoProdutos();
   const adminPct=_precoAdminFrac()*100;
 
   let h='<div class="module-view"><div class="maq-head"><div class="maq-head-t">Preço Final</div><span class="help" onclick="abrirAjuda(&#39;preco_final&#39;)">?</span></div>';
   h+='<div class="maq-head-sub">Preço mínimo (sem prejuízo) de cada produto, com e sem nota, comparado ao seu preço de tabela. Puxa os custos de todos os módulos.</div>';
+  h+=_precoAbasHtml('tabela');
 
   // painel de parâmetros
   h+='<div class="maq-card"><div class="maq-card-cab"><span class="maq-card-nome">Parâmetros</span></div><div style="padding:10px;display:grid;grid-template-columns:1fr 1fr;gap:10px">';
@@ -7895,15 +8106,16 @@ function renderPreco(){
     if(preco>0 && custo>0){
       const mN=_precoMargemDePreco(custo, p, preco, true);
       const mS=_precoMargemDePreco(custo, p, preco, false);
-      mNtxt=_precoFmt(mN.margemLiq)+'%'; mNcor=corM(mN.margemLiq);
-      mStxt=_precoFmt(mS.margemLiq)+'%'; mScor=corM(mS.margemLiq);
+      // margem % + valor R$ (lucro líquido por peça)
+      mNtxt='<b>'+_precoFmt(mN.margemLiq)+'%</b><br><span style="font-size:.68rem;font-weight:400">R$ '+_precoFmt(mN.lucroLiq)+'</span>'; mNcor=corM(mN.margemLiq);
+      mStxt='<b>'+_precoFmt(mS.margemLiq)+'%</b><br><span style="font-size:.68rem;font-weight:400">R$ '+_precoFmt(mS.lucroLiq)+'</span>'; mScor=corM(mS.margemLiq);
       prejuizo = mN.lucroLiq<0;
     }
     h+='<tr class="preco-lin" data-id="'+id+'" style="cursor:pointer'+(prejuizo?';background:rgba(224,96,60,.08)':'')+'">';
     h+='<td>'+(p.nome||id)+(prejuizo?' <span title="prejuízo com nota" style="color:#e0603c">⚠</span>':'')+'</td>';
     h+='<td class="r">R$ '+_precoFmt(custo)+'</td>';
     h+='<td class="r">'+(preco>0?'R$ '+_precoFmt(preco):'<span style="color:var(--txt3)">—</span>')+'</td>';
-    h+='<td class="r" style="color:'+mNcor+'"><b>'+mNtxt+'</b></td>';
+    h+='<td class="r" style="color:'+mNcor+'">'+mNtxt+'</td>';
     h+='<td class="r" style="color:'+mScor+'">'+mStxt+'</td>';
     h+='</tr>';
   });
@@ -7925,6 +8137,7 @@ function _precoBind(c){
   const b=c.querySelector('#preco-busca');
   if(b) b.oninput=()=>{ _precoBusca=b.value; const pos=b.selectionStart; renderPreco(); const nb=_precoContainer.querySelector('#preco-busca'); if(nb){ nb.focus(); try{nb.setSelectionRange(pos,pos);}catch(e){} } };
   c.querySelectorAll('.preco-lin').forEach(tr=>{ tr.onclick=()=>{ _precoDetalhe=tr.dataset.id; renderPreco(); }; });
+  c.querySelectorAll('.preco-aba').forEach(btn=>{ btn.onclick=()=>{ _precoView=btn.dataset.aba; _precoHistProd=null; renderPreco(); }; });
 }
 
 // re-render leve: só recalcula a tabela sem perder o foco dos parâmetros
@@ -8031,7 +8244,7 @@ function salvarSecaoPreco(sec){
   const secoes = sec ? [sec] : ['tabela','config'];
   secoes.forEach(s=>{
     try{
-      const dado = _precoSanitize(s==='config' ? {lucro:DPreco.lucro, params:DPreco.params} : DPreco.tabela);
+      const dado = _precoSanitize(s==='config' ? {lucro:DPreco.lucro, params:DPreco.params} : (s==='historico' ? DPreco.historico : DPreco.tabela));
       _precoLastWriteSec[s]=JSON.stringify(dado);
       if(_precoTimers[s]) clearTimeout(_precoTimers[s]);
       _precoTimers[s]=setTimeout(()=>{
@@ -8056,27 +8269,31 @@ async function _precoCarregarDadosAssincrono(container){
     if(val==null) return;
     if(s==='config'){ if(val.lucro!=null) DPreco.lucro=val.lucro; if(val.params) DPreco.params=Object.assign({}, PRECO_DEFAULT.params, val.params); }
     else if(s==='tabela'){ DPreco.tabela=val||{}; }
+    else if(s==='historico'){ DPreco.historico=val||{}; }
   };
   try{
     if(window.__PRECO_DEMO){
       const blob=JSON.parse(localStorage.getItem('pedroni:custos/preco_bloco')||'{}');
-      ['tabela','config'].forEach(s=>aplica(s, blob[s]));
+      ['tabela','config','historico'].forEach(s=>aplica(s, blob[s]));
     } else if(fb && db){
-      for(const s of ['tabela','config']){
+      for(const s of ['tabela','config','historico']){
         try{ const snap=await new Promise((res,rej)=>{ try{ fb.onValue(fb.ref(db,'custos/preco/'+s), res, rej, {onlyOnce:true}); }catch(e){ rej(e); } }); aplica(s, snap&&snap.val&&snap.val()); }catch(e){}
       }
       // listeners vivos
-      ['tabela','config'].forEach(s=>{
+      ['tabela','config','historico'].forEach(s=>{
         try{ fb.onValue(fb.ref(db,'custos/preco/'+s), snap=>{
           const v=snap&&snap.val&&snap.val();
           if(v==null) return;
-          if(JSON.stringify(_precoSanitize(s==='config'?{lucro:DPreco.lucro,params:DPreco.params}:DPreco.tabela))===JSON.stringify(v)) return; // eco
+          const atual = s==='config'?{lucro:DPreco.lucro,params:DPreco.params} : (s==='historico'?DPreco.historico:DPreco.tabela);
+          if(JSON.stringify(_precoSanitize(atual))===JSON.stringify(v)) return; // eco
           aplica(s,v);
           if(_precoContainer && document.getElementById('preco-container')) renderPreco();
         }); }catch(e){}
       });
     }
   }catch(e){ console.error('preco load',e); }
+  // tira a foto do mês (automática) depois que os custos carregam
+  try{ setTimeout(()=>{ if(_precoTirarFotoMes(false) && document.getElementById('preco-container')) renderPreco(); }, 1800); }catch(e){}
   if(container) renderPreco();
 }
 
