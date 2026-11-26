@@ -938,7 +938,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v145</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v146</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -7787,6 +7787,7 @@ function _precoMpPeca(p){
 // Uso no console: __precoDebug('PISO GRAMA')
 window.__precoDebug = function(nome){
   const D = window.__mpD; if(!D){ console.log('sem __mpD'); return; }
+  try{ _precoResyncPrecosDeCompras(); }catch(e){}
   const hoje=new Date().toISOString().slice(0,10);
   const p=(D.produtos||[]).find(x=>(x.nome||'').toUpperCase().trim()===String(nome||'').toUpperCase().trim())
         || (D.produtos||[]).find(x=>(x.nome||'').toUpperCase().includes(String(nome||'').toUpperCase().trim()));
@@ -7905,6 +7906,31 @@ function _precoSincronizarDados(){
 // Carrega TODOS os dados de custo direto do Firebase para D e Dmo — sem precisar abrir as abas.
 // A pré-carga só traz produtos/__moD; faltam tracos, compras, aço, embalagem, preços (matéria-prima)
 // e as seções da M.O. — e SEM eles custoProdutoEm/custoTracoEm/calcSetores retornam 0.
+// Recalcula D.precosEmb e D.precosAco a partir da ÚLTIMA COMPRA de cada item (self-contained,
+// replica sincronizarPrecos() da aba Materiais). Também sincroniza m.precoCompra dos agregados,
+// aço e embalagem, pra garantir que o concreto use o preço vigente.
+function _precoResyncPrecosDeCompras(){
+  try{
+    const compras = D.compras||{};
+    const ultimaCompra=(k)=>{ const c=compras[k]||[]; if(!c.length) return null; return [...c].sort((a,b)=>String(b.data).localeCompare(String(a.data)))[0]; };
+    const custoUnitEmbLocal=(m)=>{ const preco=m.precoCompra||0, cred=m.credito||0, div=m.divisor||1; return (preco-preco*cred)/div; };
+    const custoUnitLocal=(m)=>{ // igual custoUnit() (com nota parcial)
+      const F=m.precoCompra||0,G=m.precoNF||0,H=m.qtdeNF||0,I=m.qtdeReal||0,J=m.credito||0,div=m.divisor||1;
+      let liq=(H>0&&I>0&&G>0&&F>0)?F-(((H*G)/(I*F))*J*G):F-(F*J);
+      return div>0?liq/div:0;
+    };
+    const aplicaCompra=(m,c)=>{ if(!m||!c) return; m.precoCompra=c.preco; if(c.precoNF!==undefined&&c.precoNF>0){ m.precoNF=c.precoNF; m.qtdeNF=c.qtdeNF; m.qtdeReal=c.qtdeReal; } };
+    // agregados
+    if(D.agregados) Object.keys(D.agregados).forEach(k=>{ const c=ultimaCompra(k); if(c) aplicaCompra(D.agregados[k],c); });
+    // aço
+    if(!D.precosAco) D.precosAco={};
+    (D.aco||[]).forEach((m,i)=>{ const c=ultimaCompra('aco_'+i); if(c) aplicaCompra(m,c); if(m&&m.nome!==undefined) D.precosAco[m.nome]=custoUnitLocal(m); });
+    // embalagem
+    if(!D.precosEmb) D.precosEmb={};
+    (D.embalagem||[]).forEach((m,i)=>{ const c=ultimaCompra('emb_'+i); if(c) aplicaCompra(m,c); if(m&&m.nome!==undefined) D.precosEmb[m.nome]=custoUnitEmbLocal(m); });
+  }catch(e){ console.warn('_precoResyncPrecosDeCompras', e&&e.message); }
+}
+
 async function _precoCarregarCustos(){
   const temFB = (typeof db!=='undefined' && db && typeof fb!=='undefined' && fb);
   const listaDe=(mapa)=> mapa ? Object.keys(mapa).sort((a,b)=>(+a)-(+b)).map(k=>mapa[k]) : null;
@@ -7923,6 +7949,10 @@ async function _precoCarregarCustos(){
       if(co) D.compras=co;
       if(pa) D.precosAco=pa;
       if(pe) D.precosEmb=pe;
+      // RE-SINCRONIZA emb/aço a partir das COMPRAS (última compra), igual a aba Materiais faz
+      // com sincronizarPrecos(). Sem isso, D.precosEmb/precosAco ficam com valores CONGELADOS
+      // (ex.: palete gravado R$10 enquanto a última compra já é R$13) e a MP sai errada.
+      _precoResyncPrecosDeCompras();
     } else {
       // DEMO: tenta o bloco do localStorage
       try{ const raw=localStorage.getItem('pedroni:custos/mp_bloco'); if(raw){ Object.assign(D, JSON.parse(raw)); } }catch(e){}
