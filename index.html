@@ -938,7 +938,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v144</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v145</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -7782,6 +7782,35 @@ function _precoMpPeca(p){
     return mp+aco+emb;
   }catch(e){ console.warn('_precoMpPeca', e&&e.message); return 0; }
 }
+
+// DEBUG: expõe a decomposição da MP de um produto pelo nome, pra comparar com as abas.
+// Uso no console: __precoDebug('PISO GRAMA')
+window.__precoDebug = function(nome){
+  const D = window.__mpD; if(!D){ console.log('sem __mpD'); return; }
+  const hoje=new Date().toISOString().slice(0,10);
+  const p=(D.produtos||[]).find(x=>(x.nome||'').toUpperCase().trim()===String(nome||'').toUpperCase().trim())
+        || (D.produtos||[]).find(x=>(x.nome||'').toUpperCase().includes(String(nome||'').toUpperCase().trim()));
+  if(!p){ console.log('produto não encontrado:', nome); return; }
+  const t=(D.tracos||[]).find(x=>x.id===p.traco);
+  const SOLIDOS=['areiaInd','granilha','pedrisco','brita','areiaNat','cimento'];
+  let pesoBatida=0; if(t) SOLIDOS.forEach(k=>{ pesoBatida+=parseFloat((t.materiais&&t.materiais[k]))||0; });
+  let custoTraco=0; if(t) _PRECO_KEYS.forEach(k=>{ const q=(t.materiais&&t.materiais[k])||0; if(q) custoTraco+=q*_precoCustoUnitEm(D,k,hoje); });
+  const concreto = (t&&pesoBatida>0)? (custoTraco/pesoBatida)*(p.pesoPeca||0) : 0;
+  let aco=0; const precosAco=D.precosAco||{}; if(p.aco) Object.keys(p.aco).forEach(tp=>{ aco+=(p.aco[tp]||0)*(precosAco[tp]||0); }); aco+=(p.moAcoTubo||0);
+  let emb=0; if(p.pecasPalete>0){ const pe=D.precosEmb||{}; emb=((pe['Palete']||0)+(p.qtdeSelo||0)*(pe['Selo']||0)+(p.qtdeFita||0)*(pe['Fita PET']||0)+(p.qtdeFilme||0)*(pe['Filme Strech']||0))/p.pecasPalete; }
+  const out={
+    nome:p.nome, traco:(t?t.nome:null)+' (id '+p.traco+')',
+    pesoPeca:p.pesoPeca, pesoTraco_salvo:(t?t.pesoTraco:null), pesoBatida_somado:pesoBatida,
+    custoBatida:Number(custoTraco.toFixed(4)),
+    concreto:Number(concreto.toFixed(4)), aco:Number(aco.toFixed(4)), emb:Number(emb.toFixed(4)),
+    MP_total:Number((concreto+aco+emb).toFixed(4)),
+    emb_detalhe:{pecasPalete:p.pecasPalete, qtdeSelo:p.qtdeSelo, qtdeFita:p.qtdeFita, qtdeFilme:p.qtdeFilme, precosEmb:D.precosEmb}
+  };
+  console.log('=== DEBUG MP', p.nome, '===');
+  console.table ? console.table(out) : console.log(out);
+  console.log(JSON.stringify(out,null,2));
+  return out;
+};
 
 // ---- CUSTO TOTAL de um produto (soma dos componentes) ----
 function precoCustoProduto(p){
