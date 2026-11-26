@@ -938,7 +938,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v137</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v138</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -7480,6 +7480,48 @@ function _precoCalcPessoa(p){
 // Custo da M.O. por peça — AUTO-CONTIDO, lê window.__moD. Replica a parte principal do calcSetores:
 // folha do setor ÷ (pessoas × diasIdeal × jornada) = custo/hora; × (pessoas_produto × ocup × jornada) ÷ prodDia.
 // (Não inclui rateio de central nem EPI indireto — refinamentos menores; a folha é o grosso.)
+function _precoEhCentral(f){ return /^central/i.test(f); }
+// EPI indireto por setor — replica indiretoSetor(setor, epiMes) = Σ getCons×precoEpi.
+// Usa o mês mais recente com consumo lançado (igual o app, que mostra epiMes atual).
+function _precoIndiretoSetor(MO, setor){
+  const epis=MO.epis||[]; const consumo=MO.consumo||{};
+  if(!epis.length || !Object.keys(consumo).length) return 0;
+  // mês de referência: o mais recente que tem algum consumo
+  const meses=Object.keys(consumo).sort();
+  const mes=meses[meses.length-1];
+  const precoEpi=(e)=>{ const c=[...(e.compras||[])].sort((a,b)=>b.data.localeCompare(a.data)); return c.length? c[0].preco : (e.preco||0); };
+  const getCons=(id)=>{ try{ return (consumo[mes] && consumo[mes][id] && consumo[mes][id][setor])||0; }catch(e){ return 0; } };
+  let t=0; epis.forEach(e=>{ t += getCons(e.id)*precoEpi(e); });
+  return t;
+}
+// kg/mês do setor (média da produção real) — pra ratear a central por produção
+function _precoKgSetor(MO, setor){
+  const pr=MO.prodReal&&MO.prodReal[setor]; if(!pr) return 0;
+  const pesoDe=(nome)=>{ const f=(window.__mpD&&window.__mpD.produtos)||[]; const p=f.find(x=>x&&x.nome===nome); return p?(p.pesoPeca||0):0; };
+  const kgPorMes={};
+  Object.keys(pr).forEach(prod=>{
+    const peso=pesoDe(prod)||0;
+    (Array.isArray(pr[prod])?pr[prod]:Object.values(pr[prod]||{})).forEach(l=>{
+      if(!l) return; const dias=Array.isArray(l.dias)?l.dias:(l.data?[l.data]:[]); const d0=dias.find(d=>!!d); if(!d0) return;
+      const m=d0.slice(0,7); kgPorMes[m]=(kgPorMes[m]||0)+(parseFloat(l.qtd)||0)*peso;
+    });
+  });
+  const ms=Object.keys(kgPorMes); return ms.length? ms.reduce((a,m)=>a+kgPorMes[m],0)/ms.length : 0;
+}
+// rateio das centrais: distribui a folha de cada central entre as máquinas que atende, por kg
+function _precoRateioCentrais(MO, FAM, folha){
+  const extra={}; FAM.forEach(f=>extra[f]=0);
+  FAM.filter(_precoEhCentral).forEach(central=>{
+    const cfg=(MO.centrais&&MO.centrais[central])||{atende:[]};
+    const atende=(cfg.atende||[]).filter(m=>FAM.includes(m)&&!_precoEhCentral(m));
+    if(!atende.length) return;
+    const custoCentral=folha[central]||0; if(custoCentral<=0) return;
+    const kgs={}; let kgTot=0; atende.forEach(m=>{ const k=_precoKgSetor(MO,m); kgs[m]=k; kgTot+=k; });
+    if(kgTot<=0){ atende.forEach(m=>{ extra[m]+=custoCentral/atende.length; }); }
+    else { atende.forEach(m=>{ extra[m]+=custoCentral*(kgs[m]/kgTot); }); }
+  });
+  return extra;
+}
 function _precoMoPeca(nomeProduto){
   try{
     const MO=window.__moD; if(!MO||!MO.produtos) return 0;
@@ -7496,13 +7538,20 @@ function _precoMoPeca(nomeProduto){
       if(tipo==='fixo'){ if(folha[fam]!=null){ folha[fam]+=c; nP[fam]+=1; } }
       else { const rat=p.rateios||p._rateios||{}; const soma=FAM.reduce((s,f)=>s+(rat[f]||0),0)||1; FAM.forEach(f=>{ const pct=(rat[f]||0)/soma; if(folha[f]!=null){ folha[f]+=c*pct; if(pct>0) nP[f]+=pct; } }); }
     });
+    // rateio das centrais (distribui folha da central pras máquinas que atende)
+    const extraCentral=_precoRateioCentrais(MO, FAM, folha);
     // acha o setor do produto e seus parâmetros (pessoas, ocup, prodDia)
     for(const f of FAM){
       const arr=MO.produtos[f]||[];
       const prod=arr.find(x=>x&&x.nome===nomeProduto);
       if(prod){
+        // custo do setor = folha efetiva (+ central recebida) + EPI indireto — igual calcSetores
+        const central=_precoEhCentral(f);
+        const folhaEfetiva=central ? 0 : (folha[f] + (extraCentral[f]||0));
+        const indireto=_precoIndiretoSetor(MO, f);
+        const custoSetor=folhaEfetiva + indireto;
         const horasSetor=nP[f]*diasIdeal*jornada;
-        const custoHora=horasSetor>0 ? folha[f]/horasSetor : 0;
+        const custoHora=horasSetor>0 ? custoSetor/horasSetor : 0;
         const pessoasProd=parseFloat(prod.pessoas)||0;
         const ocup=parseFloat(prod.ocup)||0;
         const prodDia=parseFloat(prod.prodDia)||0;
