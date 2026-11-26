@@ -938,7 +938,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v141</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v142</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -7494,7 +7494,9 @@ function _precoCategoriaTributaria(p){
 function _precoEhBlocoCanaleta(p){
   const cat=_precoCategoriaTributaria(p).toLowerCase();
   const nome=((p&&p.nome)||'').toLowerCase();
-  // bloco (inclui meio bloco), canaleta
+  // EXCEÇÃO: MEIO FIO é da família de blocos (traço 'Blocos') mas tem ICMS 12% (não é bloco de vedação)
+  if(nome.indexOf('meio fio')>=0 || nome.indexOf('meio-fio')>=0 || nome.indexOf('meiofio')>=0) return false;
+  // bloco (inclui meio bloco), canaleta = 7%
   if(cat.indexOf('bloco')>=0 || cat.indexOf('canaleta')>=0) return true;
   if(nome.indexOf('bloco')>=0 || nome.indexOf('canaleta')>=0) return true; // pega MEIO BLOCO pelo nome
   return false;
