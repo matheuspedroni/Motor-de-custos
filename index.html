@@ -938,7 +938,7 @@ main{padding:16px;max-width:680px;margin:0 auto}
   <div class="app-header">
     <div class="ah-mark">🏗️</div>
     <div class="ah-title">
-      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v150</span></div>
+      <div class="t">Motor de Custos <span style="font-size:.55rem;background:var(--rebar);color:#fff;padding:1px 6px;border-radius:8px;font-weight:700;vertical-align:middle;margin-left:4px">v151</span></div>
       <div class="s"><span class="sync-dot" id="sync-dot"></span><span id="sync-txt">Sincronizado na nuvem</span></div>
     </div>
     <div class="ah-user">
@@ -3717,11 +3717,17 @@ function salvarAgregados(){
 // salva SÓ um traço (usado ao editar um traço específico — mais eficiente)
 // salva SÓ um material agregado
 
+// Fibra de aço: material novo. Os agregados salvos na nuvem ainda não têm ela, então toda carga
+// garante o item (nível de MÓDULO, pra ser visível do init, da pré-carga e do Preço Final).
+const FIBRA_DEFAULT={nome:'Fibra de aço', um:'Kg', unidCompra:'Kg', divisor:1, precoCompra:0, precoNF:0, qtdeNF:0, qtdeReal:0, credito:0.2125, novo:true};
+function _garanteFibra(Dx){ try{ if(Dx && Dx.agregados && !Dx.agregados.fibraAco){ Dx.agregados.fibraAco=JSON.parse(JSON.stringify(FIBRA_DEFAULT)); return true; } }catch(e){} return false; }
+
 async function initMateriaPrima(container){
   mpReady = false;
   // Só usa os defaults na PRIMEIRA abertura. Ao reabrir a aba, mantém D com os dados reais
   // já carregados do Firebase (senão o reset apagaria tudo, pois os onValue não re-disparam).
   if(!D) D = JSON.parse(JSON.stringify(D_DEFAULT));
+  _garanteFibra(D);
 
   // injeta HTML e roda a lógica
   container.innerHTML = MP_HTML;
@@ -3846,8 +3852,6 @@ const KEYS=['areiaInd','granilha','pedrisco','brita','areiaNat','cimento','aditi
 // FIBRA DE AÇO: entra no custo da batelada (como os outros materiais) mas NÃO entra no peso da batida
 // (pesoBatida soma só os sólidos). Assim o custo dela por tubo = (kg fibra × R$/kg) ÷ peso da batida × peso do tubo
 // = valor da fibra da batelada ÷ nº de tubos da batelada. Só aparece no traço de tubos até DN 600 (Tuber + LKR).
-const FIBRA_DEFAULT={nome:'Fibra de aço', um:'Kg', unidCompra:'Kg', divisor:1, precoCompra:0, precoNF:0, qtdeNF:0, qtdeReal:0, credito:0.2125, novo:true};
-function _garanteFibra(Dx){ try{ if(Dx && Dx.agregados && !Dx.agregados.fibraAco){ Dx.agregados.fibraAco=JSON.parse(JSON.stringify(FIBRA_DEFAULT)); return true; } }catch(e){} return false; }
 // tubo até DN 600? (pelo nome do traço ou dos produtos que usam o traço)
 function _tracoAceitaFibra(t, prods){
   const nomes=[t&&t.nome].concat((prods||[]).map(p=>p&&p.nome)).filter(Boolean);
@@ -3863,6 +3867,7 @@ const fmt3=n=>(Number(n)||0).toLocaleString('pt-BR',{minimumFractionDigits:3,max
 
 // ---- custo unitário de um material ----
 function custoUnit(m){
+  if(!m) return 0; // material ausente nos dados (ex.: item novo ainda não salvo)
   const F=m.precoCompra||0;     // preço realmente pago (por unid. compra)
   const G=m.precoNF||0;         // preço que consta na nota fiscal
   const H=m.qtdeNF||0;          // qtde na nota
@@ -3886,6 +3891,7 @@ function renderMat(lista, containerId, prefix){
   sincronizarPrecos();  // preço sempre vem da última compra
   const wrap=document.getElementById(containerId); if(!wrap) return; wrap.innerHTML='';
   lista.forEach((m,i)=>{
+    if(!m) return; // material ausente: não derruba a lista
     const id=prefix+i;
     const cu=custoUnit(m);
     const div=document.createElement('div');
@@ -7901,7 +7907,7 @@ function _precoMpPeca(p){
     //    pesoBatida = soma dos SÓLIDOS (aditivos são ML, não entram no peso). A aba divide por
     //    pesoBatida, NÃO pelo campo salvo t.pesoTraco — por isso antes dava diferença de centavos.
     let mp=0;
-    const t=(D.tracos||[]).find(x=>x.id===p.traco);
+    const t=(D.tracos||[]).find(x=>x&&x.id===p.traco);
     if(t){
       const SOLIDOS=['areiaInd','granilha','pedrisco','brita','areiaNat','cimento'];
       let pesoBatida=0; SOLIDOS.forEach(k=>{ pesoBatida+=parseFloat((t.materiais&&t.materiais[k]))||0; });
@@ -7936,7 +7942,7 @@ window.__precoDebug = function(nome){
   const p=(D.produtos||[]).find(x=>(x.nome||'').toUpperCase().trim()===String(nome||'').toUpperCase().trim())
         || (D.produtos||[]).find(x=>(x.nome||'').toUpperCase().includes(String(nome||'').toUpperCase().trim()));
   if(!p){ console.log('produto não encontrado:', nome); return; }
-  const t=(D.tracos||[]).find(x=>x.id===p.traco);
+  const t=(D.tracos||[]).find(x=>x&&x.id===p.traco);
   const SOLIDOS=['areiaInd','granilha','pedrisco','brita','areiaNat','cimento'];
   let pesoBatida=0; if(t) SOLIDOS.forEach(k=>{ pesoBatida+=parseFloat((t.materiais&&t.materiais[k]))||0; });
   let custoTraco=0; if(t) _PRECO_KEYS.forEach(k=>{ const q=(t.materiais&&t.materiais[k])||0; if(q) custoTraco+=q*_precoCustoUnitEm(D,k,hoje); });
